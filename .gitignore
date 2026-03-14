@@ -1,0 +1,19 @@
+# Build artifacts
+plasma
+bounce
+life
+raymarch_sdf
+audio_visual
+ringtest
+piano
+visualizer
+sprite
+player
+clickgame
+*.o
+*.d
+
+# Editor
+*.swp
+*~
+.vscode/
