@@ -1,0 +1,3027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Geometry Is Math</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0f0e0c;--bg-surface:#1a1815;--bg-elevated:#242119;--bg-code:#1e1c18;
+  --text:#d4c8b0;--text-muted:#8a7e6a;--text-bright:#f0e8d8;
+  --accent:#e6a756;--accent-dim:#c4853a;
+  --blue:#5b9bd5;--cyan:#4ecdc4;--pink:#e06b8d;--green:#7ec97e;
+  --red:#d45b5b;--purple:#a78bdb;
+  --border:#2e2a24;--border-light:#3d3730;
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+header{background:var(--bg-surface);border-bottom:1px solid var(--border);padding:0 1.5rem;height:48px;display:flex;align-items:center;gap:1rem;flex-shrink:0}
+.logo{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:var(--text-bright);white-space:nowrap}
+.logo span{color:var(--accent)}
+.tabs{display:flex;gap:2px;overflow-x:auto;flex:1;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:transparent;border:none;color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.04em;padding:.4rem .7rem;cursor:pointer;border-radius:6px 6px 0 0;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--text);background:var(--bg-elevated)}
+.tab.active{color:var(--accent);background:var(--bg);border:1px solid var(--border);border-bottom-color:var(--bg);margin-bottom:-1px}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:1rem;flex-shrink:0}
+.fps-display{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green)}
+.btn{background:var(--bg-elevated);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:.35rem .8rem;border-radius:4px;cursor:pointer;transition:all .15s}
+.btn:hover{border-color:var(--accent-dim);color:var(--accent)}
+.main{flex:1;display:flex;overflow:hidden}
+.canvas-panel{flex:1;display:flex;flex-direction:column;border-right:1px solid var(--border);min-width:0}
+.thesis{padding:.5rem 1.2rem;font-size:12px;color:var(--text-muted);font-style:italic;background:var(--bg-surface);border-bottom:1px solid var(--border);flex-shrink:0;min-height:32px;display:flex;align-items:center}
+.canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#000;position:relative;overflow:hidden}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges}
+.pill-strip{display:flex;gap:4px;padding:.5rem 1rem;overflow-x:auto;background:var(--bg-surface);border-top:1px solid var(--border);flex-shrink:0;scrollbar-width:none}
+.pill-strip::-webkit-scrollbar{display:none}
+.pill{background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:10px;padding:.25rem .6rem;border-radius:12px;cursor:pointer;white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:4px}
+.pill:hover{color:var(--text);border-color:var(--border-light)}
+.pill.active{color:var(--accent);border-color:var(--accent-dim);background:rgba(230,167,86,.1)}
+.pill .dot{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0}
+.code-panel{width:440px;flex-shrink:0;display:flex;flex-direction:column;background:var(--bg-code);overflow:hidden}
+.note-area{padding:1rem;border-bottom:1px solid var(--border);flex-shrink:0;max-height:40%;overflow-y:auto}
+.item-title{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--text-bright);margin-bottom:.5rem}
+.item-note{font-size:13px;line-height:1.6;color:var(--text)}
+.code-header{background:var(--bg-surface);border-bottom:1px solid var(--border);padding:.5rem 1rem;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
+.code-tabs{display:flex;gap:2px}
+.code-tab{background:transparent;border:none;color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:11px;padding:.3rem .6rem;cursor:pointer;border-radius:3px;transition:all .15s}
+.code-tab:hover{color:var(--text)}
+.code-tab.active{color:var(--accent);background:var(--bg-code)}
+#jsEditor{width:100%;height:100%;resize:none;background:var(--bg-code);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;border:none;outline:none;padding:1rem;tab-size:2;white-space:pre}
+.btn-run{background:var(--green);color:var(--bg);border:none;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;padding:.3rem .8rem;border-radius:3px;cursor:pointer}
+.btn-run:hover{opacity:.85}
+.run-error{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--red);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.code-body{flex:1;overflow-y:auto;padding:1rem}
+.code-body pre{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;color:var(--text);white-space:pre;tab-size:4}
+.code-body .kw{color:var(--pink)}
+.code-body .fn{color:var(--blue)}
+.code-body .ty{color:var(--cyan)}
+.code-body .cm{color:var(--text-muted);font-style:italic}
+.code-body .st{color:var(--green)}
+.code-body .nu{color:var(--accent)}
+.code-body::-webkit-scrollbar{width:6px}
+.code-body::-webkit-scrollbar-track{background:var(--bg-code)}
+.code-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@media(max-width:900px){.code-panel{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Geometry<span>IsMath</span></div>
+  <div class="tabs" id="catTabs"></div>
+  <div class="header-right">
+    <span class="fps-display" id="fps">60 FPS</span>
+    <button class="btn" id="pauseBtn">Pause</button>
+  </div>
+</header>
+<div class="main">
+  <div class="canvas-panel">
+    <div class="thesis" id="thesis"></div>
+    <div class="canvas-wrap"><canvas id="canvas"></canvas></div>
+    <div class="pill-strip" id="pills"></div>
+  </div>
+  <div class="code-panel">
+    <div class="note-area"><div class="item-title" id="itemTitle"></div><div class="item-note" id="itemNote"></div></div>
+    <div class="code-header">
+      <div class="code-tabs">
+        <button class="code-tab active" id="cTabBtn">GLSL concept</button>
+        <button class="code-tab" id="jsTabBtn">JS live</button>
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center">
+        <span class="run-error" id="runError"></span>
+        <button class="btn" id="resetCodeBtn" style="display:none">Revert</button>
+        <button class="btn-run" id="runBtn" style="display:none">Run</button>
+      </div>
+    </div>
+    <div class="code-body" id="codeBodyC"><pre id="codeView"></pre></div>
+    <div class="code-body" id="codeBodyJS" style="display:none">
+      <textarea id="jsEditor" spellcheck="false"></textarea>
+    </div>
+  </div>
+</div>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  Geometry Is Math — Interactive Deep-Dive
+// ═══════════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = 320, H = 200;
+canvas.width = W; canvas.height = H;
+const imageData = ctx.createImageData(W, H);
+const pixels = imageData.data;
+let paused = false, currentCat = null, currentItem = null;
+let mouseX = 0, mouseY = -0.3, dragging = false;
+let startTime = performance.now(), frameCount = 0, lastFpsTime = startTime;
+
+function setPixel(x, y, r, g, b) {
+  if ((x |= 0) < 0 || x >= W || (y |= 0) < 0 || y >= H) return;
+  const i = (y * W + x) << 2;
+  pixels[i] = r < 0 ? 0 : r > 255 ? 255 : r;
+  pixels[i+1] = g < 0 ? 0 : g > 255 ? 255 : g;
+  pixels[i+2] = b < 0 ? 0 : b > 255 ? 255 : b;
+  pixels[i+3] = 255;
+}
+
+function clear(r, g, b) {
+  for (let i = 0; i < pixels.length; i += 4) {
+    pixels[i] = r; pixels[i+1] = g; pixels[i+2] = b; pixels[i+3] = 255;
+  }
+}
+
+// ═══ MATH LIBRARY ═══
+
+function ihash(x, y) {
+  x = x | 0; y = y | 0;
+  let n = Math.imul(x, 1597334677) ^ Math.imul(y, 3812015801);
+  n = Math.imul(n ^ (n >>> 16), 0x45d9f3b);
+  n = Math.imul(n ^ (n >>> 16), 0x45d9f3b);
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967295;
+}
+
+function noise2(x, y) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = x - ix, fy = y - iy;
+  const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+  const a = ihash(ix, iy), b = ihash(ix+1, iy);
+  const c = ihash(ix, iy+1), d = ihash(ix+1, iy+1);
+  return (a + (b-a)*ux + (c-a)*uy + (a-b-c+d)*ux*uy) * 2 - 1;
+}
+
+function noise3(x, y, z) {
+  const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z);
+  const fx = x-ix, fy = y-iy, fz = z-iz;
+  const ux = fx*fx*(3-2*fx), uy = fy*fy*(3-2*fy), uz = fz*fz*(3-2*fz);
+  const n000 = ihash(ix+iz*137, iy), n100 = ihash(ix+1+iz*137, iy);
+  const n010 = ihash(ix+iz*137, iy+1), n110 = ihash(ix+1+iz*137, iy+1);
+  const n001 = ihash(ix+(iz+1)*137, iy), n101 = ihash(ix+1+(iz+1)*137, iy);
+  const n011 = ihash(ix+(iz+1)*137, iy+1), n111 = ihash(ix+1+(iz+1)*137, iy+1);
+  const n00 = n000+(n100-n000)*ux, n10 = n010+(n110-n010)*ux;
+  const n01 = n001+(n101-n001)*ux, n11 = n011+(n111-n011)*ux;
+  const n0 = n00+(n10-n00)*uy, n1 = n01+(n11-n01)*uy;
+  return (n0+(n1-n0)*uz)*2-1;
+}
+
+function fbm(x, y, oct) {
+  let v = 0, amp = 0.5, freq = 1;
+  for (let i = 0; i < oct; i++) { v += noise2(x*freq, y*freq)*amp; freq *= 2; amp *= 0.5; }
+  return v;
+}
+
+function fbm3(x, y, z, oct) {
+  let v = 0, amp = 0.5, freq = 1;
+  for (let i = 0; i < oct; i++) { v += noise3(x*freq, y*freq, z*freq)*amp; freq *= 2; amp *= 0.5; }
+  return v;
+}
+
+function voronoi(x, y) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  let md = 999, mid = 0;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const cx = ix+dx, cy = iy+dy;
+    const px = cx + ihash(cx, cy), py = cy + ihash(cx+100, cy+100);
+    const d = (x-px)*(x-px) + (y-py)*(y-py);
+    if (d < md) { md = d; mid = ihash(cx+200, cy+200); }
+  }
+  return [Math.sqrt(md), mid];
+}
+
+function voronoiEdge(x, y) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  let md = 999, md2 = 999;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const cx = ix+dx, cy = iy+dy;
+    const px = cx + ihash(cx, cy), py = cy + ihash(cx+100, cy+100);
+    const d = (x-px)*(x-px)+(y-py)*(y-py);
+    if (d < md) { md2 = md; md = d; } else if (d < md2) { md2 = d; }
+  }
+  return Math.sqrt(md2) - Math.sqrt(md);
+}
+
+// 2D SDFs
+function sdCircle(px, py, r) { return Math.sqrt(px*px+py*py)-r; }
+function sdBox2(px, py, bx, by) {
+  const dx = Math.abs(px)-bx, dy = Math.abs(py)-by;
+  return Math.sqrt(Math.max(dx,0)**2+Math.max(dy,0)**2)+Math.min(Math.max(dx,dy),0);
+}
+function sdSegment(px, py, ax, ay, bx, by) {
+  const bax=bx-ax, bay=by-ay, pax=px-ax, pay=py-ay;
+  const h = Math.max(0, Math.min(1, (pax*bax+pay*bay)/(bax*bax+bay*bay)));
+  const dx=pax-bax*h, dy=pay-bay*h;
+  return Math.sqrt(dx*dx+dy*dy);
+}
+
+// 3D SDFs
+function sdSphere(px,py,pz,r) { return Math.sqrt(px*px+py*py+pz*pz)-r; }
+function sdTorus(px,py,pz,R,r) { const q=Math.sqrt(px*px+pz*pz)-R; return Math.sqrt(q*q+py*py)-r; }
+function sdBox3(px,py,pz,bx,by,bz) {
+  const dx=Math.abs(px)-bx, dy=Math.abs(py)-by, dz=Math.abs(pz)-bz;
+  return Math.sqrt(Math.max(dx,0)**2+Math.max(dy,0)**2+Math.max(dz,0)**2)+Math.min(Math.max(dx,dy,dz),0);
+}
+function sdCylinder(px,py,pz,r,h) {
+  const d=Math.sqrt(px*px+pz*pz)-r, dy=Math.abs(py)-h;
+  return Math.min(Math.max(d,dy),0)+Math.sqrt(Math.max(d,0)**2+Math.max(dy,0)**2);
+}
+function sdPlane(py,h) { return py-h; }
+
+// Ops
+function opUnion(a,b) { return Math.min(a,b); }
+function opSmoothUnion(d1,d2,k) {
+  const h = Math.max(k-Math.abs(d1-d2),0)/k;
+  return Math.min(d1,d2)-h*h*k*0.25;
+}
+function opSubtract(d1,d2) { return Math.max(-d1,d2); }
+function opIntersect(d1,d2) { return Math.max(d1,d2); }
+function opRepeat(p,s) { return ((p%s)+s)%s-s*0.5; }
+
+// Color
+function hue(h) {
+  h = h-Math.floor(h); const f=h*6, i=Math.floor(f)%6, fr=f-Math.floor(f);
+  let r,g,b;
+  switch(i){
+    case 0:r=1;g=fr;b=0;break;case 1:r=1-fr;g=1;b=0;break;case 2:r=0;g=1;b=fr;break;
+    case 3:r=0;g=1-fr;b=1;break;case 4:r=fr;g=0;b=1;break;default:r=1;g=0;b=1-fr;
+  }
+  return [(r*255)|0,(g*255)|0,(b*255)|0];
+}
+function lerp(a,b,t) { return a+(b-a)*t; }
+function clamp(x,lo,hi) { return x<lo?lo:x>hi?hi:x; }
+function smoothstep(a,b,x) { const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); }
+
+// ═══ BITMAP FONT + ANNOTATIONS ═══
+
+const DIGITS = [
+  [0x1F,0x11,0x11,0x11,0x1F],[0x04,0x0C,0x04,0x04,0x0E],[0x1F,0x01,0x1F,0x10,0x1F],
+  [0x1F,0x01,0x1F,0x01,0x1F],[0x11,0x11,0x1F,0x01,0x01],[0x1F,0x10,0x1F,0x01,0x1F],
+  [0x1F,0x10,0x1F,0x11,0x1F],[0x1F,0x01,0x02,0x04,0x04],[0x1F,0x11,0x1F,0x11,0x1F],
+  [0x1F,0x11,0x1F,0x01,0x1F],
+];
+const LETTERS = {
+  'S':[0x1F,0x10,0x1F,0x01,0x1F],'C':[0x1F,0x10,0x10,0x10,0x1F],
+  'O':[0x1F,0x11,0x11,0x11,0x1F],'R':[0x1F,0x11,0x1F,0x14,0x12],
+  'E':[0x1F,0x10,0x1E,0x10,0x1F],'G':[0x1F,0x10,0x17,0x11,0x1F],
+  'A':[0x0E,0x11,0x1F,0x11,0x11],'M':[0x11,0x1B,0x15,0x11,0x11],
+  'V':[0x11,0x11,0x11,0x0A,0x04],'D':[0x1E,0x11,0x11,0x11,0x1E],
+  'P':[0x1F,0x11,0x1F,0x10,0x10],'W':[0x11,0x11,0x15,0x1B,0x11],
+  'T':[0x1F,0x04,0x04,0x04,0x04],'I':[0x0E,0x04,0x04,0x04,0x0E],
+  'N':[0x11,0x19,0x15,0x13,0x11],'K':[0x11,0x12,0x1C,0x12,0x11],
+  'Y':[0x11,0x0A,0x04,0x04,0x04],'F':[0x1F,0x10,0x1E,0x10,0x10],
+  'H':[0x11,0x11,0x1F,0x11,0x11],'L':[0x10,0x10,0x10,0x10,0x1F],
+  ' ':[0x00,0x00,0x00,0x00,0x00],'X':[0x11,0x0A,0x04,0x0A,0x11],
+  'U':[0x11,0x11,0x11,0x11,0x1F],'B':[0x1E,0x11,0x1E,0x11,0x1E],
+  'J':[0x01,0x01,0x01,0x11,0x0E],'Q':[0x0E,0x11,0x11,0x15,0x0E],
+  'Z':[0x1F,0x02,0x04,0x08,0x1F],
+  '.':[0x00,0x00,0x00,0x00,0x04],':':[0x00,0x04,0x00,0x04,0x00],
+  '=':[0x00,0x1F,0x00,0x1F,0x00],'-':[0x00,0x00,0x1F,0x00,0x00],
+  '+':[0x00,0x04,0x1F,0x04,0x00],'(':[0x02,0x04,0x04,0x04,0x02],
+  ')':[0x08,0x04,0x04,0x04,0x08],
+};
+
+function drawText(cx, cy, text, r, g, b, scale) {
+  scale = scale || 1;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i].toUpperCase();
+    const glyph = LETTERS[ch] || DIGITS[parseInt(ch)];
+    if (!glyph) continue;
+    for (let row = 0; row < 5; row++)
+      for (let col = 0; col < 5; col++)
+        if (glyph[row] & (1 << (4 - col)))
+          for (let sy = 0; sy < scale; sy++)
+            for (let sx = 0; sx < scale; sx++)
+              setPixel(cx + i * (6 * scale) + col * scale + sx, cy + row * scale + sy, r, g, b);
+  }
+}
+
+function drawLine(x0, y0, x1, y1, r, g, b) {
+  x0=x0|0;y0=y0|0;x1=x1|0;y1=y1|0;
+  let dx = Math.abs(x1-x0), dy = -Math.abs(y1-y0);
+  let sx = x0<x1?1:-1, sy = y0<y1?1:-1;
+  let err = dx + dy;
+  while (true) {
+    setPixel(x0, y0, r, g, b);
+    if (x0===x1 && y0===y1) break;
+    const e2 = 2*err;
+    if (e2 >= dy) { err += dy; x0 += sx; }
+    if (e2 <= dx) { err += dx; y0 += sy; }
+  }
+}
+
+function drawParam(x, y, name, value, r, g, b) {
+  drawText(x, y, name + '=' + value, r, g, b, 1);
+}
+
+function drawLabel(x, y, text, r, g, b) {
+  const w = text.length * 6 + 2, h = 7;
+  for (let py = y-1; py <= y+h; py++)
+    for (let px = x-1; px <= x+w; px++)
+      if (px >= 0 && px < W && py >= 0 && py < H) {
+        const i = (py * W + px) << 2;
+        pixels[i] = pixels[i] * 0.4 | 0;
+        pixels[i+1] = pixels[i+1] * 0.4 | 0;
+        pixels[i+2] = pixels[i+2] * 0.4 | 0;
+      }
+  drawText(x, y, text, r, g, b, 1);
+}
+
+// ═══ BLOOM POST-PROCESSING ═══
+
+function applyBloom(threshold, radius, strength) {
+  const buf = new Float32Array(W * H);
+  // Extract bright pixels
+  for (let i = 0; i < W * H; i++) {
+    const idx = i << 2;
+    const lum = (pixels[idx] + pixels[idx+1] + pixels[idx+2]) / 3;
+    buf[i] = lum > threshold ? (lum - threshold) / (255 - threshold) : 0;
+  }
+  // Horizontal blur
+  const tmp = new Float32Array(W * H);
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      let sum = 0, wt = 0;
+      for (let dx = -radius; dx <= radius; dx++) {
+        const sx = x + dx;
+        if (sx < 0 || sx >= W) continue;
+        const w = Math.exp(-dx * dx / (2 * radius * radius / 4));
+        sum += buf[y * W + sx] * w;
+        wt += w;
+      }
+      tmp[y * W + x] = sum / wt;
+    }
+  // Vertical blur + composite
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      let sum = 0, wt = 0;
+      for (let dy = -radius; dy <= radius; dy++) {
+        const sy = y + dy;
+        if (sy < 0 || sy >= H) continue;
+        const w = Math.exp(-dy * dy / (2 * radius * radius / 4));
+        sum += tmp[sy * W + x] * w;
+        wt += w;
+      }
+      const bloom = sum / wt * strength * 255;
+      if (bloom > 0.5) {
+        const i = (y * W + x) << 2;
+        pixels[i] = Math.min(255, pixels[i] + bloom * 1.0) | 0;
+        pixels[i+1] = Math.min(255, pixels[i+1] + bloom * 0.9) | 0;
+        pixels[i+2] = Math.min(255, pixels[i+2] + bloom * 0.8) | 0;
+      }
+    }
+}
+
+// ═══ RENDER HELPERS ═══
+
+function march(ox,oy,oz,dx,dy,dz,fn,steps) {
+  let t=0;
+  for(let i=0;i<(steps||48);i++){
+    const d=fn(ox+dx*t,oy+dy*t,oz+dz*t);
+    if(d<0.005)return t;
+    t+=d; if(t>20)break;
+  }
+  return -1;
+}
+
+function calcNorm(x,y,z,fn) {
+  const e=0.0005,d=fn(x,y,z);
+  const nx=fn(x+e,y,z)-d, ny=fn(x,y+e,z)-d, nz=fn(x,y,z+e)-d;
+  const l=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;
+  return [nx/l,ny/l,nz/l];
+}
+
+function render3D(t, sceneFn, camDist, colorFn, opts) {
+  opts = opts || {};
+  const RW=160, RH=100;
+  const specPow = opts.specPow || 16;
+  const specStr = opts.specStr || 0.3;
+  const doShadow = opts.shadow || false;
+  const doAO = opts.ao !== false; // on by default
+  const lightDir = opts.lightDir || [0.577, 0.577, -0.577];
+  const ll = Math.sqrt(lightDir[0]**2+lightDir[1]**2+lightDir[2]**2)||1;
+  const lx=lightDir[0]/ll, ly=lightDir[1]/ll, lz=lightDir[2]/ll;
+
+  const ax=mouseX+t*0.15, ay=clamp(mouseY,-1.2,-0.1);
+  const camX=camDist*Math.sin(ax)*Math.cos(ay);
+  const camY=camDist*Math.sin(-ay);
+  const camZ=camDist*Math.cos(ax)*Math.cos(ay);
+  let fl=Math.sqrt(camX*camX+camY*camY+camZ*camZ)||1;
+  let fwX=-camX/fl,fwY=-camY/fl,fwZ=-camZ/fl;
+  let rtX=fwZ,rtY=0,rtZ=-fwX;
+  let rl=Math.sqrt(rtX*rtX+rtZ*rtZ)||1; rtX/=rl; rtZ/=rl;
+  let upX=rtY*fwZ-rtZ*fwY, upY=rtZ*fwX-rtX*fwZ, upZ=rtX*fwY-rtY*fwX;
+  const fov=1.5, asp=RW/RH;
+  for(let py=0;py<RH;py++) for(let px=0;px<RW;px++){
+    const u=(px/RW-0.5)*fov*asp, v=(0.5-py/RH)*fov;
+    let rdx=fwX+rtX*u+upX*v, rdy=fwY+rtY*u+upY*v, rdz=fwZ+rtZ*u+upZ*v;
+    const rdl=Math.sqrt(rdx*rdx+rdy*rdy+rdz*rdz); rdx/=rdl; rdy/=rdl; rdz/=rdl;
+    const mt=march(camX,camY,camZ,rdx,rdy,rdz,sceneFn);
+    let r,g,b;
+    if(mt>0){
+      const hx=camX+rdx*mt,hy=camY+rdy*mt,hz=camZ+rdz*mt;
+      const n=calcNorm(hx,hy,hz,sceneFn);
+      // Diffuse
+      const diff=Math.max(0,n[0]*lx+n[1]*ly+n[2]*lz);
+      // Specular (Phong)
+      const reflX=2*diff*n[0]-lx, reflY=2*diff*n[1]-ly, reflZ=2*diff*n[2]-lz;
+      const viewDot=Math.max(0,-(reflX*rdx+reflY*rdy+reflZ*rdz));
+      const spec=Math.pow(viewDot,specPow)*specStr;
+      // Ambient occlusion
+      let ao=1;
+      if(doAO){
+        ao=0;
+        for(let i=1;i<=5;i++){
+          const step=i*0.06;
+          const sd=sceneFn(hx+n[0]*step,hy+n[1]*step,hz+n[2]*step);
+          ao+=Math.max(0,(step-sd)/step)*(1/(1<<i));
+        }
+        ao=clamp(1-ao*1.5,0.15,1);
+      }
+      // Soft shadow
+      let shadow=1;
+      if(doShadow){
+        let st=0.02;shadow=1;
+        for(let i=0;i<24;i++){
+          const sd=sceneFn(hx+lx*st,hy+ly*st,hz+lz*st);
+          if(sd<0.002){shadow=0.15;break;}
+          shadow=Math.min(shadow,8*sd/st);
+          st+=Math.max(sd,0.01);if(st>5)break;
+        }
+        shadow=clamp(shadow,0.15,1);
+      }
+      const li=0.12+0.88*diff*ao*shadow;
+      if(colorFn)[r,g,b]=colorFn(hx,hy,hz,n,li,mt,spec);
+      else{r=li*200+spec*255;g=li*180+spec*230;b=li*160+spec*200;}
+      // Exponential fog
+      const fog=1-Math.exp(-mt*mt*0.008);
+      r=r*(1-fog)+15*fog; g=g*(1-fog)+14*fog; b=b*(1-fog)+12*fog;
+    }else{r=15;g=14;b=12;}
+    const sx=px*2,sy=py*2;
+    setPixel(sx,sy,r,g,b);setPixel(sx+1,sy,r,g,b);
+    setPixel(sx,sy+1,r,g,b);setPixel(sx+1,sy+1,r,g,b);
+  }
+}
+
+function renderPlaceholder() {
+  clear(18,16,14);
+  for(let x=0;x<W;x+=16)for(let y=0;y<H;y++)setPixel(x,y,28,24,20);
+  for(let y=0;y<H;y+=16)for(let x=0;x<W;x++)setPixel(x,y,28,24,20);
+}
+
+// ═══ SYNTAX HIGHLIGHTER ═══
+
+function highlight(src) {
+  if(!src)return '';
+  src=src.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  src=src.replace(/("(?:[^"\\]|\\.)*")/g,'<span class="st">$1</span>');
+  src=src.replace(/(\/\/.*)/g,'<span class="cm">$1</span>');
+  src=src.replace(/(\/\*[\s\S]*?\*\/)/g,'<span class="cm">$1</span>');
+  src=src.replace(/\b(\d+\.?\d*f?)\b/g,'<span class="nu">$1</span>');
+  src=src.replace(/\b(float|vec[234]|mat[234]|int|uint|bool|void|sampler2D|ivec[234])\b/g,'<span class="ty">$1</span>');
+  src=src.replace(/\b(if|else|for|while|return|struct|uniform|varying|in|out|const|break|continue|discard|#define)\b/g,'<span class="kw">$1</span>');
+  src=src.replace(/\b([a-zA-Z_]\w*)\s*(?=\()/g,'<span class="fn">$1</span>');
+  return src;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CATEGORIES — 16 domains where geometry IS math
+// ═══════════════════════════════════════════════════════════════
+
+const CATEGORIES = {
+
+// ──────────────────────────────────────
+//  TERRAIN
+// ──────────────────────────────────────
+terrain: {
+  label:'TERRAIN', thesis:'The ground is a function call. height = f(x, z).',
+  items:[
+{id:'heightfield',title:'Heightfield Terrain',live:1,
+note:`Stack octaves of value noise to build fractal terrain. Each octave doubles frequency and halves amplitude—the same self-similarity that makes real mountains look like mountains at every zoom level. No mesh, no vertices—just height = f(x,z), evaluated on demand.`,
+code:`float terrain(vec2 p) {
+  float h = 0.0, amp = 0.5;
+  for (int i = 0; i < 6; i++) {
+    h += noise(p) * amp;
+    p *= 2.0; amp *= 0.5;
+  }
+  return h;
+}`,
+frame(t){
+  // Draw 3 parallax depth layers
+  for(let layer=2;layer>=0;layer--){
+    const speed=0.3*(1-layer*0.3);
+    const yOff=layer*12;
+    const haze=layer*0.15;
+    for(let x=0;x<W;x++){
+      const fx=x/W*6+layer*2;
+      let h=0,amp=0.5;
+      for(let o=0;o<6;o++){h+=noise2(fx*(1<<o)+t*speed,0.5+o*10+layer*50)*amp;amp*=0.5;}
+      const gy=(H*(0.45+layer*0.08)-h*H*0.35)|0;
+      for(let y=Math.max(0,gy+yOff);y<H;y++){
+        if(layer>0 && y < gy+yOff+3) continue;
+        const d=(y-gy-yOff)/(H-gy-yOff);
+        const snow=(gy+yOff)<H*0.2?smoothstep(0,3,y-gy-yOff):0;
+        const r=lerp(80,50,d)+snow*170+haze*40;
+        const g=lerp(120,70,d)+snow*130+haze*30;
+        const b=lerp(55,35,d)+snow*140+haze*50;
+        setPixel(x,y,r|0,g|0,b|0);
+      }
+    }
+    // Sky only on back layer
+    if(layer===2){
+      for(let x=0;x<W;x++){
+        const fx=x/W*6+layer*2;
+        let h=0,amp=0.5;
+        for(let o=0;o<6;o++){h+=noise2(fx*(1<<o)+t*speed,0.5+o*10+layer*50)*amp;amp*=0.5;}
+        const gy=(H*(0.45+layer*0.08)-h*H*0.35)|0;
+        for(let y=0;y<Math.min(gy+yOff,H);y++){
+          const sky=y/H;setPixel(x,y,15+sky*10|0,14+sky*8|0,25+sky*12|0);
+        }
+      }
+    }
+  }
+  drawLabel(5,3,'H=F(X)',200,220,180);
+  drawParam(5,14,'OCT','6',160,180,140);
+}},
+{id:'erosion',title:'Erosion Ridges',live:1,
+note:`Ridge noise inverts the absolute value of noise, creating sharp creases where smooth noise would have zero crossings. Domain warping feeds the output of one noise field into the coordinates of another, producing the swirling erosion channels you see on real cliff faces.`,
+code:`float ridge(vec2 p) {
+  float n = noise(p);
+  n = 1.0 - abs(n);  // invert valleys
+  return n * n;        // sharpen peaks
+}
+float eroded(vec2 p) {
+  vec2 warp = vec2(noise(p+1.0), noise(p+7.0));
+  return ridge(p + warp * 0.5);
+}`,
+frame(t){
+  for(let x=0;x<W;x++){
+    const fx=x/W*5;
+    const wx=noise2(fx*1.5+t*0.1,3.7)*0.4;
+    let h=0,amp=0.6;
+    for(let o=0;o<5;o++){
+      const n=noise2((fx+wx)*(1<<o)+o*10,1.5+t*0.05);
+      h+=(1-Math.abs(n))*amp; amp*=0.45;
+    }
+    const gy=(H*0.5-h*H*0.25)|0;
+    for(let y=0;y<H;y++){
+      if(y<gy){setPixel(x,y,18,17,22);}
+      else{const d=(y-gy)/(H-gy);setPixel(x,y,lerp(140,80,d)|0,lerp(100,55,d)|0,lerp(70,40,d)|0);}
+    }
+  }
+}},
+{id:'dunes',title:'Sand Dunes',live:1,
+note:`Superimpose sine waves of different frequencies and directions to create interference patterns that look like wind-sculpted sand. The wind drift parameter shifts phases at different speeds per frequency, mimicking how real dunes migrate.`,
+code:`float dune(vec2 p, float wind) {
+  float h = 0.0;
+  h += sin(p.x * 2.0 + wind) * 0.4;
+  h += sin(p.x * 5.0 - wind * 1.3) * 0.2;
+  h += sin(p.x * 11.0 + p.y * 0.5 + wind * 0.7) * 0.1;
+  return h;
+}`,
+frame(t){
+  for(let x=0;x<W;x++){
+    const fx=x/W*8;
+    let h=Math.sin(fx*2+t*0.5)*0.3+Math.sin(fx*5-t*0.65)*0.15+Math.sin(fx*11+t*0.35)*0.08;
+    h+=noise2(fx*3+t*0.1,0)*0.05;
+    const gy=(H*0.5-h*H*0.3)|0;
+    for(let y=0;y<H;y++){
+      if(y<gy){const s=y/H;setPixel(x,y,40+s*30|0,50+s*20|0,80+s*10|0);}
+      else{
+        const d=(y-gy)/(H-gy);
+        const shade=0.8+noise2(x/W*20,y/H*10)*0.15;
+        setPixel(x,y,lerp(220,180,d)*shade|0,lerp(190,140,d)*shade|0,lerp(130,90,d)*shade|0);
+      }
+    }
+  }
+}},
+{id:'cliff',title:'Cliff Face',
+note:`Perlin noise sampled along a vertical cross-section creates layered strata. By stretching the noise horizontally and compressing vertically, you get sedimentary layers that fracture at irregular intervals.`,
+code:`float cliff(vec2 p) {
+  float layers = sin(p.y * 20.0) * 0.1;
+  float fracture = noise(p * vec2(2.0, 8.0));
+  return layers + fracture * 0.3;
+}`},
+{id:'valley',title:'River Valley',
+note:`Subtract a smooth channel from the terrain heightfield using a Gaussian centered on the river path. The river path itself is a low-frequency noise curve, and erosion deepens near it exponentially.`,
+code:`float valley(vec2 p) {
+  float river = sin(p.x * 0.5) * 2.0;
+  float dist = abs(p.y - river);
+  float erosion = exp(-dist * dist * 0.5);
+  return terrain(p) - erosion * 0.4;
+}`},
+{id:'caldera',title:'Volcanic Caldera',
+note:`A radial distance field from the crater center, remapped through an asymmetric function: steep outer walls, flat interior basin. Random noise on the rim creates jagged edges.`,
+code:`float caldera(vec2 p, vec2 center) {
+  float r = length(p - center);
+  float rim = smoothstep(2.0, 2.5, r) - smoothstep(2.5, 3.0, r);
+  float floor = -0.3 * smoothstep(0.0, 1.8, r);
+  return rim * 1.5 + floor + noise(p * 4.0) * 0.1;
+}`},
+{id:'canyon',title:'Canyon Layers',
+note:`Quantize a continuous noise field into discrete steps using floor(), then add back a fraction of the original for erosion texture. The result looks like geological strata carved by water.`,
+code:`float canyon(vec2 p) {
+  float n = fbm(p * 0.5, 5);
+  float layers = floor(n * 8.0) / 8.0;
+  float detail = fract(n * 8.0) * 0.1;
+  return layers + detail;
+}`},
+{id:'glacial',title:'Glacial Moraine',
+note:`Simulate glacial deposits by displacing terrain with directional noise stretched along the flow direction. U-shaped valleys emerge from smooth subtraction of an elongated ellipsoid from the heightfield.`,
+code:`float moraine(vec2 p, vec2 flow) {
+  float deposit = noise(p * 3.0 + flow * 2.0);
+  float valley = 1.0 - exp(-dot(p, p) * 0.3);
+  return deposit * 0.3 * valley;
+}`},
+]},
+
+// ──────────────────────────────────────
+//  ORGANIC
+// ──────────────────────────────────────
+organic: {
+  label:'ORGANIC', thesis:'Life is a smooth union. Biology blends where polygons crack.',
+  items:[
+{id:'metaballs',title:'Metaballs',live:1,
+note:`Smooth union of animated spheres creates organic blobby geometry. The smooth minimum operator blends two distance fields at proximity k, producing the characteristic fleshy merge. No mesh boolean needed—just min(d1, d2) - h²k/4.`,
+code:`float metaballs(vec3 p, float t) {
+  float d = 1e10;
+  for (int i = 0; i < 4; i++) {
+    float a = t + float(i) * 1.57;
+    vec3 c = vec3(sin(a)*1.5, cos(a*0.7)*0.8, cos(a)*1.5);
+    d = smin(d, length(p - c) - 0.6, 0.5);
+  }
+  return d;
+}`,
+frame(t){
+  render3D(t,(x,y,z)=>{
+    let d=999;
+    for(let i=0;i<4;i++){
+      const a=t*0.8+i*1.57;
+      d=opSmoothUnion(d,sdSphere(x-Math.sin(a)*1.5,y-Math.cos(a*0.7)*0.8,z-Math.cos(a)*1.5,0.6),0.5);
+    }
+    return opUnion(d,y+1.5);
+  },5,(px,py,pz,n,l,mt,spec)=>{
+    if(py<-1.49){const ch=((Math.floor(px*2)+Math.floor(pz*2))&1)?0.6:0.4;return[l*ch*200,l*ch*180,l*ch*160];}
+    // Iridescent sheen based on position + time
+    const h=hue(py*0.2+Math.atan2(n[0],n[2])/6.28*0.3+t*0.08);
+    const wet=spec*0.7;
+    return[(h[0]*l+wet*255)|0,(h[1]*l+wet*240)|0,(h[2]*l+wet*220)|0];
+  },{specPow:32,specStr:0.5});
+}},
+{id:'voronoi_cells',title:'Voronoi Cells',live:1,
+note:`Worley noise divides space into cells, each owned by the nearest random seed point. The distance to cell boundaries creates organic membrane patterns. Color each cell by its seed hash and you get stained-glass biology.`,
+code:`vec3 cells(vec2 p) {
+  vec2 n = floor(p);
+  float minD = 1e10;
+  float id;
+  for (int dy = -1; dy <= 1; dy++)
+  for (int dx = -1; dx <= 1; dx++) {
+    vec2 cell = n + vec2(dx, dy);
+    vec2 pt = cell + hash2(cell);
+    float d = length(p - pt);
+    if (d < minD) { minD = d; id = hash(cell); }
+  }
+  return vec3(hue(id), smoothstep(0.02, 0.05, minD));
+}`,
+frame(t){
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=px/H*4+t*0.15, y=py/H*4;
+    const[d,id]=voronoi(x,y);
+    const edge=voronoiEdge(x,y);
+    const h=hue(id);
+    const e=smoothstep(0.02,0.08,edge);
+    setPixel(px,py,h[0]*0.4*e+20|0,h[1]*0.4*e+18|0,h[2]*0.3*e+16|0);
+  }
+}},
+{id:'coral',title:'Coral Branching',live:1,
+note:`Recursive fractal branching from a trunk SDF. Each level splits the branch at an angle, reduces the radius, and takes the union. The result is a tree coral—pure recursive geometry from one line of distance function composition.`,
+code:`float coral(vec2 p, float r, int depth) {
+  float d = length(p) - r;
+  if (depth <= 0) return d;
+  vec2 left = rot(p, 0.5) - vec2(0, r*1.5);
+  vec2 right = rot(p, -0.5) - vec2(0, r*1.5);
+  d = min(d, coral(left, r*0.65, depth-1));
+  d = min(d, coral(right, r*0.65, depth-1));
+  return d;
+}`,
+frame(t){
+  function branch(px,py,cx,cy,r,angle,depth){
+    const dx=px-cx,dy=py-cy;
+    let d=Math.sqrt(dx*dx+dy*dy)-r;
+    if(depth<=0||r<2)return d;
+    const a1=angle+0.45+Math.sin(t+depth)*0.1;
+    const a2=angle-0.45-Math.sin(t*1.1+depth)*0.1;
+    const len=r*2.5;
+    const nx1=cx+Math.sin(a1)*len,ny1=cy-Math.cos(a1)*len;
+    const nx2=cx+Math.sin(a2)*len,ny2=cy-Math.cos(a2)*len;
+    d=Math.min(d,branch(px,py,nx1,ny1,r*0.62,a1,depth-1));
+    d=Math.min(d,branch(px,py,nx2,ny2,r*0.62,a2,depth-1));
+    return d;
+  }
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const d=branch(px,py,W/2,H*0.85,12,0,5);
+    if(d<0){setPixel(px,py,200,120,100);}
+    else{const g=Math.exp(-d*0.08);setPixel(px,py,g*80+15|0,g*40+14|0,g*50+12|0);}
+  }
+}},
+{id:'tree_rings',title:'Tree Rings',
+note:`Concentric distance from center plus angular noise creates organic rings. Varying ring spacing with a non-linear radial function mimics growth rate changes across seasons.`,
+code:`float rings(vec2 p) {
+  float r = length(p);
+  float angle = atan(p.y, p.x);
+  float wobble = noise(vec2(angle * 3.0, r * 0.5));
+  return sin((r + wobble * 0.3) * 20.0);
+}`},
+{id:'leaf',title:'Leaf Venation',
+note:`Start with a midrib SDF line, then recursively branch veins at decreasing angles. The leaf outline is an ellipse SDF intersected with the vein network's distance field.`,
+code:`float vein(vec2 p, vec2 a, vec2 b) {
+  return sdSegment(p, a, b);
+}
+float leaf(vec2 p) {
+  float outline = sdEllipse(p, vec2(1.0, 0.4));
+  float midrib = sdSegment(p, vec2(-1,0), vec2(1,0));
+  return max(outline, -min(midrib, 0.02));
+}`},
+{id:'shell',title:'Shell Spiral',
+note:`A logarithmic spiral r = a·e^(bθ) defines the shell's growth curve. The cross-section at each angle is a circle whose radius grows with r, creating a Nautilus-like structure.`,
+code:`float shell(vec2 p) {
+  float r = length(p);
+  float a = atan(p.y, p.x);
+  float spiral = log(r) / 0.3 - a;
+  spiral = mod(spiral, 6.28) - 3.14;
+  return abs(spiral) * r - 0.1;
+}`},
+{id:'cell_membrane',title:'Cell Membrane',
+note:`Two concentric circles with noise-displaced radii create a membrane wall. The interior is a Voronoi pattern for organelles, and the nucleus is a smooth blob near center.`,
+code:`float membrane(vec2 p) {
+  float r = length(p);
+  float outer = r - (1.0 + noise(p*4.0)*0.1);
+  float inner = r - (0.85 + noise(p*4.0)*0.1);
+  return max(outer, -inner);
+}`},
+{id:'muscle',title:'Muscle Fiber',
+note:`Parallel sine waves with slight phase offsets per fiber create the striated pattern of skeletal muscle. Voronoi boundaries between fibers add the connective tissue.`,
+code:`float fiber(vec2 p) {
+  float bundle = voronoiEdge(p * vec2(1.0, 5.0));
+  float striation = sin(p.x * 40.0 + p.y * 2.0) * 0.5 + 0.5;
+  return bundle * 0.7 + striation * 0.3;
+}`},
+]},
+
+// ──────────────────────────────────────
+//  ARCHITECTURE
+// ──────────────────────────────────────
+architecture: {
+  label:'ARCH', thesis:'Every column is a repeated SDF. Every dome is a revolution.',
+  items:[
+{id:'pillars',title:'Repeated Pillars',live:1,
+note:`The repeat operator tiles a single pillar SDF across infinite space. One box primitive + one modulo = an entire colonnade. This is how game engines render infinite corridors without infinite geometry.`,
+code:`float pillars(vec3 p) {
+  float floor = p.y + 1.5;
+  vec3 q = p;
+  q.xz = mod(q.xz + 1.5, 3.0) - 1.5;
+  float pillar = sdBox(q, vec3(0.3, 1.5, 0.3));
+  return min(floor, pillar);
+}`,
+frame(t){
+  render3D(t,(x,y,z)=>{
+    const floor=y+1.5;
+    const rx=opRepeat(x,3),rz=opRepeat(z,3);
+    const pillar=sdBox3(rx,y,rz,0.25,1.5,0.25);
+    return opUnion(floor,pillar);
+  },6,(px,py,pz,n,l,mt,spec)=>{
+    if(py<-1.49){const ch=((Math.floor(px+50)+Math.floor(pz+50))&1)?0.6:0.45;return[l*ch*230|0,l*ch*210|0,l*ch*180|0];}
+    // Warmer stone tones
+    const stone=noise2(px*5,pz*5)*0.08;
+    return[(l*(200+stone*60)+spec*120)|0,(l*(185+stone*40)+spec*100)|0,(l*(160+stone*20)+spec*80)|0];
+  },{shadow:true,specPow:24,specStr:0.2});
+}},
+{id:'arch',title:'Gothic Arch',live:1,
+note:`A pointed arch is the intersection of two offset circles. Visualize the 2D distance field as colored contour lines and you see how every Gothic cathedral is really just SDF geometry—the stonemasons were computing smooth min without knowing it.`,
+code:`float gothicArch(vec2 p, float w, float h) {
+  // Two circle arcs meeting at a point
+  float r = w * 0.8;
+  float d1 = length(p - vec2(-w*0.3, 0)) - r;
+  float d2 = length(p - vec2( w*0.3, 0)) - r;
+  float arch = max(d1, d2);
+  arch = max(arch, -p.y);     // cut below
+  arch = max(arch, p.y - h);  // cut above
+  return arch;
+}`,
+frame(t){
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=(px/W-0.5)*3, y=(0.5-py/H)*3;
+    const w=0.8,r=w*1.2;
+    let d1=Math.sqrt((x+w*0.3)**2+y*y)-r;
+    let d2=Math.sqrt((x-w*0.3)**2+y*y)-r;
+    let d=Math.max(d1,d2);
+    d=Math.max(d,-y-0.8);d=Math.max(d,y-1.2);
+    const thick=Math.abs(d)-0.06;
+    const contour=Math.sin(d*40+t)*0.5+0.5;
+    if(thick<0){
+      // Stone texture via noise + depth shading
+      const stone=noise2(px*0.15,py*0.15)*0.12+noise2(px*0.4,py*0.4)*0.06;
+      const depth=0.85+Math.abs(d)*3;
+      setPixel(px,py,(190+stone*100)*depth|0,(175+stone*80)*depth|0,(155+stone*60)*depth|0);
+    }else{
+      const g=Math.exp(-Math.max(0,thick)*8);
+      setPixel(px,py,g*80+contour*25+15|0,g*60+contour*20+14|0,g*50+contour*15+12|0);
+    }
+  }
+  drawLabel(5,3,'2 ARCS',200,180,140);
+}},
+{id:'staircase',title:'Spiral Staircase',live:1,
+note:`A helix in SDF form: take the distance to a cylinder, modulate it with the angle around the y-axis, and you get steps that spiral upward. The central column is just another cylinder union.`,
+code:`float staircase(vec3 p) {
+  float col = length(p.xz) - 0.12;
+  float r = length(p.xz);
+  float a = atan(p.z, p.x);
+  float spiralY = a / 6.283 * 2.0;
+  float dy = p.y - spiralY;
+  dy -= round(dy / 2.0) * 2.0;
+  float step = max(abs(dy) - 0.05, max(r - 1.2, 0.2 - r));
+  return min(col, step);
+}`,
+frame(t){
+  render3D(t,(x,y,z)=>{
+    const col=Math.sqrt(x*x+z*z)-0.12;
+    const r=Math.sqrt(x*x+z*z);
+    const a=Math.atan2(z,x);
+    const spiralY=a/6.2832*2.0;
+    const dy=y-spiralY;
+    const mdy=dy-Math.round(dy/2.0)*2.0;
+    const step=Math.max(Math.abs(mdy)-0.05,Math.max(r-1.2,0.2-r));
+    return Math.min(col,step);
+  },4,(px,py,pz,n,l,mt,spec)=>{
+    const r=Math.sqrt(px*px+pz*pz);
+    if(r<0.15) return[(l*100+spec*80)|0,(l*90+spec*70)|0,(l*85+spec*60)|0]; // dark column
+    return[(l*200+spec*120)|0,(l*185+spec*100)|0,(l*165+spec*80)|0]; // lighter steps
+  },{specPow:20,specStr:0.25});
+}},
+{id:'dome',title:'Geodesic Dome',
+note:`A sphere intersected with a grid of planes creates triangular facets. The plane normals are derived from icosahedron vertices, subdivided to the desired frequency.`,
+code:`float dome(vec3 p) {
+  float s = length(p) - 2.0;
+  // Facet by quantizing the normal direction
+  vec3 n = normalize(p);
+  n = floor(n * 8.0) / 8.0;
+  float facet = dot(p, normalize(n)) - 1.95;
+  return max(s, facet);
+}`},
+{id:'buttress',title:'Flying Buttress',
+note:`An arc SDF connecting two vertical elements. The catenary curve y = a·cosh(x/a) gives the natural arch shape, and the SDF is the distance to this parametric curve.`,
+code:`float buttress(vec2 p) {
+  float arch_y = 1.5 * cosh((p.x - 1.0) / 1.5) - 0.5;
+  float d = abs(p.y - arch_y) - 0.08;
+  float pier = sdBox(p - vec2(0, 0), vec2(0.15, 1.5));
+  return min(d, pier);
+}`},
+{id:'vault',title:'Vault Ribbing',
+note:`Cross two barrel vault SDFs (cylinders) at right angles and intersect with a box room. The ribs are the intersection curves, highlighted by subtracting slightly offset vaults.`,
+code:`float vault(vec3 p) {
+  float c1 = length(p.xy - vec2(0,2)) - 3.0;
+  float c2 = length(p.zy - vec2(0,2)) - 3.0;
+  float room = sdBox(p, vec3(2,2,2));
+  return max(room, max(c1, c2));
+}`},
+{id:'tracery',title:'Window Tracery',
+note:`Recursive circle packing inside a pointed arch outline. Start with the arch SDF, subdivide the interior, and place tangent circles at each level of recursion.`,
+code:`float tracery(vec2 p) {
+  float arch = gothicArch(p, 1.0, 2.0);
+  float circle1 = length(p - vec2(0, 0.8)) - 0.5;
+  float circle2 = length(p - vec2(-0.3, 0.3)) - 0.3;
+  float circle3 = length(p - vec2(0.3, 0.3)) - 0.3;
+  return max(arch, -min(circle1, min(circle2, circle3)));
+}`},
+{id:'catenary',title:'Bridge Catenary',
+note:`The catenary curve cosh(x/a) is the shape a chain makes under gravity—and the ideal arch. Its SDF is the distance to the parametric curve, with thickness for the deck and pylons as box SDFs.`,
+code:`float bridge(vec2 p) {
+  float cable = abs(p.y - cosh(p.x * 0.5) + 1.5) - 0.03;
+  float deck = sdBox(p - vec2(0, -0.5), vec2(3.0, 0.05));
+  return min(cable, deck);
+}`},
+]},
+
+// ──────────────────────────────────────
+//  FLUID
+// ──────────────────────────────────────
+fluid: {
+  label:'FLUID', thesis:'Water is a sum of sines. Turbulence is noise feeding noise.',
+  items:[
+{id:'waves',title:'Wave Superposition',live:1,
+note:`Gerstner waves displace both horizontally and vertically, creating the trochoid shape with sharp crests and broad troughs. Sum 4-5 waves of different frequencies and directions for realistic ocean—no mesh deformation needed.`,
+code:`vec2 gerstner(vec2 p, float t) {
+  float A = 0.3, w = 2.0, phi = 1.5;
+  float phase = p.x * w - t * phi;
+  p.x -= A * sin(phase);
+  p.y += A * cos(phase);
+  return p;
+}`,
+frame(t){
+  clear(15,20,35);
+  const waves=[[0.25,1.5,1.2],[0.15,2.5,-0.8],[0.1,4.0,1.5],[0.08,6.0,-1.1],[0.05,9.0,0.7]];
+  for(let x=0;x<W;x++){
+    const fx=x/W*8;
+    let h=0;
+    for(const[A,w,spd]of waves) h+=A*Math.cos(fx*w-t*spd);
+    const gy=(H*0.45-h*H*0.25)|0;
+    for(let y=gy;y<H;y++){
+      const d=(y-gy)/(H-gy);
+      const foam=d<0.02?1:0;
+      setPixel(x,y,30+foam*200+d*5|0,60+foam*180-d*20|0,120+foam*130-d*40|0);
+    }
+  }
+}},
+{id:'vortex',title:'Vortex Flow',live:1,
+note:`Curl noise gives divergence-free velocity fields—fluid that swirls without compressing. Compute the curl of a 2D noise potential as (∂ψ/∂y, -∂ψ/∂x) and you get physically plausible turbulence for free.`,
+code:`vec2 curlNoise(vec2 p) {
+  float e = 0.01;
+  float n = noise(p);
+  float dx = noise(p + vec2(e, 0)) - n;
+  float dy = noise(p + vec2(0, e)) - n;
+  return vec2(dy, -dx) / e;
+}`,
+frame(t){
+  const e=0.05;
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=px/H*4,y=py/H*4;
+    const n0=fbm(x+t*0.2,y,3);
+    const dx=fbm(x+e+t*0.2,y,3)-n0;
+    const dy=fbm(x+t*0.2,y+e,3)-n0;
+    const vx=dy/e,vy=-dx/e;
+    const mag=Math.sqrt(vx*vx+vy*vy);
+    const h=hue(Math.atan2(vy,vx)/6.28+0.5);
+    const br=Math.min(1,mag*0.3);
+    setPixel(px,py,h[0]*br+15|0,h[1]*br+14|0,h[2]*br+12|0);
+  }
+}},
+{id:'ripples',title:'Raindrop Ripples',live:1,
+note:`Concentric ring interference: each raindrop is a radial cosine wave that decays with distance and time. Multiple drops create the beautiful constructive/destructive interference patterns you see in puddles.`,
+code:`float ripple(vec2 p, vec2 center, float birth, float t) {
+  float r = length(p - center);
+  float age = t - birth;
+  float wave = cos(r * 15.0 - age * 8.0);
+  float decay = exp(-age * 1.5) * exp(-r * 0.5);
+  return wave * decay;
+}`,
+frame(t){
+  if(!this._drops){this._drops=[];for(let i=0;i<8;i++)this._drops.push({x:Math.random()*W,y:Math.random()*H,birth:Math.random()*-5});}
+  for(const d of this._drops){if(t-d.birth>4){d.x=Math.random()*W;d.y=Math.random()*H;d.birth=t;}}
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    let v=0;
+    for(const d of this._drops){
+      const dx=px-d.x,dy=py-d.y;
+      const r=Math.sqrt(dx*dx+dy*dy);
+      const age=t-d.birth;if(age<0)continue;
+      v+=Math.cos(r*0.3-age*5)*Math.exp(-age*0.8)*Math.exp(-r*0.02);
+    }
+    const c=v*0.5+0.5;
+    setPixel(px,py,c*40+15|0,c*80+30|0,c*140+50|0);
+  }
+}},
+{id:'kelvin',title:'Kelvin-Helmholtz',
+note:`Shear instability between two fluid layers creates rolling waves. Simulate by advecting a density boundary with velocity that varies by sign of y, plus small noise perturbation.`,
+code:`float kh(vec2 p, float t) {
+  float shear = sign(p.y) * 0.5;
+  float perturb = sin(p.x * 3.0 + t) * 0.1;
+  float boundary = p.y + perturb;
+  return smoothstep(-0.1, 0.1, boundary + shear * t * 0.1);
+}`},
+{id:'wake',title:'Wake Pattern',
+note:`Kelvin wake: a boat creates waves confined to a 19.5° half-angle cone. Inside the cone, the height is a superposition of transverse and divergent wave systems.`,
+code:`float wake(vec2 p, float speed) {
+  float angle = atan(abs(p.y), p.x);
+  float inCone = step(angle, 0.34);  // 19.47 degrees
+  float phase = length(p) * 3.0 - p.x * speed;
+  return sin(phase) * inCone * exp(-abs(p.y) * 0.5);
+}`},
+{id:'capillary',title:'Capillary Waves',
+note:`Surface tension dominates at small scales, producing short-wavelength ripples with phase velocity proportional to sqrt(k). These disperse faster than gravity waves, creating the shimmering texture on calm water.`,
+code:`float capillary(vec2 p, float t) {
+  float h = 0.0;
+  for (int i = 0; i < 8; i++) {
+    float k = 10.0 + float(i) * 5.0;
+    float omega = sqrt(k);  // dispersion relation
+    h += sin(dot(p, normalize(hash2(i))) * k - t * omega) / k;
+  }
+  return h;
+}`},
+]},
+
+// ──────────────────────────────────────
+//  CRYSTAL
+// ──────────────────────────────────────
+crystal: {
+  label:'CRYSTAL', thesis:'Crystals are intersections. Every facet is a half-plane.',
+  items:[
+{id:'gem',title:'Faceted Gem',live:1,
+note:`A gemstone is a sphere intersected with dozens of half-planes at crystallographic angles. Each cutting plane d = dot(p, normal) - offset creates one facet. The brilliant cut's fire comes from total internal reflection—but the shape is pure SDF intersection.`,
+code:`float gem(vec3 p) {
+  float d = length(p) - 1.2;
+  // Crown facets
+  d = max(d, dot(p, normalize(vec3(1,1,0))) - 0.8);
+  d = max(d, dot(p, normalize(vec3(-1,1,0))) - 0.8);
+  d = max(d, dot(p, normalize(vec3(0,1,1))) - 0.8);
+  d = max(d, dot(p, normalize(vec3(0,1,-1))) - 0.8);
+  d = max(d, p.y - 0.6);    // table
+  d = max(d, -p.y - 0.9);   // pavilion
+  return d;
+}`,
+frame(t){
+  const cuts=[[0,1,0,.55],[0,-1,0,.85],[1,1,0,.75],[-1,1,0,.75],[0,1,1,.75],[0,1,-1,.75],
+    [1,-1,0,.9],[-1,-1,0,.9],[0,-1,1,.9],[0,-1,-1,.9],[1,0,1,.8],[-1,0,1,.8],[1,0,-1,.8],[-1,0,-1,.8]];
+  for(const c of cuts){const l=Math.sqrt(c[0]*c[0]+c[1]*c[1]+c[2]*c[2])||1;c[0]/=l;c[1]/=l;c[2]/=l;}
+  render3D(t,(x,y,z)=>{
+    let d=sdSphere(x,y,z,1.1);
+    for(const[nx,ny,nz,off]of cuts) d=Math.max(d,x*nx+y*ny+z*nz-off);
+    return d;
+  },4,(px,py,pz,n,l,mt,spec)=>{
+    // Rainbow dispersion via view-angle hue offset
+    const dispersion=n[0]*0.3+n[1]*0.2+n[2]*0.1+t*0.05;
+    const h1=hue(dispersion+0.55);
+    const h2=hue(dispersion+0.65);
+    const h3=hue(dispersion+0.45);
+    const blend=Math.sin(py*8+t)*0.5+0.5;
+    const r=lerp(h1[0],h2[0],blend)*l+spec*280;
+    const g=lerp(h1[1],h3[1],blend)*l+spec*260;
+    const b=lerp(h1[2],h2[2],blend)*l+spec*220;
+    return[r|0,g|0,b|0];
+  },{specPow:64,specStr:0.8});
+  applyBloom(120,4,0.6);
+}},
+{id:'voronoi_growth',title:'Voronoi Growth',live:1,
+note:`Cellular noise simulates crystal grain boundaries. The edge distance F2-F1 reveals the Voronoi boundary network. Add time-varying glow to edges and you see crystal growth fronts propagating through the material.`,
+code:`vec3 crystal(vec2 p, float t) {
+  float f1, f2, id;
+  voronoi(p, f1, f2, id);
+  float edge = f2 - f1;
+  float glow = exp(-edge * 20.0) * (sin(t * 3.0) * 0.3 + 0.7);
+  vec3 col = hue(id * 0.7) * 0.3;
+  return col + vec3(0.2, 0.5, 1.0) * glow;
+}`,
+frame(t){
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=px/H*5+t*0.05,y=py/H*5;
+    const[d,id]=voronoi(x,y);
+    const edge=voronoiEdge(x,y);
+    const glow=Math.exp(-edge*25)*(Math.sin(t*3)*0.3+0.7);
+    const h=hue(id*0.7);
+    setPixel(px,py,h[0]*0.25+glow*60+15|0,h[1]*0.2+glow*130+14|0,h[2]*0.15+glow*255+12|0);
+  }
+}},
+{id:'snowflake',title:'Snowflake',live:1,
+note:`Six-fold symmetry: fold the angle into one-sixth of the plane using modular arithmetic, then draw branch SDFs in the folded space. Sub-branches at fixed intervals along the main arm create dendritic complexity from a single symmetry operation.`,
+code:`float snowflake(vec2 p) {
+  float r = length(p);
+  float a = atan(p.y, p.x);
+  a = mod(a, PI/3.0);
+  if (a > PI/6.0) a = PI/3.0 - a;
+  p = vec2(cos(a), sin(a)) * r;
+  // Main branch + sub-branches
+  float d = abs(p.y) - 0.06;
+  for (int i = 1; i <= 3; i++) {
+    float bx = float(i) * 0.35;
+    d = min(d, max(abs(p.y-(p.x-bx)*0.5)-0.03, abs(p.x-bx)-0.18));
+  }
+  return min(d, r - 0.12);
+}`,
+frame(t){
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    let x=(px-W/2)/80,y=(py-H/2)/80;
+    const r=Math.sqrt(x*x+y*y);
+    let a=Math.atan2(y,x);
+    a=((a%(Math.PI/3))+Math.PI/3)%(Math.PI/3);
+    if(a>Math.PI/6)a=Math.PI/3-a;
+    x=r*Math.cos(a);y=r*Math.sin(a);
+    let d=Math.abs(y)-0.06;
+    for(let i=1;i<=3;i++){
+      const bx=i*0.35;
+      d=Math.min(d,Math.max(Math.abs(y-(x-bx)*0.5)-0.03,Math.abs(x-bx)-0.18));
+    }
+    d=Math.min(d,r-0.12);
+    if(d<0){
+      const c=0.8+Math.sin(r*30+t*2)*0.15;
+      setPixel(px,py,c*180+40|0,c*200+50|0,c*255|0);
+    }else{
+      const g=Math.exp(-d*12)*(Math.sin(t*1.5)*0.2+0.8);
+      setPixel(px,py,g*60+15|0,g*100+14|0,g*180+12|0);
+    }
+  }
+  applyBloom(140,3,0.5);
+  drawLabel(5,3,'FOLD=6',180,220,255);
+}},
+{id:'lattice',title:'Lattice Structure',
+note:`A 3D crystal lattice is spheres at integer coordinates. The SDF is just sdSphere applied to the fractional part of position—infinite repetition with zero memory.`,
+code:`float lattice(vec3 p) {
+  vec3 q = fract(p) - 0.5;
+  return length(q) - 0.15;
+}`},
+{id:'geode',title:'Amethyst Geode',
+note:`An outer shell (sphere SDF) with the interior carved by Voronoi prisms growing inward. Each prism is a cylinder aligned to the Voronoi cell's centroid direction.`,
+code:`float geode(vec3 p) {
+  float shell = abs(length(p) - 2.0) - 0.1;
+  vec3 dir = normalize(p);
+  float prism = voronoi(dir.xy * 5.0).x - 0.1;
+  float interior = length(p) - 1.5 + prism * 0.3;
+  return max(shell, -interior);
+}`},
+{id:'twinning',title:'Crystal Twinning',
+note:`Mirror a crystal SDF across a twin plane, then take the union. The twin boundary shows up as a planar discontinuity in the facet pattern—two crystals sharing atoms at the interface.`,
+code:`float twinned(vec3 p) {
+  float c1 = gem(p);
+  vec3 mirrored = p - 2.0 * dot(p, twinPlane) * twinPlane;
+  float c2 = gem(mirrored);
+  return min(c1, c2);
+}`},
+{id:'dendritic',title:'Dendritic Growth',
+note:`Diffusion-limited aggregation creates fractal crystal trees. Simulate by random-walking particles that stick on contact with the growing cluster, or approximate with recursive branching SDFs.`,
+code:`float dendrite(vec2 p, int depth) {
+  float d = sdSegment(p, vec2(0), vec2(0, 1.0));
+  if (depth <= 0) return d;
+  float branch_angle = 0.6;
+  vec2 tip = vec2(0, 1.0);
+  // Two branches from tip
+  d = min(d, dendrite(rot(p - tip, branch_angle), depth-1) * 0.7);
+  d = min(d, dendrite(rot(p - tip, -branch_angle), depth-1) * 0.7);
+  return d;
+}`},
+]},
+
+// ──────────────────────────────────────
+//  INDUSTRIAL
+// ──────────────────────────────────────
+industrial: {
+  label:'INDUSTRIAL', thesis:'Machines are math made metal. Every gear is a polar function.',
+  items:[
+{id:'gear',title:'Gear Teeth',live:1,
+note:`A gear is a circle with sinusoidal radius modulation in polar coordinates. The number of teeth determines the frequency, and the modulation depth sets the tooth height. One cosine function replaces hundreds of mesh triangles.`,
+code:`float gear(vec2 p, float teeth, float r) {
+  float angle = atan(p.y, p.x);
+  float tooth = cos(angle * teeth) * 0.12;
+  float body = length(p) - (r + tooth);
+  float hole = 0.2 - length(p);
+  return max(-body, hole);
+}`,
+frame(t){
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=(px-W/2)/80,y=(py-H/2)/80;
+    const r=Math.sqrt(x*x+y*y);
+    const a=Math.atan2(y,x)+t;
+    const tooth=Math.cos(a*12)*0.12;
+    const body=r-(0.8+tooth);
+    const hole=0.18-r;
+    const spoke=Math.min(Math.abs(Math.sin(a*3))*r-0.02,r-0.2);
+    if(body<0&&hole<0){
+      // Metallic shading with radial highlight
+      const shade=0.55+Math.cos(a*12)*0.2;
+      const highlight=Math.pow(Math.max(0,Math.cos(a-t*0.5)),8)*0.3;
+      setPixel(px,py,(shade*210+highlight*200)|0,(shade*200+highlight*180)|0,(shade*180+highlight*150)|0);
+    }else if(body<0&&spoke>0){setPixel(px,py,20,19,17);}
+    else if(body<0){
+      const highlight=Math.pow(Math.max(0,Math.cos(a-t*0.5)),4)*0.2;
+      setPixel(px,py,(175+highlight*150)|0,(165+highlight*130)|0,(145+highlight*100)|0);
+    }
+    else{const g=Math.exp(-Math.max(0,body)*12);setPixel(px,py,g*40+15|0,g*35+14|0,g*30+12|0);}
+  }
+  drawLabel(5,3,'TEETH=12',200,200,180);
+}},
+{id:'helix',title:'Thread Helix',live:1,
+note:`A helix is a circle in the (r, y-mod-pitch) plane, repeated vertically. The SDF is the distance to this circle after folding y into one pitch period. Bolt threads, drill bits, and springs are all helical SDFs.`,
+code:`float thread(vec3 p, float pitch, float r, float thick) {
+  float y_local = mod(p.y, pitch) - pitch * 0.5;
+  float r_local = length(p.xz) - r;
+  return length(vec2(r_local, y_local)) - thick;
+}`,
+frame(t){
+  render3D(t,(x,y,z)=>{
+    const r=Math.sqrt(x*x+z*z);
+    const pitch=0.6;
+    const ym=((y%pitch)+pitch)%pitch-pitch*0.5;
+    const rl=r-0.6;
+    const thread=Math.sqrt(rl*rl+ym*ym)-0.12;
+    const core=r-0.45;
+    return Math.min(thread,core);
+  },4,(px,py,pz,n,l,mt,spec)=>{
+    // Steel-blue metallic
+    return[(l*140+spec*200)|0,(l*155+spec*220)|0,(l*180+spec*255)|0];
+  },{specPow:48,specStr:0.6});
+}},
+{id:'pipes',title:'Pipe Junction',live:1,
+note:`Smooth union of perpendicular cylinders creates organic plumbing junctions. The blend radius k controls how sharp or bulbous the connection is—from welded to cast to 3D-printed.`,
+code:`float pipes(vec3 p) {
+  float c1 = length(p.yz) - 0.3;  // X-axis pipe
+  float c2 = length(p.xz) - 0.3;  // Y-axis pipe
+  float c3 = length(p.xy) - 0.3;  // Z-axis pipe
+  return smin(smin(c1, c2, 0.2), c3, 0.2);
+}`,
+frame(t){
+  render3D(t,(x,y,z)=>{
+    const c1=Math.sqrt(y*y+z*z)-0.35;
+    const c2=Math.sqrt(x*x+z*z)-0.35;
+    const c3=Math.sqrt(x*x+y*y)-0.35;
+    return opSmoothUnion(opSmoothUnion(c1,c2,0.25),c3,0.25);
+  },4,(px,py,pz,n,l,mt,spec)=>{
+    const rust=noise2(px*5,pz*5)*0.2+noise2(px*12,py*12)*0.1;
+    return[(l*(180+rust*100)+spec*100)|0,(l*(130+rust*30)+spec*70)|0,(l*(80-rust*50)+spec*50)|0];
+  },{specPow:20,specStr:0.3});
+}},
+{id:'bearing',title:'Bearing Balls',
+note:`Balls in a raceway: sdSphere repeated in polar coordinates around a torus cross-section. The cage is a torus with periodic notches cut by subtracted boxes.`,
+code:`float bearing(vec3 p) {
+  float race = sdTorus(p, 1.0, 0.15);
+  float angle = atan(p.z, p.x);
+  float idx = floor(angle / (6.28 / 8.0) + 0.5);
+  float a = idx * 6.28 / 8.0;
+  vec3 ballPos = vec3(cos(a), 0, sin(a));
+  float ball = length(p - ballPos) - 0.12;
+  return min(race, ball);
+}`},
+{id:'turbine',title:'Turbine Blade',
+note:`An airfoil cross-section extruded and twisted along the span axis. The twist is a linear function of height, rotating the NACA profile progressively from root to tip.`,
+code:`float turbine(vec3 p) {
+  float twist = p.y * 0.8;
+  vec2 q = rot2(p.xz, twist);
+  // NACA airfoil approximation
+  float chord = 0.6 - p.y * 0.15;
+  float camber = 0.1 * sin(q.x / chord * 3.14);
+  return abs(q.y - camber) - 0.03 * (1.0 - q.x/chord);
+}`},
+{id:'spring',title:'Spring Coil',
+note:`A torus that advances along its axis: the helix. The SDF is distance to a circle whose center orbits a line, combining the torus formula with linear y-advance per revolution.`,
+code:`float spring(vec3 p, float coils, float r, float thick) {
+  float a = atan(p.z, p.x);
+  float y_expect = a / 6.28 * (1.0 / coils);
+  float dy = mod(p.y - y_expect + 0.5, 1.0/coils) - 0.5/coils;
+  float dr = length(p.xz) - r;
+  return length(vec2(dr, dy)) - thick;
+}`},
+{id:'cam',title:'Cam Profile',
+note:`A cam converts rotation to translation via a shaped radius profile. The SDF is r(θ) - measured_r, where r(θ) encodes the follower displacement curve (harmonic, cycloidal, or polynomial).`,
+code:`float cam(vec2 p, float angle) {
+  float a = atan(p.y, p.x) + angle;
+  float r_profile = 0.5 + 0.2 * smoothstep(0.0, 3.14, mod(a, 6.28));
+  return length(p) - r_profile;
+}`},
+]},
+
+// ──────────────────────────────────────
+//  MATHEMATICAL
+// ──────────────────────────────────────
+mathematical: {
+  label:'MATH', thesis:'Math objects are their own geometry. The equation IS the shape.',
+  items:[
+{id:'mandelbrot',title:'Mandelbrot Set',live:1,
+note:`The most famous fractal is pure iteration: z = z² + c. Each pixel is a complex number c, and we count how many iterations before the sequence escapes to infinity. The boundary between escape and capture generates infinite complexity from a one-line formula.`,
+code:`vec3 mandelbrot(vec2 c) {
+  vec2 z = vec2(0);
+  int i;
+  for (i = 0; i < 256; i++) {
+    z = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
+    if (dot(z, z) > 256.0) break;
+  }
+  float smooth_i = float(i) + 1.0 - log2(log2(dot(z,z)));
+  return hue(smooth_i * 0.02);
+}`,
+frame(t){
+  const cx=-0.5+Math.sin(t*0.1)*0.3,cy=Math.cos(t*0.13)*0.3;
+  const zoom=2.5-Math.sin(t*0.07)*1.2;
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const cr=cx+(px/W-0.5)*zoom*(W/H),ci=cy+(py/H-0.5)*zoom;
+    let zr=0,zi=0,i=0;
+    for(;i<128;i++){
+      const zr2=zr*zr,zi2=zi*zi;
+      if(zr2+zi2>256)break;
+      zi=2*zr*zi+ci;zr=zr2-zi2+cr;
+    }
+    if(i>=128){setPixel(px,py,15,14,12);}
+    else{
+      const sm=i+1-Math.log2(Math.log2(zr*zr+zi*zi));
+      // Smooth HSL ramp
+      const hv=(sm*0.03+0.6)%1;
+      const sat=0.7+Math.sin(sm*0.1)*0.15;
+      const h=hue(hv);
+      const br=0.5+0.5*Math.sin(sm*0.15+1.5);
+      setPixel(px,py,h[0]*br*sat|0,h[1]*br*0.85|0,h[2]*br|0);
+    }
+  }
+  drawLabel(5,3,'ITER=128',200,180,140);
+  drawParam(5,14,'ZOOM',zoom.toFixed(1),160,180,140);
+}},
+{id:'julia',title:'Julia Set',live:1,
+note:`Same iteration as Mandelbrot, but c is a fixed parameter and z₀ is the pixel coordinate. Animate c along a circle in the complex plane and watch the fractal morph between connected and disconnected—the entire Mandelbrot set is a map of Julia set connectivity.`,
+code:`vec3 julia(vec2 z, vec2 c) {
+  int i;
+  for (i = 0; i < 256; i++) {
+    z = vec2(z.x*z.x - z.y*z.y, 2.0*z.x*z.y) + c;
+    if (dot(z, z) > 4.0) break;
+  }
+  float smooth_i = float(i) + 1.0 - log2(log2(dot(z,z)));
+  return hue(smooth_i * 0.03);
+}`,
+frame(t){
+  const cr=-0.7269+Math.sin(t*0.3)*0.15,ci=0.1889+Math.cos(t*0.23)*0.15;
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    let zr=(px/W-0.5)*3*(W/H),zi=(py/H-0.5)*3;
+    let i=0;
+    for(;i<128;i++){
+      const zr2=zr*zr,zi2=zi*zi;
+      if(zr2+zi2>4)break;
+      zi=2*zr*zi+ci;zr=zr2-zi2+cr;
+    }
+    if(i>=128){setPixel(px,py,15,14,12);}
+    else{
+      const sm=i+1-Math.log2(Math.log2(zr*zr+zi*zi+1));
+      const h=hue(sm*0.035+0.4);
+      setPixel(px,py,h[0]*0.85|0,h[1]*0.75|0,h[2]*0.9|0);
+    }
+  }
+}},
+{id:'gyroid',title:'Gyroid Surface',live:1,
+note:`sin(x)cos(y) + sin(y)cos(z) + sin(z)cos(x) = 0 defines a triply periodic minimal surface. This single equation creates geometry so complex it's used in aerospace lattice structures, tissue scaffolds, and photonic crystals.`,
+code:`float gyroid(vec3 p) {
+  float s = 2.5;
+  float g = sin(p.x*s)*cos(p.y*s)
+          + sin(p.y*s)*cos(p.z*s)
+          + sin(p.z*s)*cos(p.x*s);
+  return abs(g) / s - 0.08;
+}`,
+frame(t){
+  render3D(t,(x,y,z)=>{
+    const s=2.5;
+    const g=Math.sin(x*s)*Math.cos(y*s)+Math.sin(y*s)*Math.cos(z*s)+Math.sin(z*s)*Math.cos(x*s);
+    return Math.abs(g)/s-0.08;
+  },4,(px,py,pz,n,l,mt,spec)=>{
+    // Iridescent rainbow based on surface normal
+    const h=hue(n[0]*0.3+n[1]*0.4+n[2]*0.3+t*0.03+0.55);
+    return[(h[0]*l+spec*180)|0,(h[1]*l+spec*160)|0,(h[2]*l+spec*200)|0];
+  },{specPow:32,specStr:0.45});
+}},
+{id:'klein',title:'Klein Bottle',
+note:`A non-orientable surface that passes through itself in 3D. Its implicit equation in 4D projected to 3D creates a surface with no inside or outside—a topological puzzle rendered as an SDF.`,
+code:`float klein(vec3 p) {
+  // Parametric immersion in R3
+  float u = atan(p.z, p.x);
+  float v = atan(p.y, length(p.xz) - 2.0);
+  float r = length(vec2(length(p.xz) - 2.0, p.y));
+  return r - 0.5 - 0.3 * cos(v) * sin(u);
+}`},
+{id:'mobius',title:'Mobius Strip',
+note:`A rectangle that twists 180° before joining its ends. The SDF computes distance to a parametric surface r(u,v) where v spans the width and u spans the loop with a half-twist.`,
+code:`float mobius(vec3 p) {
+  float a = atan(p.z, p.x);
+  float r = length(p.xz) - 1.5;
+  float halfTwist = a * 0.5;
+  float u = r * cos(halfTwist) + p.y * sin(halfTwist);
+  float v = -r * sin(halfTwist) + p.y * cos(halfTwist);
+  return abs(u) - 0.3;
+}`},
+{id:'lorenz',title:'Lorenz Attractor',
+note:`Three coupled ODEs produce chaotic trajectories that never repeat but stay on a butterfly-shaped attractor. The geometry is emergent—no explicit surface, just the trace of a point in phase space.`,
+code:`// dx/dt = sigma * (y - x)
+// dy/dt = x * (rho - z) - y
+// dz/dt = x * y - beta * z
+void lorenz(float* x, float* y, float* z, float dt) {
+  float dx = 10.0 * (*y - *x);
+  float dy = *x * (28.0 - *z) - *y;
+  float dz = *x * *y - 2.667 * *z;
+  *x += dx * dt; *y += dy * dt; *z += dz * dt;
+}`},
+{id:'sierpinski',title:'Sierpinski Triangle',
+note:`Remove the center triangle at every scale, recursively. The fractal dimension is log(3)/log(2) ≈ 1.585—more than a line but less than a plane. In SDF form, fold the point into one sub-triangle per iteration.`,
+code:`float sierpinski(vec2 p, int iters) {
+  for (int i = 0; i < iters; i++) {
+    p *= 2.0;
+    p -= floor(p / 2.0) * 2.0;  // fold
+    if (p.x + p.y > 1.0)
+      p = vec2(1.0) - p;         // reflect
+  }
+  return length(p - vec2(0.5)) - 0.4 / pow(2.0, float(iters));
+}`},
+{id:'lissajous',title:'Lissajous Curve',
+note:`x = sin(at + δ), y = sin(bt). The ratio a:b determines the number of lobes, and the phase δ controls the curve's evolution between open and closed forms.`,
+code:`vec2 lissajous(float t, float a, float b, float delta) {
+  return vec2(sin(a * t + delta), sin(b * t));
+}`},
+]},
+
+// ──────────────────────────────────────
+//  ATMOSPHERIC
+// ──────────────────────────────────────
+atmospheric: {
+  label:'ATMO', thesis:'The sky is a volume integral. Every cloud is density = f(x,y,z).',
+  items:[
+{id:'fog',title:'Volumetric Fog',live:1,
+note:`March a ray through 3D noise, accumulating density and extinction at each step. Beer-Lambert law: transmittance = exp(-∫σ·dt). No mesh, no particles—just noise sampled along a ray with exponential falloff.`,
+code:`vec3 volumetricFog(vec3 ro, vec3 rd) {
+  float T = 1.0;  // transmittance
+  vec3 col = vec3(0);
+  for (float t = 0.0; t < 10.0; t += 0.1) {
+    vec3 p = ro + rd * t;
+    float density = max(0.0, fbm(p * 0.5) - 0.3);
+    T *= exp(-density * 0.1);
+    col += T * density * vec3(0.8, 0.7, 0.6) * 0.1;
+  }
+  return col;
+}`,
+frame(t){
+  const RW=160,RH=100;
+  for(let py=0;py<RH;py++)for(let px=0;px<RW;px++){
+    const u=(px/RW-0.5)*2,v=(0.5-py/RH)*1.2;
+    let rdx=0,rdy=v*0.5+0.2,rdz=-1;
+    const rl=Math.sqrt(rdx*rdx+rdy*rdy+rdz*rdz);rdx/=rl;rdy/=rl;rdz/=rl;
+    let T=1,cr=0,cg=0,cb=0;
+    for(let s=0;s<40;s++){
+      const st=s*0.25;
+      const px2=u*2+st*rdx+t*0.2,py2=1+st*rdy,pz2=st*rdz;
+      const density=Math.max(0,fbm3(px2*0.4,py2*0.4,pz2*0.4+t*0.1,4)-0.25);
+      T*=Math.exp(-density*0.15);
+      const light=Math.max(0,1-fbm3(px2*0.4,py2*0.4+0.5,pz2*0.4+t*0.1,3)*0.5);
+      cr+=T*density*light*0.22;cg+=T*density*light*0.18;cb+=T*density*light*0.14;
+      if(T<0.01)break;
+    }
+    const sky_r=20+py/RH*15,sky_g=25+py/RH*10,sky_b=45-py/RH*10;
+    const r2=(cr*255+sky_r*T)|0,g2=(cg*255+sky_g*T)|0,b2=(cb*255+sky_b*T)|0;
+    const sx=px*2,sy=py*2;
+    setPixel(sx,sy,r2,g2,b2);setPixel(sx+1,sy,r2,g2,b2);
+    setPixel(sx,sy+1,r2,g2,b2);setPixel(sx+1,sy+1,r2,g2,b2);
+  }
+}},
+{id:'aurora',title:'Aurora Borealis',live:1,
+note:`Vertical curtains of light driven by noise that stretches horizontally and compresses vertically. The color ramp runs green→cyan→purple as altitude increases, mimicking oxygen and nitrogen emission spectra.`,
+code:`vec3 aurora(vec2 uv, float t) {
+  float curtain = 0.0;
+  for (int i = 0; i < 5; i++) {
+    float freq = 1.0 + float(i) * 0.5;
+    curtain += sin(uv.x * freq + t * 0.3 + float(i)) * 0.2;
+  }
+  float intensity = exp(-abs(uv.y - curtain) * 8.0);
+  vec3 col = mix(vec3(0.1, 0.8, 0.3), vec3(0.4, 0.2, 0.8), uv.y);
+  return col * intensity;
+}`,
+frame(t){
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const u=px/W*4-2,v=1-py/H;
+    let totalR=0,totalG=0,totalB=0;
+    // 3 depth layers of curtains
+    for(let layer=0;layer<3;layer++){
+      let curtain=0;
+      const off=layer*1.5;
+      const spd=0.4-layer*0.08;
+      for(let i=0;i<5;i++){curtain+=Math.sin((u+off)*(1+i*0.5)+t*spd+i*1.3+layer*2)*0.15;}
+      curtain+=noise2((u+off)*2+t*0.2-layer,v*0.5+layer*3)*0.1;
+      const intensity=Math.exp(-Math.abs(v*0.8-0.3-curtain)*12)*v;
+      const fade=1-layer*0.25; // back layers fainter
+      // More vivid green/purple per layer
+      if(layer===0){totalR+=lerp(40,160,v)*intensity*fade;totalG+=lerp(240,80,v)*intensity*fade;totalB+=lerp(100,240,v)*intensity*fade;}
+      else if(layer===1){totalR+=lerp(60,140,v)*intensity*fade;totalG+=lerp(180,50,v)*intensity*fade;totalB+=lerp(120,220,v)*intensity*fade;}
+      else{totalR+=lerp(20,100,v)*intensity*fade;totalG+=lerp(200,60,v)*intensity*fade;totalB+=lerp(80,180,v)*intensity*fade;}
+    }
+    const star=(ihash(px,py)>0.997)?200:0;
+    const si=1-clamp(totalR+totalG+totalB,0,400)/400;
+    setPixel(px,py,clamp(totalR+star*si,0,255)|0,clamp(totalG+star*0.9*si,0,255)|0,clamp(totalB+star*0.8*si,0,255)|0);
+  }
+  applyBloom(100,4,0.5);
+}},
+{id:'lightning',title:'Lightning Bolt',live:1,
+note:`A random walk from cloud to ground, branching with decreasing probability at each step. At each node, the direction jitters by noise, and side branches spawn with probability that decays with depth. The glow is distance-to-polyline with exponential falloff.`,
+code:`void lightning(vec2 start, vec2 end, int depth) {
+  if (depth <= 0) { drawLine(start, end); return; }
+  vec2 mid = mix(start, end, 0.5);
+  mid.x += random() * 0.3;
+  lightning(start, mid, depth - 1);
+  lightning(mid, end, depth - 1);
+  if (random() < 0.3)  // branch
+    lightning(mid, mid + randomDir() * 0.3, depth - 2);
+}`,
+frame(t){
+  if(!this._bolt||t-this._boltT>0.8){
+    this._bolt=[];this._boltT=t;
+    const genBolt=(x1,y1,x2,y2,depth)=>{
+      if(depth<=0){this._bolt.push([x1,y1,x2,y2]);return;}
+      const mx=(x1+x2)/2+(Math.random()-0.5)*30*(depth/6);
+      const my=(y1+y2)/2;
+      genBolt(x1,y1,mx,my,depth-1);genBolt(mx,my,x2,y2,depth-1);
+      if(Math.random()<0.35)genBolt(mx,my,mx+(Math.random()-0.5)*40,my+(y2-y1)*0.3*Math.random(),depth-2);
+    };
+    genBolt(W/2+Math.random()*60-30,10,W/2+Math.random()*40-20,H-10,6);
+  }
+  clear(12,12,20);
+  const flash=Math.max(0,1-(t-this._boltT)*3);
+  if(flash>0.5)for(let i=0;i<pixels.length;i+=4){pixels[i]+=flash*15;pixels[i+1]+=flash*15;pixels[i+2]+=flash*25;}
+  for(const[x1,y1,x2,y2]of this._bolt){
+    const steps=Math.max(Math.abs(x2-x1),Math.abs(y2-y1))*2|0;
+    for(let i=0;i<=steps;i++){
+      const px2=lerp(x1,x2,i/steps)|0,py2=lerp(y1,y2,i/steps)|0;
+      for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++){
+        const d=Math.sqrt(dx*dx+dy*dy);
+        const g=Math.exp(-d*0.8)*flash;
+        const ox=px2+dx,oy=py2+dy;
+        if(ox>=0&&ox<W&&oy>=0&&oy<H){
+          const idx=(oy*W+ox)<<2;
+          pixels[idx]=Math.min(255,pixels[idx]+g*200|0);
+          pixels[idx+1]=Math.min(255,pixels[idx+1]+g*180|0);
+          pixels[idx+2]=Math.min(255,pixels[idx+2]+g*255|0);
+        }
+      }
+    }
+  }
+}},
+{id:'cloud',title:'Cloud Layer',
+note:`Clouds are density fields: sample 3D FBM noise at each point, threshold to create edges, light by marching toward the sun and measuring optical depth. The density itself is the geometry.`,
+code:`float cloud(vec3 p) {
+  float base = -p.y + 5.0;
+  float detail = fbm(p * 0.5, 5);
+  return base + detail * 2.0;
+}`},
+{id:'sunshaft',title:'Sun Shaft',
+note:`Volumetric light scattering: march from pixel toward the sun, sampling occlusion at each step. Where the ray passes through gaps in the density field, light accumulates—creating god rays.`,
+code:`float shaft(vec3 p, vec3 sunDir) {
+  float occlusion = 0.0;
+  for (float s = 0.0; s < 5.0; s += 0.2) {
+    vec3 q = p + sunDir * s;
+    occlusion += max(0.0, cloudDensity(q)) * 0.2;
+  }
+  return exp(-occlusion);
+}`},
+{id:'rainbow',title:'Rainbow Arc',
+note:`A rainbow is a cone of refracted light at 42° from the anti-solar point. The SDF is a thick arc at that specific angle, with color varying by sub-angle to spread the spectrum.`,
+code:`vec3 rainbow(vec2 p, vec2 center) {
+  float r = length(p - center);
+  float angle = 0.733;  // 42 degrees
+  float d = abs(r - angle) - 0.03;
+  float hueVal = (r - angle + 0.03) / 0.06;
+  return hue(hueVal * 0.8) * smoothstep(0.03, 0.0, abs(d));
+}`},
+{id:'starfield',title:'Starfield',
+note:`Hash the integer grid cell to get star presence and brightness. Add twinkling with sin(time + hash(cell)) for phase variation. Density increases toward the galactic plane with a Gaussian.`,
+code:`float star(vec2 p) {
+  vec2 cell = floor(p * 50.0);
+  float h = hash(cell);
+  if (h > 0.97) {
+    vec2 center = (cell + 0.5) / 50.0;
+    float d = length(p - center) * 50.0;
+    float twinkle = sin(h * 100.0 + time * 2.0) * 0.3 + 0.7;
+    return exp(-d * d * 2.0) * twinkle;
+  }
+  return 0.0;
+}`},
+]},
+
+// ═══ PLACEHOLDER CATEGORIES (items added in next chunk) ═══
+
+// ──────────────────────────────────────
+//  TEXTILE
+// ──────────────────────────────────────
+textile: {
+  label:'TEXTILE', thesis:'Fabric is function composition. Every weave is a modular arithmetic.',
+  items:[
+{id:'woven',title:'Woven Pattern',live:1,
+note:`A weave is modular arithmetic: thread (i,j) goes over or under depending on (i+j)%2. Offset each thread's y-position by a sine wave that alternates phase between rows, and you get the characteristic over-under structure from pure math.`,
+code:`float weave(vec2 p) {
+  float warpX = mod(p.x, 0.2) - 0.1;
+  float weftY = mod(p.y, 0.2) - 0.1;
+  int ix = int(floor(p.x / 0.2));
+  int iy = int(floor(p.y / 0.2));
+  bool over = ((ix + iy) % 2) == 0;
+  float warp = abs(warpX) - 0.04;
+  float weft = abs(weftY) - 0.04;
+  return over ? min(warp, weft) : max(-warp, weft);
+}`,
+frame(t){
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const sc=12;
+    const x=px/sc+t*0.5,y=py/sc;
+    const ix=Math.floor(x),iy=Math.floor(y);
+    const fx=x-ix-0.5,fy=y-iy-0.5;
+    const over=((ix+iy)&1)===0;
+    const warpD=Math.abs(fx)-0.35;
+    const weftD=Math.abs(fy)-0.35;
+    const lift=over?Math.sin(fy*3.14)*0.15:-Math.sin(fx*3.14)*0.15;
+    if(warpD<0&&(over||weftD>0)){
+      const shade=0.6+lift+noise2(ix*7,iy*3)*0.1;
+      setPixel(px,py,shade*180|0,shade*140|0,shade*100|0);
+    }else if(weftD<0){
+      const shade=0.55-lift+noise2(ix*3,iy*7)*0.1;
+      setPixel(px,py,shade*100|0,shade*130|0,shade*170|0);
+    }else{
+      setPixel(px,py,20,18,16);
+    }
+  }
+}},
+{id:'moire',title:'Moiré Interference',live:1,
+note:`Overlay two grids rotated by a small angle and the aliasing creates large-scale interference fringes. This is pure sampling theory made visible—the moiré pattern IS the beat frequency between two spatial frequencies.`,
+code:`float moire(vec2 p, float angle1, float angle2) {
+  vec2 r1 = rot2(p, angle1);
+  vec2 r2 = rot2(p, angle2);
+  float g1 = sin(r1.x * 30.0) * 0.5 + 0.5;
+  float g2 = sin(r2.x * 30.0) * 0.5 + 0.5;
+  return g1 * g2;
+}`,
+frame(t){
+  const a1=t*0.1,a2=t*0.1+0.15;
+  const c1=Math.cos(a1),s1=Math.sin(a1),c2=Math.cos(a2),s2=Math.sin(a2);
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=(px-W/2)/5,y=(py-H/2)/5;
+    const r1x=x*c1-y*s1,r2x=x*c2-y*s2;
+    const g1=Math.sin(r1x*1.5)*0.5+0.5;
+    const g2=Math.sin(r2x*1.5)*0.5+0.5;
+    const v=g1*g2;
+    setPixel(px,py,v*200+15|0,v*180+14|0,v*160+12|0);
+  }
+}},
+{id:'chainmail',title:'Chainmail',live:1,
+note:`Interlocked tori: place a torus at each grid point, alternating the axis of revolution between x and z. Each ring passes through its neighbors—the geometry is pure SDF repetition with axis swapping.`,
+code:`float chainmail(vec3 p) {
+  vec3 q = mod(p, 1.0) - 0.5;
+  int ix = int(floor(p.x));
+  int iz = int(floor(p.z));
+  if ((ix + iz) % 2 == 0)
+    return sdTorus(q, 0.35, 0.05);
+  else
+    return sdTorus(q.zyx, 0.35, 0.05);
+}`,
+frame(t){
+  render3D(t,(x,y,z)=>{
+    const s=1.0;
+    const qx=((x%s)+s)%s-s*0.5;
+    const qy=((y%s)+s)%s-s*0.5;
+    const qz=((z%s)+s)%s-s*0.5;
+    const ix=Math.floor(x/s+50)|0,iz=Math.floor(z/s+50)|0;
+    if((ix+iz)&1) return sdTorus(qx,qy,qz,0.32,0.06);
+    else return sdTorus(qz,qy,qx,0.32,0.06);
+  },4,(px,py,pz,n,l,mt,spec)=>{
+    // Warm gold metallic sheen
+    return[(l*210+spec*200)|0,(l*185+spec*160)|0,(l*120+spec*80)|0];
+  },{specPow:40,specStr:0.6});
+}},
+{id:'knit',title:'Knit Stitch',
+note:`A knit stitch is two interlocking loops. Model each loop as an SDF of a curved segment, repeat in a brick pattern (offset every other row by half a stitch width).`,
+code:`float knit(vec2 p) {
+  float row = floor(p.y / 0.3);
+  p.x += mod(row, 2.0) * 0.15;
+  vec2 q = mod(p, vec2(0.3)) - 0.15;
+  float loop = sdArc(q, 0.12, 0.03);
+  return loop;
+}`},
+{id:'rope',title:'Rope Twist',
+note:`Three strands helically wound: each strand is a cylinder SDF whose center follows a helix. The twist rate determines how tight the rope is. Union of three phase-shifted helices.`,
+code:`float rope(vec3 p, float twist) {
+  float d = 1e10;
+  for (int i = 0; i < 3; i++) {
+    float phase = float(i) * 2.094;
+    float cx = cos(p.y * twist + phase) * 0.3;
+    float cz = sin(p.y * twist + phase) * 0.3;
+    d = min(d, length(p.xz - vec2(cx, cz)) - 0.1);
+  }
+  return d;
+}`},
+{id:'lace',title:'Lace Pattern',
+note:`Lace is Voronoi cells with holes: compute the Voronoi distance, subtract circular holes at cell centers, and keep only the edge network. The result is a delicate mesh of threads.`,
+code:`float lace(vec2 p) {
+  float edge = voronoiEdge(p * 5.0);
+  float hole = length(fract(p * 5.0) - 0.5) - 0.3;
+  return max(edge - 0.05, -hole);
+}`},
+{id:'braid',title:'Braid Weave',
+note:`Three interleaving strands whose crossing order follows the braid group relations. Each strand is a sine-displaced horizontal line, with occlusion determined by the braid word sequence.`,
+code:`float braid(vec2 p, float t) {
+  float d = 1e10;
+  for (int i = 0; i < 3; i++) {
+    float phase = float(i) * 2.094 + t;
+    float y = sin(p.x * 3.0 + phase) * 0.3;
+    d = min(d, abs(p.y - y) - 0.05);
+  }
+  return d;
+}`},
+]},
+
+// ──────────────────────────────────────
+//  TYPOGRAPHY
+// ──────────────────────────────────────
+typography: {
+  label:'TYPO', thesis:'Letters are distance fields. Every font is an SDF atlas.',
+  items:[
+{id:'sdf_glow',title:'SDF Text Glow',live:1,
+note:`Render text as a signed distance field and apply exponential falloff: glow = exp(-d·k). The SDF stores distance-to-edge for every pixel, enabling resolution-independent rendering and effects like outlines, shadows, and glow from a single distance lookup.`,
+code:`float textGlow(vec2 p, float sdf) {
+  float edge = smoothstep(0.01, 0.0, sdf);
+  float glow = exp(-max(0.0, sdf) * 8.0);
+  return edge + glow * 0.5;
+}`,
+frame(t){
+  function letterSDF(px2,py2,letter){
+    let d=999;
+    const segs={
+      S:[[0,.4,.4,.4],[0,.4,0,0],[0,0,.4,0],[.4,0,.4,-.4],[0,-.4,.4,-.4]],
+      D:[[0,.4,0,-.4],[0,.4,.3,.3],[.3,.3,.35,0],[.3,-.3,.35,0],[0,-.4,.3,-.3]],
+      F:[[0,.4,0,-.4],[0,.4,.4,.4],[0,0,.3,0]],
+    };
+    const s=segs[letter]||[];
+    for(const[ax,ay,bx,by]of s)d=Math.min(d,sdSegment(px2,py2,ax,ay,bx,by));
+    return d;
+  }
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=(px/W-0.5)*4,y=(0.5-py/H)*2.5;
+    let d=999;
+    d=Math.min(d,letterSDF(x+1.2,y,'S'));
+    d=Math.min(d,letterSDF(x+0.3,y,'D'));
+    d=Math.min(d,letterSDF(x-0.6,y,'F'));
+    d-=0.04;
+    const pulse=Math.sin(t*2)*0.3+0.7;
+    if(d<0){setPixel(px,py,240,220,180);}
+    else{
+      const glow=Math.exp(-d*5)*pulse;
+      setPixel(px,py,glow*230+15|0,glow*180+14|0,glow*80+12|0);
+    }
+  }
+}},
+{id:'neon',title:'Neon Sign',live:1,
+note:`Neon is an SDF outline with bloom. Compute the distance to the letter shape, then light up a thin band at d ≈ thickness with bright color, plus exponential glow falloff around it. The tube cross-section is literally a 1D SDF.`,
+code:`vec3 neon(float sdf, vec3 color) {
+  float tube = smoothstep(0.06, 0.04, abs(sdf));
+  float glow = exp(-abs(sdf) * 5.0) * 0.6;
+  float flicker = 0.9 + sin(time * 20.0) * 0.1;
+  return (tube + glow) * color * flicker;
+}`,
+frame(t){
+  function shapeSDF(x,y){
+    let d=999;
+    // "HI" in neon tubes
+    d=Math.min(d,sdSegment(x,y,-1.2,.5,-1.2,-.5));
+    d=Math.min(d,sdSegment(x,y,-1.2,0,-.7,0));
+    d=Math.min(d,sdSegment(x,y,-.7,.5,-.7,-.5));
+    d=Math.min(d,sdSegment(x,y,-.2,.5,-.2,-.5));
+    // Decorative circle
+    d=Math.min(d,Math.abs(sdCircle(x-0.6,y,0.4))-0.01);
+    return d;
+  }
+  // Organic flicker with irregular timing
+  const flicker=0.88+Math.sin(t*23)*0.06+Math.sin(t*47)*0.03+Math.sin(t*97)*0.02;
+  const flicker2=0.9+Math.sin(t*31+2)*0.08;
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=(px/W-0.5)*3.5,y=(0.5-py/H)*2.2;
+    const d=shapeSDF(x,y);
+    const f=x<-0.3?flicker:flicker2; // different flicker per letter section
+    const tube=smoothstep(0.06,0.03,Math.abs(d))*f;
+    const glow=Math.exp(-Math.abs(d)*4)*0.5*f;
+    const v=tube+glow;
+    setPixel(px,py,v*255+15|0,v*80+14|0,v*140+12|0);
+  }
+  applyBloom(100,5,0.7);
+}},
+{id:'liquid_text',title:'Liquid Text',live:1,
+note:`Animate the SDF with smooth-union distortion: add blob SDFs that orbit the letter shapes, pulling the text boundary toward them. The distance field stretches and merges like liquid mercury.`,
+code:`float liquidText(vec2 p, float t) {
+  float text = textSDF(p);
+  for (int i = 0; i < 3; i++) {
+    float a = t + float(i) * 2.094;
+    vec2 blob = vec2(cos(a) * 0.5, sin(a) * 0.3);
+    text = smin(text, length(p - blob) - 0.15, 0.3);
+  }
+  return text;
+}`,
+frame(t){
+  function baseSDF(x,y){
+    let d=999;
+    d=Math.min(d,sdSegment(x,y,-0.8,.4,-0.8,-.4));d=Math.min(d,sdSegment(x,y,-0.8,.4,-0.4,.4));
+    d=Math.min(d,sdSegment(x,y,-0.8,0,-0.5,0));
+    d=Math.min(d,sdSegment(x,y,0,.4,0,-.4));d=Math.min(d,sdSegment(x,y,0,.4,.4,.4));
+    d=Math.min(d,sdSegment(x,y,0,0,.3,0));d=Math.min(d,sdSegment(x,y,0,-.4,.4,-.4));
+    return d-0.06;
+  }
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=(px/W-0.5)*3,y=(0.5-py/H)*2;
+    let d=baseSDF(x,y);
+    for(let i=0;i<4;i++){
+      const a=t*0.8+i*1.57;
+      d=opSmoothUnion(d,sdCircle(x-Math.cos(a)*0.7,y-Math.sin(a)*0.5,0.12),0.3);
+    }
+    if(d<0){
+      const c=0.8+Math.sin(d*20+t*3)*0.15;
+      setPixel(px,py,c*100+80|0,c*180+40|0,c*220+30|0);
+    }else{
+      const g=Math.exp(-d*6);
+      setPixel(px,py,g*50+15|0,g*100+14|0,g*140+12|0);
+    }
+  }
+}},
+{id:'kerning',title:'Kerning Field',
+note:`The space between letters is also an SDF. Kerning is adjusting the gap SDF to achieve optical evenness—measured by the area between the right edge of one glyph and the left edge of the next.`,
+code:`float kernGap(vec2 p, float sdfLeft, float sdfRight) {
+  return max(sdfLeft, -sdfRight);
+  // Area of this region determines visual spacing
+}`},
+{id:'bezier_outline',title:'Bezier Outline',
+note:`Font outlines are cubic Bezier splines. The SDF to a Bezier curve requires solving a quintic equation, but piecewise linear approximation with 8-16 segments gives sub-pixel accuracy.`,
+code:`float sdBezier(vec2 p, vec2 a, vec2 b, vec2 c) {
+  vec2 ab = b - a, ac = c - a, ap = p - a;
+  float d = dot(ab, ab);
+  float t = clamp(dot(ap, ab) / d, 0.0, 1.0);
+  vec2 q = a + ab * t - p;
+  return length(q);
+}`},
+{id:'halftone',title:'Halftone Fill',
+note:`Replace continuous tone with dots whose size varies with brightness. At each grid cell, the dot radius = sqrt(1 - luminance). This is how newspapers print photos—geometry encoding continuous values.`,
+code:`float halftone(vec2 p, float lum) {
+  vec2 cell = fract(p * 20.0) - 0.5;
+  float dotR = sqrt(1.0 - lum) * 0.4;
+  return length(cell) - dotR;
+}`},
+]},
+
+// ──────────────────────────────────────
+//  PARTICLE
+// ──────────────────────────────────────
+particle: {
+  label:'PARTICLE', thesis:'Swarms are emergent geometry. N bodies, zero meshes.',
+  items:[
+{id:'galaxy_pts',title:'Galaxy Spiral',live:1,
+note:`A logarithmic spiral r = a·e^(bθ) distributes stars along spiral arms. Scatter perpendicular to the arm with Gaussian noise that increases with radius, and fade brightness as 1/r. Two hundred points create a convincing galaxy.`,
+code:`void galaxy(int nStars, float arms, float twist) {
+  for (int i = 0; i < nStars; i++) {
+    float arm = mod(float(i), arms) / arms * 6.28;
+    float r = pow(float(i) / float(nStars), 0.5) * 3.0;
+    float theta = arm + log(r + 0.1) * twist;
+    float scatter = r * 0.1;
+    vec2 p = vec2(cos(theta), sin(theta)) * r;
+    p += randomVec2() * scatter;
+    drawPoint(p, 1.0 / (r + 0.5));
+  }
+}`,
+frame(t){
+  clear(8,8,12);
+  if(!this._stars){
+    this._stars=[];
+    for(let i=0;i<500;i++){
+      const arm=i%3,r=Math.pow(i/500,0.5)*90;
+      const theta=arm*2.094+Math.log(r+1)*2+Math.random()*0.3;
+      const scatter=r*0.08;
+      this._stars.push({
+        x:Math.cos(theta)*r+scatter*(Math.random()-0.5)*2,
+        y:Math.sin(theta)*r+scatter*(Math.random()-0.5)*2,
+        br:Math.random()*0.5+0.5,sz:Math.random()<0.05?2:1
+      });
+    }
+  }
+  const ca=Math.cos(t*0.1),sa=Math.sin(t*0.1);
+  for(const s of this._stars){
+    const rx=s.x*ca-s.y*sa+W/2,ry=s.x*sa+s.y*ca+H/2;
+    const dist=Math.sqrt(s.x*s.x+s.y*s.y);
+    const br=s.br/(dist*0.01+0.5);
+    const h=hue(dist*0.005+0.1);
+    for(let dy=0;dy<s.sz;dy++)for(let dx=0;dx<s.sz;dx++)
+      setPixel(rx+dx|0,ry+dy|0,h[0]*br|0,h[1]*br|0,h[2]*br*1.2|0);
+  }
+}},
+{id:'boids',title:'Flocking Boids',live:1,
+note:`Three simple rules—separation, alignment, cohesion—applied to each agent produce emergent flocking behavior. No choreography, no keyframes—just local interactions creating global swarm geometry. Craig Reynolds' 1987 algorithm still powers movie crowds.`,
+code:`void boid_update(Boid* b, Boid* flock, int n) {
+  vec2 sep = vec2(0), ali = vec2(0), coh = vec2(0);
+  int count = 0;
+  for (int i = 0; i < n; i++) {
+    float d = distance(b->pos, flock[i].pos);
+    if (d > 0.0 && d < RADIUS) {
+      sep += normalize(b->pos - flock[i].pos) / d;
+      ali += flock[i].vel;
+      coh += flock[i].pos;
+      count++;
+    }
+  }
+  if (count > 0) {
+    b->vel += sep * 1.5 + normalize(ali/count) * 1.0
+            + normalize(coh/count - b->pos) * 1.0;
+  }
+}`,
+frame(t){
+  if(!this._boids){
+    this._boids=[];
+    for(let i=0;i<120;i++)this._boids.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-0.5)*2,vy:(Math.random()-0.5)*2});
+    this._lastT=t;
+  }
+  const dt=Math.min(t-this._lastT,0.05);this._lastT=t;
+  const boids=this._boids,N=boids.length;
+  for(let i=0;i<N;i++){
+    const b=boids[i];let sx=0,sy=0,ax=0,ay=0,cx=0,cy=0,cnt=0;
+    for(let j=0;j<N;j++){
+      if(i===j)continue;
+      const dx=boids[j].x-b.x,dy=boids[j].y-b.y;
+      const d2=dx*dx+dy*dy;
+      if(d2<900&&d2>0){
+        const d=Math.sqrt(d2);
+        sx-=dx/d2*5;sy-=dy/d2*5;
+        ax+=boids[j].vx;ay+=boids[j].vy;
+        cx+=boids[j].x;cy+=boids[j].y;cnt++;
+      }
+    }
+    if(cnt>0){
+      b.vx+=sx*1.5+(ax/cnt-b.vx)*0.05+(cx/cnt-b.x)*0.003;
+      b.vy+=sy*1.5+(ay/cnt-b.vy)*0.05+(cy/cnt-b.y)*0.003;
+    }
+    const spd=Math.sqrt(b.vx*b.vx+b.vy*b.vy)||1;
+    if(spd>3){b.vx=b.vx/spd*3;b.vy=b.vy/spd*3;}
+    b.x+=b.vx;b.y+=b.vy;
+    if(b.x<0)b.x+=W;if(b.x>=W)b.x-=W;
+    if(b.y<0)b.y+=H;if(b.y>=H)b.y-=H;
+  }
+  clear(15,18,25);
+  for(const b of boids){
+    const a=Math.atan2(b.vy,b.vx);
+    const tx=Math.cos(a)*3,ty=Math.sin(a)*3;
+    setPixel(b.x|0,b.y|0,200,220,240);
+    setPixel(b.x+tx|0,b.y+ty|0,180,200,220);
+    setPixel(b.x-ty*0.5|0,b.y+tx*0.5|0,150,170,190);
+    setPixel(b.x+ty*0.5|0,b.y-tx*0.5|0,150,170,190);
+  }
+}},
+{id:'smoke',title:'Smoke Advection',live:1,
+note:`Density advected by curl noise creates smoke without solving Navier-Stokes. At each pixel, trace backward along the velocity field to find where the density came from, then accumulate. Add buoyancy (upward bias) for rising smoke.`,
+code:`float smoke(vec2 p, float t) {
+  vec2 vel = curlNoise(p * 2.0 + t * 0.3);
+  vel.y += 0.5;  // buoyancy
+  vec2 source = p - vel * 0.01;
+  float density = smoothstep(0.5, 0.0, length(source - emitter));
+  return density * exp(-t * 0.3);
+}`,
+frame(t){
+  if(!this._dens){this._dens=new Float32Array(W*H);this._lastT=t;}
+  const dt=Math.min(t-this._lastT,0.05);this._lastT=t;
+  const dens=this._dens;const nd=new Float32Array(W*H);
+  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){
+    const u=x/W*4,v=y/H*4;
+    const e=0.05;
+    const n0=fbm(u+t*0.3,v,2);
+    const vx=(fbm(u+t*0.3,v+e,2)-n0)/e*30;
+    const vy=-(fbm(u+e+t*0.3,v,2)-n0)/e*30-15;
+    const sx=x-vx*dt,sy=y-vy*dt;
+    const ix=clamp(sx|0,0,W-1),iy=clamp(sy|0,0,H-1);
+    nd[y*W+x]=dens[iy*W+ix]*0.995;
+  }
+  for(let i=-5;i<=5;i++)for(let j=0;j<3;j++){
+    const sx=W/2+i+Math.sin(t*2)*10|0,sy=H-10+j;
+    if(sx>=0&&sx<W&&sy>=0&&sy<H)nd[sy*W+sx]=1;
+  }
+  for(let i=0;i<W*H;i++)dens[i]=nd[i];
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const d=dens[y*W+x];
+    setPixel(x,y,d*180+15|0,d*160+14|0,d*140+12|0);
+  }
+}},
+{id:'firefly',title:'Firefly Swarm',
+note:`Each firefly carries a phase oscillator that syncs with nearby neighbors via Kuramoto coupling. The emergent synchronization—all blinking together—is geometry in time, not space.`,
+code:`void firefly(Fly* f, Fly* swarm, int n) {
+  f->phase += f->freq * dt;
+  for (int i = 0; i < n; i++) {
+    float d = distance(f->pos, swarm[i].pos);
+    if (d < RADIUS)
+      f->phase += coupling * sin(swarm[i].phase - f->phase) * dt;
+  }
+  f->brightness = pow(max(0.0, sin(f->phase)), 8.0);
+}`},
+{id:'dust',title:'Dust Settling',
+note:`Particles with gravity and Stokes drag: v_terminal = (ρ_p · d² · g) / (18μ). Smaller particles settle slower, creating size-sorted layers—the same physics that creates geological strata.`,
+code:`void dust(Particle* p, float dt) {
+  float drag = 18.0 * viscosity / (density * p->diameter * p->diameter);
+  p->vy += (gravity - drag * p->vy) * dt;
+  p->y += p->vy * dt;
+}`},
+{id:'sparkler',title:'Sparkler Trail',
+note:`Emit particles radially with random velocity, apply gravity and drag, kill when brightness decays below threshold. The trail is the envelope of all particle positions—geometry from a differential equation.`,
+code:`void sparkler(Emitter* e, float t) {
+  for (int i = 0; i < RATE; i++) {
+    Particle p;
+    p.pos = e->pos;
+    p.vel = randomOnSphere() * (2.0 + random() * 3.0);
+    p.life = 0.5 + random() * 0.5;
+    emit(p);
+  }
+}`},
+]},
+
+// ──────────────────────────────────────
+//  MEDICAL
+// ──────────────────────────────────────
+medical: {
+  label:'MEDICAL', thesis:'The body is a volume. Every scan is a scalar field.',
+  items:[
+{id:'ct_slice',title:'CT Slice',live:1,
+note:`A CT scan measures X-ray attenuation density at each voxel. A single slice is a 2D scalar field where bone is bright, tissue is gray, and air is black. The image IS the geometry—no surface extraction needed for diagnosis.`,
+code:`float ct_density(vec2 p) {
+  float body = smoothstep(1.2, 1.0, length(p));
+  float bone = smoothstep(0.05, 0.0, abs(length(p) - 0.8) - 0.05);
+  float spine = smoothstep(0.15, 0.0, length(p - vec2(0, -0.3)));
+  float organ = smoothstep(0.3, 0.0, length(p - vec2(0.3, 0.1)));
+  return body * 0.3 + bone * 0.7 + spine * 0.9 + organ * 0.4;
+}`,
+frame(t){
+  const rot=t*0.15;
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=(px/W-0.5)*2.8,y=(py/H-0.5)*2.8;
+    const rx=x*Math.cos(rot)-y*Math.sin(rot),ry=x*Math.sin(rot)+y*Math.cos(rot);
+    const r=Math.sqrt(rx*rx+ry*ry);
+    let d=smoothstep(1.2,1.0,r)*0.3;
+    d+=smoothstep(0.05,0,Math.abs(r-0.85)-0.04)*0.55;
+    d+=smoothstep(0.05,0,Math.abs(r-0.8)-0.03)*0.15;
+    const spine=Math.sqrt((rx+0.0)**2+(ry+0.3)**2);
+    d+=smoothstep(0.15,0.05,spine)*0.6;
+    const org1=Math.sqrt((rx-0.3)**2+(ry-0.1)**2);
+    d+=smoothstep(0.25,0.1,org1)*0.25;
+    const org2=Math.sqrt((rx+0.35)**2+(ry-0.15)**2);
+    d+=smoothstep(0.2,0.08,org2)*0.2;
+    d+=noise2(px/W*15,py/H*15)*0.03;
+    d=clamp(d,0,1);
+    setPixel(px,py,d*240|0,d*235|0,d*220|0);
+  }
+}},
+{id:'ecg',title:'Heartbeat ECG',live:1,
+note:`The QRS complex is a parametric waveform: a sharp spike (R wave) flanked by smaller bumps (P, Q, S, T waves). Each is a Gaussian pulse at specific timing offsets. The entire heartbeat is five function calls.`,
+code:`float ecg(float t) {
+  t = mod(t, 1.0);  // one beat period
+  float p = 0.1 * exp(-pow((t - 0.1) / 0.03, 2.0));
+  float q = -0.05 * exp(-pow((t - 0.2) / 0.01, 2.0));
+  float r = 1.0 * exp(-pow((t - 0.22) / 0.008, 2.0));
+  float s = -0.1 * exp(-pow((t - 0.25) / 0.012, 2.0));
+  float tt = 0.15 * exp(-pow((t - 0.4) / 0.04, 2.0));
+  return p + q + r + s + tt;
+}`,
+frame(t){
+  clear(15,20,15);
+  // Grid lines
+  for(let x=0;x<W;x+=20)for(let y=0;y<H;y++)setPixel(x,y,25,35,25);
+  for(let y=0;y<H;y+=20)for(let x=0;x<W;x++)setPixel(x,y,25,35,25);
+  // ECG trace
+  let prevY=-1;
+  for(let x=0;x<W;x++){
+    const phase=((x/W*2-t*0.8)%1+1)%1;
+    const p=0.1*Math.exp(-(((phase-0.1)/0.035)**2));
+    const q=-0.08*Math.exp(-(((phase-0.2)/0.012)**2));
+    const r=1.0*Math.exp(-(((phase-0.22)/0.009)**2));
+    const s=-0.12*Math.exp(-(((phase-0.25)/0.014)**2));
+    const tt=0.18*Math.exp(-(((phase-0.4)/0.045)**2));
+    const v=p+q+r+s+tt;
+    const cy=(H*0.5-v*H*0.35)|0;
+    if(prevY>=0){
+      const dy=cy-prevY,steps=Math.abs(dy)+1;
+      for(let i=0;i<=steps;i++){
+        const iy=prevY+dy*i/steps|0;
+        setPixel(x,iy,80,240,80);
+        setPixel(x,iy+1,40,140,40);
+      }
+    }
+    prevY=cy;
+  }
+  // Label P, QRS, T wave peaks
+  const beatX=((t*0.8)%1)*W;
+  const pX=(0.1*W+beatX)%W|0;
+  const qrsX=(0.22*W+beatX)%W|0;
+  const tX=(0.4*W+beatX)%W|0;
+  drawText(W-50,3,'P',80,200,80,1);
+  drawText(W-38,3,'QRS',80,240,80,1);
+  drawText(W-10,3,'T',80,200,80,1);
+}},
+{id:'molecular',title:'Molecular Surface',live:1,
+note:`A molecule's solvent-accessible surface is the smooth union of spheres centered on each atom, with radii equal to van der Waals radii plus probe radius. Gaussian blobs in an SDF—same math as metaballs, different domain.`,
+code:`float molecule(vec3 p) {
+  float d = 1e10;
+  // Water molecule: O + 2H
+  d = smin(d, length(p) - 0.6, 0.3);  // oxygen
+  d = smin(d, length(p - vec3(0.75, 0.58, 0)) - 0.4, 0.3);   // H1
+  d = smin(d, length(p - vec3(-0.75, 0.58, 0)) - 0.4, 0.3);  // H2
+  return d;
+}`,
+frame(t){
+  const atoms=[{x:0,y:0,z:0,r:0.7,c:[220,60,60]},{x:1,y:0.7,z:0,r:0.45,c:[200,200,220]},
+    {x:-1,y:0.7,z:0,r:0.45,c:[200,200,220]},{x:0,y:-1.2,z:0.5,r:0.7,c:[220,60,60]},
+    {x:0.9,y:-1.9,z:0.5,r:0.45,c:[200,200,220]},{x:-0.4,y:-1.9,z:1.1,r:0.45,c:[200,200,220]}];
+  render3D(t,(x,y,z)=>{
+    let d=999;
+    for(const a of atoms)d=opSmoothUnion(d,sdSphere(x-a.x,y-a.y,z-a.z,a.r),0.3);
+    return d;
+  },5,(px,py,pz,n,l,mt,spec)=>{
+    let minD=999,closest=atoms[0];
+    for(const a of atoms){const d=Math.sqrt((px-a.x)**2+(py-a.y)**2+(pz-a.z)**2);if(d<minD){minD=d;closest=a;}}
+    return[(closest.c[0]*l+spec*180)|0,(closest.c[1]*l+spec*160)|0,(closest.c[2]*l+spec*140)|0];
+  },{specPow:24,specStr:0.4});
+}},
+{id:'neuron',title:'Neuron Dendrite',
+note:`A neuron's dendritic tree is a fractal branching structure. Model as recursive cylinder SDFs that branch at each node with decreasing radius—same math as coral, different scale.`,
+code:`float dendrite(vec3 p, float r, int depth) {
+  float d = sdCylinder(p, r, 1.0);
+  if (depth <= 0) return d;
+  // Branch at end
+  vec3 tip = vec3(0, 1, 0);
+  d = min(d, dendrite(rotY(p - tip, 0.5), r*0.7, depth-1));
+  d = min(d, dendrite(rotY(p - tip, -0.5), r*0.7, depth-1));
+  return d;
+}`},
+{id:'vessel',title:'Blood Vessel Tree',
+note:`Murray's law: at each bifurcation, r³_parent = r³_child1 + r³_child2. This minimizes pumping energy. The vascular tree is fractal branching constrained by fluid dynamics.`,
+code:`float vessel(vec3 p, float radius, int depth) {
+  float d = sdCylinder(p, radius, 2.0);
+  if (depth <= 0) return d;
+  float r_child = radius * pow(0.5, 1.0/3.0);  // Murray's law
+  d = min(d, vessel(branch1(p), r_child, depth-1));
+  d = min(d, vessel(branch2(p), r_child, depth-1));
+  return d;
+}`},
+{id:'alveoli',title:'Alveoli Structure',
+note:`Lung alveoli are packed spherical cavities. Model as a Voronoi foam: spheres at Voronoi cell centers with shared walls. The SDF is max(sphere, -neighbor_sphere) for each cell.`,
+code:`float alveoli(vec3 p) {
+  float cell = voronoi3D(p * 3.0);
+  float wall = abs(cell) - 0.02;
+  float sphere = length(fract(p * 3.0) - 0.5) - 0.4;
+  return max(wall, sphere);
+}`},
+]},
+// ──────────────────────────────────────
+//  GAME
+// ──────────────────────────────────────
+game: {
+  label:'GAME', thesis:'Levels are implicit. Collision is distance sign.',
+  items:[
+{id:'marching_sq',title:'Marching Squares',live:1,
+note:`Classify each grid cell's four corners as inside/outside a scalar field, giving a 4-bit index into 16 cases. Linearly interpolate edge crossings to extract the isoline. This is the 2D foundation of marching cubes—the algorithm that turns MRI scans into 3D models.`,
+code:`void marchingSquares(float* field, int w, int h, float iso) {
+  for (int y = 0; y < h-1; y++)
+  for (int x = 0; x < w-1; x++) {
+    int idx = 0;
+    if (field[y*w+x] > iso) idx |= 1;
+    if (field[y*w+x+1] > iso) idx |= 2;
+    if (field[(y+1)*w+x+1] > iso) idx |= 4;
+    if (field[(y+1)*w+x] > iso) idx |= 8;
+    // lookup[idx] gives edge pairs to connect
+    drawEdges(lookup[idx], x, y, field, iso);
+  }
+}`,
+frame(t){
+  clear(15,14,12);
+  const gs=10;const gw=(W/gs)|0,gh=(H/gs)|0;
+  const field=new Float32Array((gw+1)*(gh+1));
+  for(let gy=0;gy<=gh;gy++)for(let gx=0;gx<=gw;gx++){
+    const x=gx/gw*4-2,y=gy/gh*4-2;
+    field[gy*(gw+1)+gx]=Math.sin(x*2+t)*Math.cos(y*2)+Math.sin(Math.sqrt(x*x+y*y)*3-t*1.5)*0.5;
+  }
+  // Draw field as background
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=px/W*4-2,y=py/H*4-2;
+    const v=Math.sin(x*2+t)*Math.cos(y*2)+Math.sin(Math.sqrt(x*x+y*y)*3-t*1.5)*0.5;
+    const c=v>0?v*0.15:0;
+    setPixel(px,py,c*120+15|0,c*180+14|0,c*80+12|0);
+  }
+  // March squares
+  const edges=[[],[3,0],[0,1],[3,1],[1,2],[0,1,2,3],[0,2],[3,2],[2,3],[0,2],[0,3,1,2],[1,3],[1,3],[0,3],[0,1],[],];
+  const edgePos=[[0,0,1,0],[1,0,1,1],[0,1,1,1],[0,0,0,1]];
+  for(let gy=0;gy<gh;gy++)for(let gx=0;gx<gw;gx++){
+    const v00=field[gy*(gw+1)+gx],v10=field[gy*(gw+1)+gx+1];
+    const v11=field[(gy+1)*(gw+1)+gx+1],v01=field[(gy+1)*(gw+1)+gx];
+    let idx=0;
+    if(v00>0)idx|=1;if(v10>0)idx|=2;if(v11>0)idx|=4;if(v01>0)idx|=8;
+    const e=edges[idx];
+    for(let i=0;i<e.length;i+=2){
+      const[ax,ay,bx,by]=edgePos[e[i]];
+      const[cx,cy,dx,dy]=edgePos[e[i+1]];
+      const x1=(gx+ax+(bx-ax)*0.5)*gs,y1=(gy+ay+(by-ay)*0.5)*gs;
+      const x2=(gx+cx+(dx-cx)*0.5)*gs,y2=(gy+cy+(dy-cy)*0.5)*gs;
+      const steps=Math.max(Math.abs(x2-x1),Math.abs(y2-y1))*2|0;
+      for(let s=0;s<=steps;s++){
+        const px2=lerp(x1,x2,s/steps)|0,py2=lerp(y1,y2,s/steps)|0;
+        setPixel(px2,py2,230,200,80);setPixel(px2+1,py2,200,180,70);
+      }
+    }
+  }
+}},
+{id:'dungeon',title:'Procedural Dungeon',live:1,
+note:`Binary Space Partition: recursively split a rectangle into two halves, place rooms in leaves, connect siblings with corridors. One tree traversal generates infinite dungeon layouts—the level IS the algorithm's call stack.`,
+code:`void bsp(int x, int y, int w, int h, int depth) {
+  if (depth <= 0 || w < 8 || h < 8) {
+    placeRoom(x+1, y+1, w-2, h-2);
+    return;
+  }
+  if (w > h) {
+    int split = w/3 + rand() % (w/3);
+    bsp(x, y, split, h, depth-1);
+    bsp(x+split, y, w-split, h, depth-1);
+    corridor(x+split, y+h/2, x+split, y+h/2);
+  } else { /* split vertically */ }
+}`,
+frame(t){
+  if(!this._rooms||t-this._genT>5){
+    this._genT=t;this._rooms=[];this._halls=[];
+    const bsp=(x,y,w,h,depth)=>{
+      if(depth<=0||w<30||h<25){
+        const rw=w*0.6+Math.random()*w*0.3|0;
+        const rh=h*0.6+Math.random()*h*0.3|0;
+        const rx=x+Math.random()*(w-rw)|0;
+        const ry=y+Math.random()*(h-rh)|0;
+        this._rooms.push({x:rx,y:ry,w:rw,h:rh});
+        return{cx:rx+rw/2|0,cy:ry+rh/2|0};
+      }
+      if(w>h){
+        const s=w*0.35+Math.random()*w*0.3|0;
+        const l=bsp(x,y,s,h,depth-1);
+        const r=bsp(x+s,y,w-s,h,depth-1);
+        this._halls.push({x1:l.cx,y1:l.cy,x2:r.cx,y2:l.cy});
+        this._halls.push({x1:r.cx,y1:l.cy,x2:r.cx,y2:r.cy});
+        return{cx:(l.cx+r.cx)/2|0,cy:(l.cy+r.cy)/2|0};
+      }else{
+        const s=h*0.35+Math.random()*h*0.3|0;
+        const top=bsp(x,y,w,s,depth-1);
+        const bot=bsp(x,y+s,w,h-s,depth-1);
+        this._halls.push({x1:top.cx,y1:top.cy,x2:top.cx,y2:bot.cy});
+        this._halls.push({x1:top.cx,y1:bot.cy,x2:bot.cx,y2:bot.cy});
+        return{cx:(top.cx+bot.cx)/2|0,cy:(top.cy+bot.cy)/2|0};
+      }
+    };
+    bsp(2,2,W-4,H-4,4);
+  }
+  clear(12,10,15);
+  for(const h of this._halls){
+    const dx=Math.sign(h.x2-h.x1),dy=Math.sign(h.y2-h.y1);
+    let x=h.x1,y=h.y1;
+    while(x!==h.x2||y!==h.y2){
+      for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)setPixel(x+i,y+j,50,45,55);
+      if(x!==h.x2)x+=dx;else y+=dy;
+    }
+  }
+  for(const r of this._rooms){
+    for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++){
+      const edge=x===r.x||x===r.x+r.w-1||y===r.y||y===r.y+r.h-1;
+      setPixel(x,y,edge?80:55,edge?70:50,edge?90:60);
+    }
+  }
+}},
+{id:'destruct',title:'Destructible Terrain',live:1,
+note:`Start with a heightfield, subtract sphere SDFs where explosions occur. The terrain is modified in real-time by adding negative geometry. Each crater is just max(terrain, -sphere)—SDF subtraction makes destruction trivial.`,
+code:`float destructible(vec2 p, float* craters, int n) {
+  float h = terrain(p);
+  for (int i = 0; i < n; i++) {
+    vec2 c = vec2(craters[i*3], craters[i*3+1]);
+    float r = craters[i*3+2];
+    h = max(h, -(r - length(p - c)));
+  }
+  return h;
+}`,
+frame(t){
+  if(!this._terr){
+    this._terr=new Float32Array(W);
+    for(let x=0;x<W;x++){let h=0,amp=0.5;for(let o=0;o<5;o++){h+=noise2(x/W*5*(1<<o),o*10)*amp;amp*=0.5;}this._terr[x]=H*0.5-h*H*0.3;}
+    this._holes=[];this._lastHole=t;
+  }
+  if(t-this._lastHole>0.6){
+    this._lastHole=t;
+    const cx=Math.random()*W|0,r=8+Math.random()*15;
+    this._holes.push({cx,r});
+    for(let x=Math.max(0,cx-r|0);x<Math.min(W,cx+r|0);x++){
+      const dx=x-cx;
+      const depth=Math.sqrt(Math.max(0,r*r-dx*dx));
+      this._terr[x]=Math.max(this._terr[x],this._terr[x]+0)+depth*0.5;
+      this._terr[x]=Math.min(H-1,this._terr[x]+depth*0.3);
+    }
+  }
+  for(let x=0;x<W;x++){
+    const gy=this._terr[x]|0;
+    for(let y=0;y<H;y++){
+      if(y<gy-1){const s=y/H;setPixel(x,y,30+s*20|0,40+s*15|0,70-s*10|0);}
+      else{const d=(y-gy)/(H-gy);setPixel(x,y,lerp(100,60,d)|0,lerp(80,45,d)|0,lerp(50,30,d)|0);}
+    }
+  }
+}},
+{id:'autotile',title:'Tile Autotiling',
+note:`Each tile checks its 4 or 8 neighbors to pick a sprite variant using a bitmask index. A 16-entry (4-bit) or 47-entry (8-bit) lookup table handles all edge and corner cases automatically.`,
+code:`int autotile(int x, int y, bool** map) {
+  int mask = 0;
+  if (map[y-1][x]) mask |= 1;  // north
+  if (map[y][x+1]) mask |= 2;  // east
+  if (map[y+1][x]) mask |= 4;  // south
+  if (map[y][x-1]) mask |= 8;  // west
+  return tileVariant[mask];  // 16 variants
+}`},
+{id:'pathfind',title:'Pathfinding Grid',
+note:`A* search on a grid is geometry meeting graph theory. The heuristic h(n) = distance-to-goal is a distance field, and the algorithm explores cells in order of estimated total cost f = g + h.`,
+code:`float heuristic(ivec2 a, ivec2 b) {
+  return length(vec2(a - b));  // Euclidean distance
+}
+// Open set ordered by f = g + h
+// Expand lowest-f node, update neighbors
+`},
+{id:'lod',title:'LOD Terrain',
+note:`Quadtree LOD: subdivide terrain patches near the camera, merge distant ones. The subdivision criterion is screen-space error—geometry resolution adapts to viewing distance automatically.`,
+code:`void lodTraverse(QuadNode* n, vec3 cam) {
+  float d = distance(n->center, cam);
+  float error = n->maxError / d;
+  if (error > THRESHOLD && n->depth < MAX) {
+    for (int i = 0; i < 4; i++)
+      lodTraverse(n->children[i], cam);
+  } else {
+    drawPatch(n);
+  }
+}`},
+]},
+
+// ──────────────────────────────────────
+//  SIGNAL
+// ──────────────────────────────────────
+signal: {
+  label:'SIGNAL', thesis:'Signals are geometry in time. Every filter is a convolution.',
+  items:[
+{id:'waveform',title:'Waveform Superposition',live:1,
+note:`Additive synthesis: any periodic signal is a sum of sine waves (Fourier's theorem). Stack harmonics with decreasing amplitude and you build sawtooths, squares, and triangles from pure tones. The waveform IS its frequency content.`,
+code:`float sawtooth(float t, int harmonics) {
+  float v = 0.0;
+  for (int k = 1; k <= harmonics; k++) {
+    v += sin(t * float(k) * 6.28) / float(k);
+  }
+  return v * 2.0 / 3.14;
+}`,
+frame(t){
+  clear(15,14,18);
+  // Grid
+  for(let x=0;x<W;x+=20)for(let y=0;y<H;y++)setPixel(x,y,22,21,26);
+  for(let y=0;y<H;y+=25)for(let x=0;x<W;x++)setPixel(x,y,22,21,26);
+  const harmonics=Math.floor(t*0.5%8)+1;
+  const colors=[[230,80,80],[80,180,230],[80,230,120],[230,200,80],[200,120,230],[120,230,200],[230,150,100],[180,180,230]];
+  // Draw individual harmonics
+  for(let k=1;k<=harmonics;k++){
+    const[cr,cg,cb]=colors[(k-1)%8];
+    let prevY=-1;
+    for(let x=0;x<W;x++){
+      const phase=x/W*4*Math.PI-t*2;
+      const v=Math.sin(phase*k)/k;
+      const cy=(H/2-v*H*0.25)|0;
+      if(prevY>=0){
+        const dy=cy-prevY,steps=Math.abs(dy)+1;
+        for(let i=0;i<=steps;i++)setPixel(x,lerp(prevY,cy,i/steps)|0,cr*0.3|0,cg*0.3|0,cb*0.3|0);
+      }
+      prevY=cy;
+    }
+  }
+  // Draw sum
+  let prevY2=-1;
+  for(let x=0;x<W;x++){
+    const phase=x/W*4*Math.PI-t*2;
+    let v=0;for(let k=1;k<=harmonics;k++)v+=Math.sin(phase*k)/k;
+    v*=2/3.14;
+    const cy=(H/2-v*H*0.3)|0;
+    if(prevY2>=0){
+      const dy=cy-prevY2,steps=Math.abs(dy)+1;
+      for(let i=0;i<=steps;i++){const iy=lerp(prevY2,cy,i/steps)|0;setPixel(x,iy,230,220,200);setPixel(x,iy+1,180,170,150);}
+    }
+    prevY2=cy;
+  }
+  drawLabel(5,3,'HARMONICS='+harmonics,230,200,80);
+}},
+{id:'fft_butterfly',title:'FFT Butterfly',live:1,
+note:`The Cooley-Tukey FFT decomposes a DFT into log₂(N) stages of butterfly operations. Each butterfly combines two values with a twiddle factor—multiply, add, subtract. Visualize the data flow and you see the beautiful recursive structure.`,
+code:`void fft(float* re, float* im, int n) {
+  // Bit-reversal permutation
+  for (int i = 0; i < n; i++) {
+    int j = bitReverse(i, log2(n));
+    if (i < j) { swap(re[i], re[j]); swap(im[i], im[j]); }
+  }
+  // Butterfly stages
+  for (int s = 1; s <= log2(n); s++) {
+    int m = 1 << s;
+    float wm_re = cos(-6.28 / m), wm_im = sin(-6.28 / m);
+    for (int k = 0; k < n; k += m) {
+      float w_re = 1, w_im = 0;
+      for (int j = 0; j < m/2; j++) {
+        // butterfly: X[k+j], X[k+j+m/2]
+      }
+    }
+  }
+}`,
+frame(t){
+  clear(15,14,18);
+  const N=16,stages=4;
+  const sx=W/(N+1),sy=H/(stages+1);
+  // Draw butterfly connections
+  for(let s=0;s<stages;s++){
+    const m=1<<(s+1);
+    for(let k=0;k<N;k+=m){
+      for(let j=0;j<m/2;j++){
+        const a=k+j,b=k+j+m/2;
+        const x1=(a+1)*sx,x2=(b+1)*sx;
+        const y1=(s+0.5)*sy,y2=(s+1.5)*sy;
+        // Draw lines
+        const steps2=30;
+        const phase=t*3+s+j*0.5;
+        const active=Math.sin(phase)*0.5+0.5;
+        for(let i=0;i<=steps2;i++){
+          const f=i/steps2;
+          const px2=lerp(x1,x2,f)|0,py2=lerp(y1,y2,f)|0;
+          setPixel(px2,py2,80+active*150|0,60+active*120|0,180+active*60|0);
+        }
+        for(let i=0;i<=steps2;i++){
+          const f=i/steps2;
+          const px2=lerp(x1,x1,f)|0,py2=lerp(y1,y2,f)|0;
+          setPixel(px2,py2,80+active*100|0,160+active*80|0,80+active*80|0);
+        }
+      }
+    }
+  }
+  // Draw nodes
+  for(let s=0;s<=stages;s++)for(let i=0;i<N;i++){
+    const cx2=(i+1)*sx|0,cy2=(s+0.5)*sy|0;
+    for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++)
+      if(dx*dx+dy*dy<=4)setPixel(cx2+dx,cy2+dy,230,200,80);
+  }
+}},
+{id:'convolution',title:'Convolution Kernel',live:1,
+note:`Slide a small kernel across a signal, computing the dot product at each position. This single operation—multiply and accumulate—does edge detection, blurring, sharpening, and differentiation. The kernel IS the filter.`,
+code:`float convolve(float* signal, float* kernel, int pos, int ksize) {
+  float sum = 0.0;
+  for (int i = 0; i < ksize; i++) {
+    sum += signal[pos + i - ksize/2] * kernel[i];
+  }
+  return sum;
+}`,
+frame(t){
+  clear(15,14,18);
+  // Generate signal
+  const sig=new Float32Array(W);
+  for(let x=0;x<W;x++){
+    sig[x]=Math.sin(x/W*8*Math.PI)*0.3+noise2(x/W*10,0)*0.3+(x>W*0.4&&x<W*0.6?0.4:0);
+  }
+  // Kernel (moves across)
+  const ksize=21;
+  const kernel=new Float32Array(ksize);
+  const ktype=Math.floor(t*0.3)%3;
+  for(let i=0;i<ksize;i++){
+    const x=(i-ksize/2)/ksize*2;
+    if(ktype===0)kernel[i]=Math.exp(-x*x*5)/ksize; // gaussian
+    else if(ktype===1)kernel[i]=(i===ksize/2-1?-1:i===ksize/2+1?1:0); // derivative
+    else kernel[i]=1/ksize; // box
+  }
+  // Draw signal
+  for(let x=1;x<W;x++){
+    const y1=(H*0.3-sig[x-1]*H*0.2)|0,y2=(H*0.3-sig[x]*H*0.2)|0;
+    setPixel(x,y2,100,150,200);
+  }
+  // Convolve and draw result
+  const kpos=(((t*30)%W)+W)%W|0;
+  const out=new Float32Array(W);
+  for(let x=ksize/2|0;x<W-ksize/2;x++){
+    let v=0;for(let i=0;i<ksize;i++)v+=sig[clamp(x+i-ksize/2|0,0,W-1)]*kernel[i];
+    out[x]=v;
+  }
+  for(let x=1;x<W;x++){
+    const y2=(H*0.7-out[x]*H*0.2)|0;
+    setPixel(x,y2,230,180,80);
+  }
+  // Draw kernel position
+  for(let i=0;i<ksize;i++){
+    const kx=kpos+i-ksize/2|0;
+    if(kx>=0&&kx<W){
+      const ky=(H*0.3-sig[kx]*H*0.2)|0;
+      const kv=Math.abs(kernel[i])*5;
+      for(let dy=-2;dy<=2;dy++)setPixel(kx,ky+dy,230*kv+50|0,80*kv+50|0,80*kv+50|0);
+    }
+  }
+  const knames=['GAUSSIAN','DERIVATIVE','BOX'];
+  drawLabel(5,3,knames[ktype],230,180,80);
+}},
+{id:'nyquist',title:'Nyquist Sampling',
+note:`Sample a signal below 2× its frequency and aliases appear—high frequencies masquerade as low ones. The sampling theorem is geometry: the frequency spectrum folds around the Nyquist limit like a mirror.`,
+code:`// If sample_rate < 2 * max_freq, aliasing occurs
+// Reconstructed frequency = |f - round(f/fs)*fs|
+float alias(float freq, float sampleRate) {
+  float folded = mod(freq + sampleRate/2.0, sampleRate) - sampleRate/2.0;
+  return abs(folded);
+}`},
+{id:'window',title:'Window Function',
+note:`Windowing tapers a signal's edges to zero, reducing spectral leakage. The Hann window w(n) = 0.5(1 - cos(2πn/N)) is a raised cosine—smooth start and end eliminate the discontinuity that causes frequency smearing.`,
+code:`float hann(int n, int N) {
+  return 0.5 * (1.0 - cos(6.28318 * float(n) / float(N)));
+}
+float blackman(int n, int N) {
+  float a = 6.28318 * float(n) / float(N);
+  return 0.42 - 0.5 * cos(a) + 0.08 * cos(2.0 * a);
+}`},
+{id:'envelope',title:'Signal Envelope',
+note:`The envelope is the magnitude of the analytic signal: env(t) = |signal(t) + i·hilbert(signal(t))|. It extracts the amplitude contour from a modulated carrier—geometry extracting geometry.`,
+code:`float envelope(float* signal, int pos) {
+  // Hilbert transform via FIR filter
+  float hilb = 0.0;
+  for (int k = -N/2; k <= N/2; k++) {
+    if (k % 2 != 0)
+      hilb += signal[pos + k] * (2.0 / (3.14159 * float(k)));
+  }
+  return sqrt(signal[pos]*signal[pos] + hilb*hilb);
+}`},
+]},
+
+// ──────────────────────────────────────
+//  MANUFACTURING
+// ──────────────────────────────────────
+manufacturing: {
+  label:'MFG', thesis:'Toolpaths are Minkowski sums. Tolerance is offset SDF.',
+  items:[
+{id:'cnc',title:'CNC Toolpath',live:1,
+note:`A CNC tool cutting a profile is a Minkowski sum: the tool SDF swept along the path. The offset contour at distance r (tool radius) from the target shape defines the center path. SDF dilation/erosion IS toolpath planning.`,
+code:`float toolpath(vec2 p, float toolR) {
+  float part = partSDF(p);
+  // Tool center must stay outside part + radius
+  float offset = part - toolR;
+  // Toolpath follows the offset = 0 contour
+  return abs(offset) - 0.02;  // visualize path
+}`,
+frame(t){
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=(px/W-0.5)*4,y=(py/H-0.5)*2.5;
+    // Part shape: star
+    const a=Math.atan2(y,x);
+    const r=Math.sqrt(x*x+y*y);
+    const star=r-(0.6+Math.sin(a*5+1)*0.15+Math.sin(a*3)*0.1);
+    // Tool offsets
+    const toolR=0.15;
+    const offset1=star-toolR;
+    const offset2=star-toolR*2;
+    const offset3=star-toolR*3;
+    // Animate tool position along offset path
+    const toolAngle=t*1.5;
+    const toolDist=0.6+toolR+Math.sin(toolAngle*5+1)*0.15+Math.sin(toolAngle*3)*0.1;
+    const toolX=Math.cos(toolAngle)*toolDist;
+    const toolY=Math.sin(toolAngle)*toolDist;
+    const toolD=Math.sqrt((x-toolX)**2+(y-toolY)**2)-toolR;
+    if(star<0){setPixel(px,py,60,80,100);}
+    else if(toolD<0){setPixel(px,py,180,180,190);}
+    else{
+      const p1=Math.exp(-Math.abs(offset1)*20)*0.6;
+      const p2=Math.exp(-Math.abs(offset2)*20)*0.4;
+      const p3=Math.exp(-Math.abs(offset3)*20)*0.3;
+      const v=p1+p2+p3;
+      setPixel(px,py,v*200+15|0,v*120+14|0,v*50+12|0);
+    }
+  }
+}},
+{id:'slicing',title:'3D Print Slicing',live:1,
+note:`Slice a 3D SDF at varying z-heights to generate print layers. Each layer is the 2D cross-section where SDF(x,y,z_slice) = 0. Animate z from bottom to top and you watch the print grow—layer by layer from one distance function.`,
+code:`float slice(vec2 p, float z, float (*sdf)(vec3)) {
+  return sdf(vec3(p, z));
+  // Negative = inside = print material
+  // Positive = outside = empty
+}`,
+frame(t){
+  const zSlice=Math.sin(t*0.5)*0.5;
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=(px/W-0.5)*3,y=(py/H-0.5)*3;
+    const z=zSlice;
+    // Object: smooth union of box and sphere
+    const box=sdBox3(x,y,z,0.5,0.8,0.5);
+    const sphere=sdSphere(x-0.3,y+0.5,z,0.5);
+    const d=opSmoothUnion(box,sphere,0.3);
+    // Torus handle
+    const handle=sdTorus(x,y-0.6,z,0.6,0.1);
+    const shape=opSmoothUnion(d,handle,0.15);
+    if(shape<0){
+      const infill=Math.sin(x*30)*Math.sin(y*30)>0?0.8:0.6;
+      const edge=Math.abs(shape)<0.05?1:infill;
+      setPixel(px,py,edge*180|0,edge*120+40|0,edge*60+30|0);
+    }else{
+      const contour=Math.exp(-shape*8)*0.3;
+      setPixel(px,py,contour*100+15|0,contour*80+14|0,contour*60+12|0);
+    }
+  }
+}},
+{id:'kerf',title:'Laser Kerf',live:1,
+note:`Laser cutting removes material of width k (the kerf). The cut part SDF must be offset inward by k/2, and the waste outward by k/2. Visualize both offset SDFs to see the material removed—it's pure SDF dilation and erosion.`,
+code:`float kerf(vec2 p, float k) {
+  float part = partSDF(p);
+  float inner = part + k * 0.5;  // eroded part
+  float outer = part - k * 0.5;  // dilated cut
+  // Material removed: max(-outer, inner)
+  float removed = max(-outer, inner);
+  return removed;
+}`,
+frame(t){
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=(px/W-0.5)*3.5,y=(py/H-0.5)*2.2;
+    // Shape: rounded rectangle with holes
+    let shape=sdBox2(x,y,1.0,0.5)-0.1;
+    shape=Math.max(shape,-sdCircle(x-0.4,y,0.15));
+    shape=Math.max(shape,-sdCircle(x+0.4,y,0.15));
+    shape=Math.max(shape,-sdBox2(x,y-0.2,0.15,0.25));
+    const k=0.04+Math.sin(t)*0.02;
+    const inner=shape+k*0.5;
+    const outer=shape-k*0.5;
+    if(inner<0){setPixel(px,py,80,120,160);} // part
+    else if(outer<0){
+      const heat=Math.sin(t*10+px*0.5)*0.3+0.7;
+      setPixel(px,py,255*heat|0,120*heat|0,30|0);
+    } // kerf (laser)
+    else{
+      const grid=(Math.floor(x*10)+Math.floor(y*10))&1?0.15:0.12;
+      setPixel(px,py,grid*200|0,grid*180|0,grid*160|0);
+    }
+  }
+}},
+{id:'mold_flow',title:'Injection Mold Flow',
+note:`Plastic flow in a mold follows the Hele-Shaw equation. The flow front is an expanding SDF from the gate, modified by local thickness. Thin sections fill last—the geometry determines the process.`,
+code:`float flowFront(vec2 p, vec2 gate, float time) {
+  float dist = length(p - gate);
+  float thickness = moldThickness(p);
+  float speed = thickness * thickness;  // Hele-Shaw
+  return dist / speed - time;
+}`},
+{id:'tolerance',title:'Tolerance Stack',
+note:`A tolerance zone is the region between two offset SDFs: part_SDF + tol_low and part_SDF + tol_high. The part is in-spec when its SDF falls between these bounds everywhere. Tolerance analysis IS SDF arithmetic.`,
+code:`bool inTolerance(vec2 p, float tol_lo, float tol_hi) {
+  float d = partSDF(p);
+  return d >= tol_lo && d <= tol_hi;
+}`},
+{id:'drill',title:'Drill Pattern',
+note:`Bolt hole patterns are circles placed at regular angular intervals on a bolt circle diameter. The SDF is the union of all hole SDFs—pure polar repetition like gear teeth, but subtractive.`,
+code:`float drillPattern(vec2 p, float bcd, int nHoles, float holeR) {
+  float d = 1e10;
+  for (int i = 0; i < nHoles; i++) {
+    float a = float(i) / float(nHoles) * 6.28;
+    vec2 c = vec2(cos(a), sin(a)) * bcd * 0.5;
+    d = min(d, length(p - c) - holeR);
+  }
+  return d;
+}`},
+]},
+
+// ──────────────────────────────────────
+//  COSMOLOGICAL
+// ──────────────────────────────────────
+cosmological: {
+  label:'COSMO', thesis:'The universe is a density field. Structure is gravitational noise.',
+  items:[
+{id:'galaxy_spiral',title:'Galaxy Spiral',live:1,
+note:`A logarithmic spiral r = a·e^(bθ) defines galaxy arm structure. The density falls off perpendicular to each arm as a Gaussian, and radially as an exponential disk. Two equations create a recognizable galaxy from any distance.`,
+code:`float galaxy(vec2 p, float arms, float twist) {
+  float r = length(p);
+  float angle = atan(p.y, p.x);
+  float arm_angle = angle - log(r + 0.1) * twist;
+  arm_angle = mod(arm_angle + 3.14, 6.28 / arms) - 3.14 / arms;
+  float arm_dist = abs(arm_angle) * r;
+  float density = exp(-arm_dist * arm_dist * 2.0) * exp(-r * 0.5);
+  return density;
+}`,
+frame(t){
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=(px-W/2)/60,y=(py-H/2)/60;
+    const r=Math.sqrt(x*x+y*y);
+    let a=Math.atan2(y,x)+t*0.1;
+    const arms=3,twist=2.5;
+    const armA=a-Math.log(r+0.1)*twist;
+    const armMod=((armA%(6.28/arms))+(6.28/arms))%(6.28/arms)-Math.PI/arms;
+    const armDist=Math.abs(armMod)*r;
+    const density=Math.exp(-armDist*armDist*3)*Math.exp(-r*0.3);
+    const core=Math.exp(-r*r*2)*0.8;
+    const v=density+core;
+    const dust=noise2(x*3+t*0.1,y*3)*0.1*Math.exp(-r*0.5);
+    const star=ihash(px,py)>0.995?Math.random()*0.5:0;
+    setPixel(px,py,
+      clamp(v*200+dust*100+star*200+8,0,255)|0,
+      clamp(v*160+dust*150+star*180+8,0,255)|0,
+      clamp(v*220+dust*200+star*150+15,0,255)|0);
+  }
+}},
+{id:'lensing',title:'Gravitational Lensing',live:1,
+note:`A massive object bends spacetime, deflecting light by α = 4GM/(c²b) where b is the impact parameter. For rendering: each pixel traces back through the deflection field to find what background it sees. The Einstein ring emerges at exactly the right angle.`,
+code:`vec2 deflect(vec2 p, vec2 lens, float einsteinR) {
+  vec2 d = p - lens;
+  float r = length(d);
+  float deflection = einsteinR * einsteinR / max(r, 0.01);
+  return p - normalize(d) * deflection;
+}`,
+frame(t){
+  // Background star grid
+  const bgW=640,bgH=400;
+  if(!this._bg){
+    this._bg=new Uint8Array(bgW*bgH*3);
+    for(let i=0;i<bgW*bgH;i++){
+      const v=ihash(i%bgW,Math.floor(i/bgW))>0.992?Math.random()*200+55:0;
+      this._bg[i*3]=v*0.8;this._bg[i*3+1]=v*0.9;this._bg[i*3+2]=v;
+    }
+    // Add a distant galaxy
+    for(let dy=-15;dy<=15;dy++)for(let dx=-25;dx<=25;dx++){
+      const gx=bgW/2+80+dx,gy=bgH/2-30+dy;
+      const d=Math.sqrt(dx*dx/625+dy*dy/225);
+      if(d<1){const v=(1-d)*120;this._bg[(gy*bgW+gx)*3]+=v*0.8;this._bg[(gy*bgW+gx)*3+1]+=v*0.6;this._bg[(gy*bgW+gx)*3+2]+=v;}
+    }
+  }
+  const lx=W/2+Math.sin(t*0.3)*30,ly=H/2+Math.cos(t*0.4)*20;
+  const eR=35+Math.sin(t*0.2)*5;
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const dx=px-lx,dy=py-ly;
+    const r=Math.sqrt(dx*dx+dy*dy)||0.01;
+    const defl=eR*eR/r;
+    const sx=(px-dx/r*defl+bgW)%bgW|0;
+    const sy=(py-dy/r*defl+bgH)%bgH|0;
+    const idx=(sy*bgW+sx)*3;
+    const ring=Math.exp(-Math.abs(r-eR)*0.3)*40;
+    setPixel(px,py,
+      Math.min(255,this._bg[idx]+ring*0.5)|0,
+      Math.min(255,this._bg[idx+1]+ring*0.8)|0,
+      Math.min(255,this._bg[idx+2]+ring)|0);
+  }
+}},
+{id:'cosmic_web',title:'Cosmic Web',live:1,
+note:`The large-scale structure of the universe is a Voronoi foam: matter concentrates along cell edges (filaments) and at vertices (galaxy clusters), with vast voids in cell interiors. Voronoi edge distance IS the cosmic web.`,
+code:`float cosmicWeb(vec2 p) {
+  float edge = voronoiEdge(p * 2.0);
+  float filament = smoothstep(0.15, 0.0, edge);
+  float cluster = 0.0;
+  for (int dy = -1; dy <= 1; dy++)
+  for (int dx = -1; dx <= 1; dx++) {
+    vec2 cell = floor(p * 2.0) + vec2(dx, dy);
+    vec2 pt = cell + hash2(cell);
+    cluster += exp(-length(p * 2.0 - pt) * 5.0);
+  }
+  return filament * 0.5 + cluster * 0.5;
+}`,
+frame(t){
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){
+    const x=px/H*5+t*0.05,y=py/H*5;
+    const edge=voronoiEdge(x,y);
+    const filament=smoothstep(0.15,0,edge);
+    // Galaxy clusters at cell vertices
+    const ix=Math.floor(x),iy=Math.floor(y);
+    let cluster=0;
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+      const cx=ix+dx,cy=iy+dy;
+      const px2=cx+ihash(cx,cy),py2=cy+ihash(cx+100,cy+100);
+      const d=Math.sqrt((x-px2)**2+(y-py2)**2);
+      cluster+=Math.exp(-d*8)*0.5;
+    }
+    const v=filament*0.4+cluster;
+    const star=ihash(px+300,py+300)>0.997?0.3:0;
+    setPixel(px,py,
+      clamp(v*100+star*150+5,0,255)|0,
+      clamp(v*120+star*120+5,0,255)|0,
+      clamp(v*200+star*100+12,0,255)|0);
+  }
+}},
+{id:'accretion',title:'Accretion Disk',
+note:`Matter spiraling into a black hole forms a disk. The temperature (and thus color) increases inward as T ∝ r^(-3/4). Doppler beaming brightens the approaching side and dims the receding side.`,
+code:`vec3 accretion(vec2 p) {
+  float r = length(p);
+  float temp = pow(r, -0.75);
+  float doppler = 1.0 + 0.3 * p.x / r;  // approaching side
+  return blackbody(temp * doppler) * smoothstep(0.5, 1.0, r);
+}`},
+{id:'nebula',title:'Nebula Cloud',
+note:`A nebula is 3D noise sampled in emission and absorption. Different elements (Hα, OIII, SII) emit at specific wavelengths, so color-code multiple noise octaves at different frequencies.`,
+code:`vec3 nebula(vec3 p) {
+  float ha = max(0.0, fbm(p * 1.5, 5) - 0.2);   // hydrogen alpha
+  float oiii = max(0.0, fbm(p * 2.0 + 10.0, 4) - 0.3);  // oxygen
+  float sii = max(0.0, fbm(p * 1.0 + 20.0, 3) - 0.25);  // sulfur
+  return vec3(sii, ha, oiii);  // Hubble palette
+}`},
+{id:'orbital',title:'Orbital Mechanics',
+note:`Kepler orbits are conic sections: e < 1 ellipse, e = 1 parabola, e > 1 hyperbola. The orbit shape r(θ) = a(1-e²)/(1+e·cos(θ)) is pure geometry—one equation for every orbit from Mercury to interstellar visitors.`,
+code:`float orbit(float theta, float a, float e) {
+  return a * (1.0 - e*e) / (1.0 + e * cos(theta));
+}`},
+{id:'cmb',title:'CMB Anisotropy',
+note:`The cosmic microwave background is a spherical noise field—temperature fluctuations of 1 part in 100,000 from the Big Bang. It's the oldest image in the universe, and it's a noise map on a sphere.`,
+code:`float cmb(vec2 uv) {
+  // Spherical harmonics decomposition
+  float T = 2.725;  // mean temperature in Kelvin
+  float dT = fbm(uv * 20.0, 6) * 0.0001;  // ~100 µK
+  return T + dT;
+}`},
+]},
+
+}; // end CATEGORIES
+
+// ═══════════════════════════════════════════════════════════════
+//  ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+const $fps = document.getElementById('fps');
+const $thesis = document.getElementById('thesis');
+const $pills = document.getElementById('pills');
+const $title = document.getElementById('itemTitle');
+const $note = document.getElementById('itemNote');
+const $code = document.getElementById('codeView');
+const $tabs = document.getElementById('catTabs');
+const $pause = document.getElementById('pauseBtn');
+const $cTabBtn = document.getElementById('cTabBtn');
+const $jsTabBtn = document.getElementById('jsTabBtn');
+const $runBtn = document.getElementById('runBtn');
+const $resetCodeBtn = document.getElementById('resetCodeBtn');
+const $runError = document.getElementById('runError');
+const $codeBodyC = document.getElementById('codeBodyC');
+const $codeBodyJS = document.getElementById('codeBodyJS');
+const $jsEditor = document.getElementById('jsEditor');
+let activeCodeTab = 'c';
+
+$pause.onclick = () => { paused = !paused; $pause.textContent = paused ? 'Play' : 'Pause'; };
+
+function switchCodeTab(tab) {
+  activeCodeTab = tab;
+  $cTabBtn.classList.toggle('active', tab === 'c');
+  $jsTabBtn.classList.toggle('active', tab === 'js');
+  $codeBodyC.style.display = tab === 'c' ? '' : 'none';
+  $codeBodyJS.style.display = tab === 'js' ? '' : 'none';
+  $runBtn.style.display = tab === 'js' ? '' : 'none';
+  $resetCodeBtn.style.display = tab === 'js' ? '' : 'none';
+}
+
+function runCode() {
+  try {
+    let src = $jsEditor.value.trim();
+    // Method shorthand "frame(t){...}" -> "function(t){...}"
+    if (/^[a-zA-Z_]\w*\s*\(/.test(src) && !src.startsWith('function')) {
+      src = 'function ' + src.replace(/^[a-zA-Z_]\w*/, '');
+    }
+    const fn = eval('(' + src + ')');
+    if (typeof fn !== 'function') throw new Error('Not a function');
+    currentItem.frame = fn;
+    $runError.style.color = 'var(--green)';
+    $runError.textContent = 'OK';
+    setTimeout(() => { $runError.textContent = ''; }, 1500);
+  } catch (e) {
+    $runError.style.color = 'var(--red)';
+    $runError.textContent = e.message;
+  }
+}
+
+function resetCode() {
+  if (currentItem && currentItem._origFrame) {
+    currentItem.frame = currentItem._origFrame;
+    $jsEditor.value = currentItem._origFrame.toString();
+    $runError.textContent = '';
+  }
+}
+
+$cTabBtn.onclick = () => switchCodeTab('c');
+$jsTabBtn.onclick = () => switchCodeTab('js');
+$runBtn.onclick = runCode;
+$resetCodeBtn.onclick = resetCode;
+$jsEditor.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); runCode(); }
+});
+
+// Build tabs
+const catKeys = Object.keys(CATEGORIES);
+catKeys.forEach(key => {
+  const cat = CATEGORIES[key];
+  if (!cat.items.length) return; // skip empty placeholder categories
+  const btn = document.createElement('button');
+  btn.className = 'tab';
+  btn.textContent = cat.label;
+  btn.onclick = () => switchCat(key);
+  btn.dataset.cat = key;
+  $tabs.appendChild(btn);
+});
+
+function switchCat(id) {
+  currentCat = id;
+  const cat = CATEGORIES[id];
+
+  // Tab active state
+  $tabs.querySelectorAll('.tab').forEach(t => {
+    t.className = t.dataset.cat === id ? 'tab active' : 'tab';
+  });
+
+  $thesis.textContent = cat.thesis;
+
+  // Build pills
+  $pills.innerHTML = '';
+  cat.items.forEach(item => {
+    const pill = document.createElement('button');
+    pill.className = 'pill';
+    pill.innerHTML = (item.live ? '<span class="dot"></span>' : '') + item.title;
+    pill.onclick = () => selectItem(id, item);
+    pill.dataset.id = item.id;
+    $pills.appendChild(pill);
+  });
+
+  // Select first live item or first item
+  const first = cat.items.find(i => i.live) || cat.items[0];
+  if (first) selectItem(id, first);
+}
+
+function selectItem(catId, item) {
+  if (currentItem && currentItem._state) currentItem._state = null;
+  currentItem = item;
+
+  // Pill active state
+  $pills.querySelectorAll('.pill').forEach(p => {
+    p.className = p.dataset.id === item.id ? 'pill active' : 'pill';
+  });
+
+  $title.textContent = item.title;
+  $note.textContent = item.note || '';
+  $code.innerHTML = highlight(item.code || '');
+
+  // Store original frame for revert
+  if (item.frame && !item._origFrame) item._origFrame = item.frame;
+  // Populate JS editor with clean function source
+  if (item.frame) {
+    let src = item.frame.toString();
+    // Convert method shorthand to function expression for eval compatibility
+    if (/^[a-zA-Z_]\w*\s*\(/.test(src) && !src.startsWith('function')) {
+      src = 'function ' + src.replace(/^[a-zA-Z_]\w*/, '');
+    }
+    $jsEditor.value = src;
+  } else {
+    $jsEditor.value = '// No live frame function for this item';
+  }
+  $runError.textContent = '';
+  switchCodeTab(activeCodeTab);
+
+  history.replaceState(null, '', '#' + catId + '/' + item.id);
+  mouseX = 0; mouseY = -0.3;
+}
+
+// Animation loop
+function loop(ts) {
+  if (!paused && currentItem) {
+    const t = (ts - startTime) / 1000;
+    if (currentItem.live && currentItem.frame) {
+      currentItem.frame(t);
+    } else {
+      renderPlaceholder();
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+  frameCount++;
+  if (ts - lastFpsTime > 1000) {
+    $fps.textContent = frameCount + ' FPS';
+    frameCount = 0; lastFpsTime = ts;
+  }
+  requestAnimationFrame(loop);
+}
+
+// Mouse interaction (orbit for 3D demos)
+canvas.addEventListener('mousedown', () => dragging = true);
+canvas.addEventListener('mouseup', () => dragging = false);
+canvas.addEventListener('mouseleave', () => dragging = false);
+canvas.addEventListener('mousemove', e => {
+  if (dragging) {
+    mouseX += e.movementX * 0.01;
+    mouseY = clamp(mouseY + e.movementY * 0.01, -1.2, 0.5);
+  }
+});
+
+// Touch support
+let lastTouch = null;
+canvas.addEventListener('touchstart', e => { lastTouch = e.touches[0]; e.preventDefault(); }, {passive:false});
+canvas.addEventListener('touchmove', e => {
+  if (lastTouch && e.touches[0]) {
+    mouseX += (e.touches[0].clientX - lastTouch.clientX) * 0.01;
+    mouseY = clamp(mouseY + (e.touches[0].clientY - lastTouch.clientY) * 0.01, -1.2, 0.5);
+    lastTouch = e.touches[0];
+  }
+  e.preventDefault();
+}, {passive:false});
+canvas.addEventListener('touchend', () => lastTouch = null);
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (!currentCat) return;
+  // Don't hijack arrows when editing JS
+  if (document.activeElement === $jsEditor) return;
+  const cat = CATEGORIES[currentCat];
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    const idx = cat.items.indexOf(currentItem);
+    const next = e.key === 'ArrowRight' ? (idx+1) % cat.items.length : (idx-1+cat.items.length) % cat.items.length;
+    selectItem(currentCat, cat.items[next]);
+    e.preventDefault();
+  }
+  // Number keys switch categories
+  const num = parseInt(e.key);
+  if (num >= 1 && num <= 9) {
+    const visibleCats = catKeys.filter(k => CATEGORIES[k].items.length > 0);
+    if (num <= visibleCats.length) switchCat(visibleCats[num-1]);
+  }
+});
+
+// Canvas resize
+function resizeCanvas() {
+  const wrap = document.querySelector('.canvas-wrap');
+  const ww = wrap.clientWidth, wh = wrap.clientHeight;
+  const scale = Math.min(ww / W, wh / H, 3);
+  canvas.style.width = (W * scale) + 'px';
+  canvas.style.height = (H * scale) + 'px';
+}
+window.addEventListener('resize', resizeCanvas);
+
+// Init from hash or default
+function init() {
+  const hash = location.hash.slice(1);
+  const visibleCats = catKeys.filter(k => CATEGORIES[k].items.length > 0);
+  if (hash) {
+    const [cat, itemId] = hash.split('/');
+    if (CATEGORIES[cat] && CATEGORIES[cat].items.length) {
+      switchCat(cat);
+      if (itemId) {
+        const item = CATEGORIES[cat].items.find(i => i.id === itemId);
+        if (item) selectItem(cat, item);
+      }
+      resizeCanvas();
+      requestAnimationFrame(loop);
+      return;
+    }
+  }
+  if (visibleCats.length) switchCat(visibleCats[0]);
+  resizeCanvas();
+  requestAnimationFrame(loop);
+}
+
+init();
+</script>
+</body>
+</html>

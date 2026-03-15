@@ -1,0 +1,2225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RawBuf Playground</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0f0e0c;
+    --bg-surface: #1a1815;
+    --bg-elevated: #242119;
+    --bg-code: #1e1c18;
+    --text: #d4c8b0;
+    --text-muted: #8a7e6a;
+    --text-bright: #f0e8d8;
+    --accent: #e6a756;
+    --accent-dim: #c4853a;
+    --blue: #5b9bd5;
+    --cyan: #4ecdc4;
+    --pink: #e06b8d;
+    --green: #7ec97e;
+    --red: #d45b5b;
+    --purple: #a78bdb;
+    --border: #2e2a24;
+    --border-light: #3d3730;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* --- HEADER --- */
+  header {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-shrink: 0;
+  }
+  .logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-bright);
+  }
+  .logo span { color: var(--accent); }
+
+  /* --- TABS --- */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    flex-shrink: 1;
+  }
+  .tab {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-radius: 6px 6px 0 0;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); background: var(--bg-elevated); }
+  .tab.active {
+    color: var(--accent);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-bottom-color: var(--bg);
+    margin-bottom: -1px;
+  }
+
+  .header-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .fps-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--green);
+  }
+  .btn {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 0.35rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+  .btn.active { background: var(--accent-dim); color: var(--bg); border-color: var(--accent); }
+
+  /* --- MAIN LAYOUT --- */
+  .main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* --- CANVAS PANEL --- */
+  .canvas-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    min-width: 0;
+  }
+  .canvas-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+  }
+  canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  /* --- CONTROLS --- */
+  .controls {
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    padding: 0.8rem 1.2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .control-group label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    min-width: 50px;
+  }
+  .control-group input[type="range"] {
+    width: 100px;
+    accent-color: var(--accent);
+    height: 4px;
+  }
+  .control-group .val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    min-width: 35px;
+    text-align: right;
+  }
+  .control-group select {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+  }
+
+  /* --- PALETTE SWATCHES --- */
+  .palette-bar {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .palette-bar label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-right: 4px;
+  }
+  .pal-swatch {
+    width: 48px;
+    height: 22px;
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+    position: relative;
+    overflow: hidden;
+  }
+  .pal-swatch:hover { transform: scale(1.08); }
+  .pal-swatch.active { border-color: var(--accent); box-shadow: 0 0 6px var(--accent-dim); }
+
+  /* --- CODE PANEL --- */
+  .code-panel {
+    width: 480px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-code);
+    overflow: hidden;
+  }
+  .code-header {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .code-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+  }
+  .code-body pre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre;
+    tab-size: 4;
+  }
+  .code-body .kw { color: var(--pink); }
+  .code-body .fn { color: var(--blue); }
+  .code-body .ty { color: var(--cyan); }
+  .code-body .cm { color: var(--text-muted); font-style: italic; }
+  .code-body .st { color: var(--green); }
+  .code-body .nu { color: var(--accent); }
+
+  /* scrollbar */
+  .code-body::-webkit-scrollbar { width: 6px; }
+  .code-body::-webkit-scrollbar-track { background: var(--bg-code); }
+  .code-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* --- CODE TABS --- */
+  .code-tabs { display: flex; gap: 2px; }
+  .code-tab {
+    background: transparent; border: none; color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    padding: 0.3rem 0.6rem; cursor: pointer; border-radius: 3px;
+    transition: all 0.15s;
+  }
+  .code-tab:hover { color: var(--text); }
+  .code-tab.active { color: var(--accent); background: var(--bg-code); }
+
+  #jsEditor {
+    width: 100%; height: 100%; resize: none;
+    background: var(--bg-code); color: var(--text);
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    line-height: 1.6; border: none; outline: none;
+    padding: 1rem; tab-size: 2; white-space: pre;
+  }
+  .btn-run {
+    background: var(--green); color: var(--bg); border: none;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+    padding: 0.3rem 0.8rem; border-radius: 3px; cursor: pointer;
+  }
+  .btn-run:hover { opacity: 0.85; }
+  .run-error {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--red); max-width: 200px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* --- responsive --- */
+  @media (max-width: 900px) {
+    .code-panel { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Raw<span>Buf</span> Playground</div>
+  <div class="tabs">
+    <button class="tab active" data-demo="plasma">Plasma</button>
+    <button class="tab" data-demo="game">Game</button>
+    <button class="tab" data-demo="audio">Audio</button>
+    <button class="tab" data-demo="fire">Fire</button>
+    <button class="tab" data-demo="raymarch">Raymarch</button>
+  </div>
+  <div class="header-right">
+    <span class="fps-display" id="fps">60 FPS</span>
+    <button class="btn" id="pauseBtn">Pause</button>
+    <button class="btn" id="resetBtn">Reset</button>
+  </div>
+</header>
+
+<div class="main">
+  <div class="canvas-panel">
+    <div class="canvas-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+    <div class="controls" id="controls"></div>
+  </div>
+  <div class="code-panel">
+    <div class="code-header">
+      <div class="code-tabs">
+        <button class="code-tab active" data-codetab="c" id="cTabBtn">C concept</button>
+        <button class="code-tab" data-codetab="js" id="jsTabBtn">JS live</button>
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center">
+        <span class="run-error" id="runError"></span>
+        <button class="btn" id="resetCodeBtn" style="display:none" onclick="resetCode()">Revert</button>
+        <button class="btn-run" id="runBtn" style="display:none" onclick="runCode()">Run</button>
+      </div>
+    </div>
+    <div class="code-body" id="codeBodyC">
+      <pre id="codeView"></pre>
+    </div>
+    <div class="code-body" id="codeBodyJS" style="display:none">
+      <textarea id="jsEditor" spellcheck="false"></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  RawBuf Playground v2 — Visual Showcase
+// ═══════════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('canvas');
+const ctx2d = canvas.getContext('2d');
+const controlsEl = document.getElementById('controls');
+const codeView = document.getElementById('codeView');
+const fpsEl = document.getElementById('fps');
+const pauseBtn = document.getElementById('pauseBtn');
+const resetBtn = document.getElementById('resetBtn');
+const codeBodyC = document.getElementById('codeBodyC');
+const codeBodyJS = document.getElementById('codeBodyJS');
+const jsEditor = document.getElementById('jsEditor');
+const runBtn = document.getElementById('runBtn');
+const resetCodeBtn = document.getElementById('resetCodeBtn');
+const runError = document.getElementById('runError');
+const cTabBtn = document.getElementById('cTabBtn');
+const jsTabBtn = document.getElementById('jsTabBtn');
+let activeCodeTab = 'c';
+
+let W = 320, H = 200;
+let imageData, pixels;
+let paused = false;
+let currentDemo = 'plasma';
+let animId = null;
+let frameCount = 0;
+let lastFpsTime = performance.now();
+let startTime = performance.now();
+
+// --- Buffer helpers ---
+function setPixel(x, y, r, g, b) {
+  if (x < 0 || x >= W || y < 0 || y >= H) return;
+  const i = (y * W + x) * 4;
+  pixels[i] = r; pixels[i+1] = g; pixels[i+2] = b; pixels[i+3] = 255;
+}
+
+function getPixelR(x, y) {
+  if (x < 0 || x >= W || y < 0 || y >= H) return 0;
+  return pixels[(y * W + x) * 4];
+}
+
+function clear(r, g, b) {
+  for (let i = 0; i < pixels.length; i += 4) {
+    pixels[i] = r; pixels[i+1] = g; pixels[i+2] = b; pixels[i+3] = 255;
+  }
+}
+
+function hue(h) {
+  h = h - Math.floor(h);
+  const f = h * 6;
+  const i = Math.floor(f) % 6;
+  const frac = f - Math.floor(f);
+  let r, g, b;
+  switch (i) {
+    case 0: r=1; g=frac; b=0; break;
+    case 1: r=1-frac; g=1; b=0; break;
+    case 2: r=0; g=1; b=frac; break;
+    case 3: r=0; g=1-frac; b=1; break;
+    case 4: r=frac; g=0; b=1; break;
+    case 5: r=1; g=0; b=1-frac; break;
+  }
+  return [(r*255)|0, (g*255)|0, (b*255)|0];
+}
+
+function drawLine(x0, y0, x1, y1, r, g, b) {
+  let dx = Math.abs(x1-x0), dy = -Math.abs(y1-y0);
+  let sx = x0<x1?1:-1, sy = y0<y1?1:-1;
+  let err = dx + dy;
+  while (true) {
+    setPixel(x0, y0, r, g, b);
+    if (x0===x1 && y0===y1) break;
+    const e2 = 2*err;
+    if (e2 >= dy) { err += dy; x0 += sx; }
+    if (e2 <= dx) { err += dx; y0 += sy; }
+  }
+}
+
+function fillRect(x, y, w, h, r, g, b) {
+  for (let row = y; row < y+h; row++)
+    for (let col = x; col < x+w; col++)
+      setPixel(col, row, r, g, b);
+}
+
+function fillCircle(cx, cy, rad, r, g, b) {
+  for (let y = -rad; y <= rad; y++) {
+    const hw = Math.sqrt(rad*rad - y*y)|0;
+    for (let x = -hw; x <= hw; x++)
+      setPixel(cx+x, cy+y, r, g, b);
+  }
+}
+
+function drawCircle(cx, cy, rad, r, g, b) {
+  let x = rad, y = 0, err = 1 - rad;
+  while (x >= y) {
+    setPixel(cx+x,cy+y,r,g,b); setPixel(cx-x,cy+y,r,g,b);
+    setPixel(cx+x,cy-y,r,g,b); setPixel(cx-x,cy-y,r,g,b);
+    setPixel(cx+y,cy+x,r,g,b); setPixel(cx-y,cy+x,r,g,b);
+    setPixel(cx+y,cy-x,r,g,b); setPixel(cx-y,cy-x,r,g,b);
+    y++;
+    if (err < 0) err += 2*y+1;
+    else { x--; err += 2*(y-x)+1; }
+  }
+}
+
+// Simple 3x5 digit font for score rendering
+const DIGITS = [
+  [0x1F,0x11,0x11,0x11,0x1F], // 0
+  [0x04,0x0C,0x04,0x04,0x0E], // 1
+  [0x1F,0x01,0x1F,0x10,0x1F], // 2
+  [0x1F,0x01,0x1F,0x01,0x1F], // 3
+  [0x11,0x11,0x1F,0x01,0x01], // 4
+  [0x1F,0x10,0x1F,0x01,0x1F], // 5
+  [0x1F,0x10,0x1F,0x11,0x1F], // 6
+  [0x1F,0x01,0x02,0x04,0x04], // 7
+  [0x1F,0x11,0x1F,0x11,0x1F], // 8
+  [0x1F,0x11,0x1F,0x01,0x1F], // 9
+];
+
+function drawDigit(cx, cy, d, r, g, b, scale) {
+  scale = scale || 1;
+  const glyph = DIGITS[d];
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 5; col++) {
+      if (glyph[row] & (1 << (4 - col))) {
+        for (let sy = 0; sy < scale; sy++)
+          for (let sx = 0; sx < scale; sx++)
+            setPixel(cx + col * scale + sx, cy + row * scale + sy, r, g, b);
+      }
+    }
+  }
+}
+
+function drawNumber(cx, cy, num, r, g, b, scale) {
+  scale = scale || 1;
+  const s = String(num);
+  for (let i = 0; i < s.length; i++) {
+    drawDigit(cx + i * (6 * scale), cy, parseInt(s[i]), r, g, b, scale);
+  }
+}
+
+// Simple 3x5 letter bitmaps for text rendering
+const LETTERS = {
+  'S':[0x1F,0x10,0x1F,0x01,0x1F], 'C':[0x1F,0x10,0x10,0x10,0x1F],
+  'O':[0x1F,0x11,0x11,0x11,0x1F], 'R':[0x1F,0x11,0x1F,0x14,0x12],
+  'E':[0x1F,0x10,0x1E,0x10,0x1F], 'G':[0x1F,0x10,0x17,0x11,0x1F],
+  'A':[0x0E,0x11,0x1F,0x11,0x11], 'M':[0x11,0x1B,0x15,0x11,0x11],
+  'V':[0x11,0x11,0x11,0x0A,0x04], 'D':[0x1E,0x11,0x11,0x11,0x1E],
+  'P':[0x1F,0x11,0x1F,0x10,0x10], 'W':[0x11,0x11,0x15,0x1B,0x11],
+  'T':[0x1F,0x04,0x04,0x04,0x04], 'I':[0x0E,0x04,0x04,0x04,0x0E],
+  'N':[0x11,0x19,0x15,0x13,0x11], 'K':[0x11,0x12,0x1C,0x12,0x11],
+  'Y':[0x11,0x0A,0x04,0x04,0x04], 'F':[0x1F,0x10,0x1E,0x10,0x10],
+  'H':[0x11,0x11,0x1F,0x11,0x11], 'L':[0x10,0x10,0x10,0x10,0x1F],
+  ' ':[0x00,0x00,0x00,0x00,0x00], 'X':[0x11,0x0A,0x04,0x0A,0x11],
+};
+
+function drawText(cx, cy, text, r, g, b, scale) {
+  scale = scale || 1;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i].toUpperCase();
+    const glyph = LETTERS[ch] || DIGITS[parseInt(ch)];
+    if (!glyph) continue;
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 5; col++) {
+        if (glyph[row] & (1 << (4 - col))) {
+          for (let sy = 0; sy < scale; sy++)
+            for (let sx = 0; sx < scale; sx++)
+              setPixel(cx + i * (6 * scale) + col * scale + sx, cy + row * scale + sy, r, g, b);
+        }
+      }
+    }
+  }
+}
+
+const keys = {};
+
+
+// ═══════════════════════════════════════════════
+//  DEMO: PLASMA (enhanced)
+// ═══════════════════════════════════════════════
+const plasmaParams = {
+  speed: 1.0,
+  scale: 1.0,
+  waveCount: 6,
+  depth: 0.0,
+  glow: 0,
+  palette: 0, // 0=classic, 1=fire, 2=ocean, 3=neon, 4=acid
+};
+
+const plasmaPalettes = [
+  // Classic — phase-shifted sine RGB
+  (v, cs) => {
+    const r = (Math.sin(v * 0.7854) * 127 + 128) | 0;
+    const g = (Math.sin(v * 0.7854 + 2.094) * 127 + 128) | 0;
+    const b = (Math.sin(v * 0.7854 + 4.189) * 127 + 128) | 0;
+    return [r, g, b];
+  },
+  // Fire — black/red/orange/yellow/white
+  (v) => {
+    const t = (Math.sin(v * 0.5) * 0.5 + 0.5);
+    const r = Math.min(255, t * 3 * 255) | 0;
+    const g = Math.min(255, Math.max(0, (t - 0.33) * 3 * 255)) | 0;
+    const b = Math.min(255, Math.max(0, (t - 0.67) * 3 * 255)) | 0;
+    return [r, g, b];
+  },
+  // Ocean — deep blue/cyan/teal/white
+  (v) => {
+    const t = Math.sin(v * 0.5) * 0.5 + 0.5;
+    const r = (t * t * 100) | 0;
+    const g = (t * 180 + 30) | 0;
+    const b = (150 + t * 105) | 0;
+    return [r, g, b];
+  },
+  // Neon — hot pink/electric blue/cyan
+  (v) => {
+    const r = (Math.sin(v * 0.6) * 127 + 128) | 0;
+    const g = (Math.sin(v * 0.9 + 2.5) * 80 + 40) | 0;
+    const b = (Math.sin(v * 0.4 + 1.0) * 127 + 128) | 0;
+    return [r, g, b];
+  },
+  // Acid — green/yellow/lime
+  (v) => {
+    const t = Math.sin(v * 0.5) * 0.5 + 0.5;
+    const r = (t * 200 + 20) | 0;
+    const g = (180 + t * 75) | 0;
+    const b = (Math.sin(v * 1.2) * 40 + 20) | 0;
+    return [r, g, b];
+  },
+];
+
+function plasmaFrame(t) {
+  const sp = t * plasmaParams.speed;
+  const sc = 0.02 * plasmaParams.scale;
+  const depth = plasmaParams.depth;
+  const wc = plasmaParams.waveCount;
+  const halfW = W / 2, halfH = H / 2;
+  const palFn = plasmaPalettes[plasmaParams.palette];
+
+  // Wave parameters — up to 8 layers
+  const waves = [
+    { fx: 1.5, fy: 0,    ts: 1.1,  type: 'x' },
+    { fx: 0,   fy: 2.0,  ts: 0.7,  type: 'y' },
+    { fx: 0.75,fy: 0.75, ts: 1.3,  type: 'xy' },
+    { fx: 1.0, fy: 1.0,  ts: -0.9, type: 'dist' },
+    { fx: 1.2, fy: 0.8,  ts: 0.5,  type: 'xy' },
+    { fx: 0.5, fy: 1.5,  ts: -1.1, type: 'y' },
+    { fx: 0.9, fy: 0.3,  ts: 1.7,  type: 'dist' },
+    { fx: 1.8, fy: 0.6,  ts: -0.6, type: 'x' },
+  ];
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const dx = x - halfW, dy = y - halfH;
+      const dist = Math.sqrt(dx * dx + dy * dy) + 0.001;
+      const angle = Math.atan2(dy, dx);
+
+      const tx = angle / Math.PI * 100;
+      const ty = 200 / dist;
+      const fx = x * (1 - depth) + tx * depth;
+      const fy = y * (1 - depth) + (ty + sp * 30) * depth;
+      const fd = Math.sqrt(fx * fx + fy * fy);
+
+      let v = 0;
+      for (let w = 0; w < wc && w < 8; w++) {
+        const wave = waves[w];
+        if (wave.type === 'x') v += Math.sin(fx * sc * wave.fx + sp * wave.ts);
+        else if (wave.type === 'y') v += Math.sin(fy * sc * wave.fy + sp * wave.ts);
+        else if (wave.type === 'xy') v += Math.sin((fx * wave.fx + fy * wave.fy) * sc + sp * wave.ts);
+        else v += Math.sin(fd * sc * wave.fx - sp * wave.ts);
+      }
+
+      const vignette = depth > 0 ? Math.min(1, dist / (Math.min(halfW, halfH) * 0.9)) : 0;
+      const fade = 1 - vignette * depth * 0.7;
+
+      let [r, g, b] = palFn(v);
+
+      if (plasmaParams.glow) {
+        const bright = Math.max(r, g, b) / 255;
+        const boost = bright * bright * 80 * plasmaParams.glow;
+        r = Math.min(255, r + boost) | 0;
+        g = Math.min(255, g + boost) | 0;
+        b = Math.min(255, b + boost) | 0;
+      }
+
+      setPixel(x, y, (r * fade) | 0, (g * fade) | 0, (b * fade) | 0);
+    }
+  }
+}
+
+function plasmaControls() {
+  return `
+    <div class="control-group">
+      <label>Speed</label>
+      <input type="range" min="0" max="30" step="1" value="10" data-param="speed" data-scale="0.1">
+      <span class="val" data-for="speed">${plasmaParams.speed.toFixed(1)}</span>
+    </div>
+    <div class="control-group">
+      <label>Scale</label>
+      <input type="range" min="2" max="30" step="1" value="10" data-param="scale" data-scale="0.1">
+      <span class="val" data-for="scale">${plasmaParams.scale.toFixed(1)}</span>
+    </div>
+    <div class="control-group">
+      <label>Depth</label>
+      <input type="range" min="0" max="100" step="1" value="0" data-param="depth" data-scale="0.01">
+      <span class="val" data-for="depth">0.00</span>
+    </div>
+    <div class="control-group">
+      <label>Glow</label>
+      <input type="range" min="0" max="100" step="1" value="0" data-param="glow" data-scale="0.01">
+      <span class="val" data-for="glow">0.00</span>
+    </div>
+    <div class="control-group">
+      <label>Waves</label>
+      <input type="range" min="1" max="8" step="1" value="6" data-param="waveCount" data-scale="1">
+      <span class="val" data-for="waveCount">6</span>
+    </div>
+    <div class="palette-bar">
+      <label>Palette</label>
+      <canvas class="pal-swatch${plasmaParams.palette===0?' active':''}" data-pal="0" width="48" height="22" title="Classic"></canvas>
+      <canvas class="pal-swatch${plasmaParams.palette===1?' active':''}" data-pal="1" width="48" height="22" title="Fire"></canvas>
+      <canvas class="pal-swatch${plasmaParams.palette===2?' active':''}" data-pal="2" width="48" height="22" title="Ocean"></canvas>
+      <canvas class="pal-swatch${plasmaParams.palette===3?' active':''}" data-pal="3" width="48" height="22" title="Neon"></canvas>
+      <canvas class="pal-swatch${plasmaParams.palette===4?' active':''}" data-pal="4" width="48" height="22" title="Acid"></canvas>
+    </div>`;
+}
+
+const plasmaCode = `<span class="cm">/* plasma.c — Demoscene plasma + tunnel effect</span>
+<span class="cm"> * Up to 8 layered sine waves with palette presets.</span>
+<span class="cm"> * Depth warp converts to polar coords for tunnel. */</span>
+
+<span class="kw">#define</span> RAWBUF_IMPLEMENTATION
+<span class="kw">#include</span> <span class="st">"../rawbuf.h"</span>
+<span class="kw">#include</span> <span class="st">&lt;math.h&gt;</span>
+
+<span class="kw">typedef struct</span> {
+    <span class="ty">float</span> fx, fy, ts;
+    <span class="kw">enum</span> { WAVE_X, WAVE_Y, WAVE_XY, WAVE_DIST } type;
+} <span class="ty">wave_t</span>;
+
+<span class="kw">static</span> <span class="ty">wave_t</span> waves[<span class="nu">8</span>] = {
+    { <span class="nu">1.5f</span>, <span class="nu">0</span>,    <span class="nu">1.1f</span>,  WAVE_X    },
+    { <span class="nu">0</span>,    <span class="nu">2.0f</span>, <span class="nu">0.7f</span>,  WAVE_Y    },
+    { <span class="nu">0.75f</span>,<span class="nu">0.75f</span>,<span class="nu">1.3f</span>,  WAVE_XY   },
+    { <span class="nu">1.0f</span>, <span class="nu">1.0f</span>, <span class="nu">-0.9f</span>, WAVE_DIST },
+    <span class="cm">/* ...4 more layers */</span>
+};
+
+<span class="kw">static void</span> <span class="fn">draw</span>(<span class="ty">rb_ctx_t</span> *ctx) {
+    <span class="ty">rb_surface_t</span> *s = &ctx->surface;
+    <span class="ty">float</span> t = (<span class="ty">float</span>)ctx->time;
+
+    <span class="kw">for</span> (<span class="ty">int</span> y = <span class="nu">0</span>; y < s->height; y++) {
+        <span class="kw">for</span> (<span class="ty">int</span> x = <span class="nu">0</span>; x < s->width; x++) {
+            <span class="cm">/* Tunnel warp: polar coordinates */</span>
+            <span class="ty">float</span> dx = x - hw, dy = y - hh;
+            <span class="ty">float</span> dist = sqrtf(dx*dx + dy*dy);
+
+            <span class="cm">/* Sum N sine wave layers */</span>
+            <span class="ty">float</span> v = <span class="nu">0</span>;
+            <span class="kw">for</span> (<span class="ty">int</span> w = <span class="nu">0</span>; w < wave_count; w++) {
+                <span class="kw">switch</span> (waves[w].type) {
+                <span class="kw">case</span> WAVE_X:
+                    v += sinf(fx * sc * waves[w].fx + t * waves[w].ts);
+                    <span class="kw">break</span>;
+                <span class="kw">case</span> WAVE_DIST:
+                    v += sinf(fd * sc * waves[w].fx - t * waves[w].ts);
+                    <span class="kw">break</span>;
+                }
+            }
+
+            <span class="cm">/* Apply palette + vignette + glow */</span>
+            <span class="ty">uint32_t</span> color = <span class="fn">palette_lookup</span>(pal, v);
+            <span class="fn">rb_pixel</span>(s, x, y, color);
+        }
+    }
+}`;
+
+
+// ═══════════════════════════════════════════════
+//  DEMO: GAME ("Collect & Escape")
+// ═══════════════════════════════════════════════
+const gameParams = {
+  gravity: 0,
+  friction: 0.97,
+  radius: 6,
+};
+
+let ball = { x: 0, y: 0, vx: 0, vy: 0 };
+let particles = [];
+let collectibles = [];
+let enemies = [];
+let gameScore = 0;
+let gameTime = 0;
+let gameOver = false;
+let gameDifficulty = 1;
+let nextEnemySpawn = 2;
+let nextCollectSpawn = 0;
+
+function spawnParticles(x, y, count, cr, cg, cb) {
+  for (let i = 0; i < count && particles.length < 300; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 30 + Math.random() * 120;
+    particles.push({
+      x, y,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+      life: 0.3 + Math.random() * 0.6,
+      r: cr || (150 + Math.random() * 105) | 0,
+      g: cg || (150 + Math.random() * 105) | 0,
+      b: cb || (150 + Math.random() * 105) | 0,
+    });
+  }
+}
+
+function spawnCollectible() {
+  collectibles.push({
+    x: 20 + Math.random() * (W - 40),
+    y: 20 + Math.random() * (H - 40),
+    phase: Math.random() * Math.PI * 2,
+    life: 10 + Math.random() * 5,
+  });
+}
+
+function spawnEnemy() {
+  // Spawn from edges
+  const side = (Math.random() * 4) | 0;
+  let ex, ey;
+  if (side === 0) { ex = 0; ey = Math.random() * H; }
+  else if (side === 1) { ex = W; ey = Math.random() * H; }
+  else if (side === 2) { ex = Math.random() * W; ey = 0; }
+  else { ex = Math.random() * W; ey = H; }
+  enemies.push({
+    x: ex, y: ey,
+    speed: 30 + gameDifficulty * 8,
+    radius: 4 + Math.random() * 2,
+  });
+}
+
+function gameReset() {
+  ball.x = W / 2; ball.y = H / 2; ball.vx = 0; ball.vy = 0;
+  particles = [];
+  collectibles = [];
+  enemies = [];
+  gameScore = 0;
+  gameTime = 0;
+  gameOver = false;
+  gameDifficulty = 1;
+  nextEnemySpawn = 2;
+  nextCollectSpawn = 0;
+  // Spawn initial collectibles
+  for (let i = 0; i < 3; i++) spawnCollectible();
+}
+
+function gameFrame(t, dt) {
+  if (gameOver) {
+    // Draw game over screen
+    clear(10, 5, 5);
+
+    // Flash red border
+    const flash = Math.sin(t * 4) * 0.3 + 0.7;
+    for (let x = 0; x < W; x++) {
+      setPixel(x, 0, (200 * flash) | 0, 20, 20);
+      setPixel(x, 1, (150 * flash) | 0, 10, 10);
+      setPixel(x, H - 1, (200 * flash) | 0, 20, 20);
+      setPixel(x, H - 2, (150 * flash) | 0, 10, 10);
+    }
+    for (let y = 0; y < H; y++) {
+      setPixel(0, y, (200 * flash) | 0, 20, 20);
+      setPixel(1, y, (150 * flash) | 0, 10, 10);
+      setPixel(W - 1, y, (200 * flash) | 0, 20, 20);
+      setPixel(W - 2, y, (150 * flash) | 0, 10, 10);
+    }
+
+    // Draw death particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vy += 50 * dt;
+      p.life -= dt;
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+      const a = Math.min(p.life, 1);
+      fillRect((p.x - 1) | 0, (p.y - 1) | 0, 3, 3, (p.r * a) | 0, (p.g * a) | 0, (p.b * a) | 0);
+    }
+
+    // Game over text
+    drawText((W / 2 - 54) | 0, (H / 2 - 20) | 0, 'GAME OVER', 220, 60, 60, 2);
+    drawText((W / 2 - 36) | 0, (H / 2 + 5) | 0, 'SCORE', 180, 160, 140, 1);
+    drawNumber((W / 2 - 12) | 0, (H / 2 + 15) | 0, gameScore, 230, 200, 80, 2);
+
+    // R to restart hint (blink)
+    if (Math.sin(t * 3) > 0) {
+      drawText((W / 2 - 60) | 0, (H / 2 + 40) | 0, 'PRESS R TO PLAY', 120, 120, 100, 1);
+    }
+    return;
+  }
+
+  gameTime += dt;
+
+  // Input
+  const push = 400;
+  if (keys['ArrowUp'] || keys['w']) ball.vy -= push * dt;
+  if (keys['ArrowDown'] || keys['s']) ball.vy += push * dt;
+  if (keys['ArrowLeft'] || keys['a']) ball.vx -= push * dt;
+  if (keys['ArrowRight'] || keys['d']) ball.vx += push * dt;
+
+  // Physics
+  ball.vx *= gameParams.friction;
+  ball.vy *= gameParams.friction;
+  ball.x += ball.vx * dt;
+  ball.y += ball.vy * dt;
+
+  const R = gameParams.radius;
+  if (ball.x - R < 0) { ball.x = R; ball.vx = -ball.vx * 0.5; }
+  if (ball.x + R >= W) { ball.x = W - R - 1; ball.vx = -ball.vx * 0.5; }
+  if (ball.y - R < 0) { ball.y = R; ball.vy = -ball.vy * 0.5; }
+  if (ball.y + R >= H) { ball.y = H - R - 1; ball.vy = -ball.vy * 0.5; }
+
+  // Spawn collectibles
+  nextCollectSpawn -= dt;
+  if (nextCollectSpawn <= 0 && collectibles.length < 5) {
+    spawnCollectible();
+    nextCollectSpawn = 3 + Math.random() * 4;
+  }
+
+  // Spawn enemies (ramps with difficulty)
+  nextEnemySpawn -= dt;
+  if (nextEnemySpawn <= 0) {
+    spawnEnemy();
+    gameDifficulty = 1 + gameTime / 15;
+    nextEnemySpawn = Math.max(0.5, 3 - gameDifficulty * 0.3);
+  }
+
+  // Check collectible pickup
+  for (let i = collectibles.length - 1; i >= 0; i--) {
+    const c = collectibles[i];
+    c.life -= dt;
+    if (c.life <= 0) { collectibles.splice(i, 1); continue; }
+    const dx = ball.x - c.x, dy = ball.y - c.y;
+    if (dx * dx + dy * dy < (R + 6) * (R + 6)) {
+      gameScore++;
+      spawnParticles(c.x, c.y, 15, 80, 255, 120);
+      collectibles.splice(i, 1);
+    }
+  }
+
+  // Update enemies — chase the player
+  for (const e of enemies) {
+    const dx = ball.x - e.x, dy = ball.y - e.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) + 0.001;
+    e.x += (dx / dist) * e.speed * dt;
+    e.y += (dy / dist) * e.speed * dt;
+
+    // Check collision with player
+    if (dist < R + e.radius) {
+      gameOver = true;
+      spawnParticles(ball.x, ball.y, 50, 255, 80, 40);
+      return;
+    }
+  }
+
+  // Update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  // --- Draw ---
+  // Background gradient
+  for (let y = 0; y < H; y++) {
+    const v = (y * 15 / H) | 0;
+    for (let x = 0; x < W; x++) setPixel(x, y, v, v >> 1, v + 5);
+  }
+
+  // Grid pattern
+  for (let y = 0; y < H; y += 20)
+    for (let x = 0; x < W; x++) setPixel(x, y, 15, 12, 20);
+  for (let x = 0; x < W; x += 20)
+    for (let y = 0; y < H; y++) setPixel(x, y, 15, 12, 20);
+
+  // Particles
+  for (const p of particles) {
+    const a = Math.min(p.life, 1);
+    const sz = (a * 2 + 1) | 0;
+    fillRect((p.x - sz / 2) | 0, (p.y - sz / 2) | 0, sz, sz,
+      (p.r * a) | 0, (p.g * a) | 0, (p.b * a) | 0);
+  }
+
+  // Collectibles — glowing orbs
+  for (const c of collectibles) {
+    const pulse = Math.sin(t * 5 + c.phase) * 0.3 + 0.7;
+    const glow = (c.life < 3) ? (Math.sin(t * 10) > 0 ? 1 : 0.3) : 1; // blink when expiring
+    const brightness = pulse * glow;
+    fillCircle(c.x | 0, c.y | 0, 6, 0, (60 * brightness) | 0, 0);
+    fillCircle(c.x | 0, c.y | 0, 4, (40 * brightness) | 0, (220 * brightness) | 0, (80 * brightness) | 0);
+    fillCircle(c.x | 0, c.y | 0, 2, (120 * brightness) | 0, (255 * brightness) | 0, (180 * brightness) | 0);
+  }
+
+  // Enemies — red chasers
+  for (const e of enemies) {
+    const pulse = Math.sin(t * 8 + e.x * 0.1) * 0.2 + 0.8;
+    fillCircle(e.x | 0, e.y | 0, (e.radius + 1) | 0, (40 * pulse) | 0, 0, 0);
+    fillCircle(e.x | 0, e.y | 0, e.radius | 0, (220 * pulse) | 0, (40 * pulse) | 0, (30 * pulse) | 0);
+    // Eye
+    fillCircle((e.x + 1) | 0, (e.y - 1) | 0, 1, 255, 200, 100);
+  }
+
+  // Player trail
+  const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+  if (speed > 30) {
+    const trailLen = Math.min(speed * 0.08, 15) | 0;
+    for (let i = 1; i <= trailLen; i++) {
+      const a = 1 - i / trailLen;
+      const tx = ball.x - ball.vx * dt * i * 2;
+      const ty = ball.y - ball.vy * dt * i * 2;
+      fillCircle(tx | 0, ty | 0, Math.max(1, (R * a * 0.6) | 0),
+        (60 * a) | 0, (140 * a) | 0, (220 * a) | 0);
+    }
+  }
+
+  // Player ball
+  fillCircle((ball.x + 1) | 0, (ball.y + 1) | 0, R, 10, 10, 15); // shadow
+  fillCircle(ball.x | 0, ball.y | 0, R, 80, 180, 255);
+  fillCircle((ball.x - 2) | 0, (ball.y - 2) | 0, Math.max(1, (R * 0.3) | 0), 200, 230, 255);
+
+  // Border
+  for (let x = 0; x < W; x++) { setPixel(x, 0, 50, 50, 70); setPixel(x, H - 1, 50, 50, 70); }
+  for (let y = 0; y < H; y++) { setPixel(0, y, 50, 50, 70); setPixel(W - 1, y, 50, 50, 70); }
+
+  // HUD: Score
+  drawText(6, 6, 'SCORE', 120, 120, 100, 1);
+  drawNumber(40, 6, gameScore, 230, 200, 80, 1);
+
+  // HUD: Enemy count
+  const ec = enemies.length;
+  drawText(W - 60, 6, 'FOES', 180, 60, 60, 1);
+  drawNumber(W - 24, 6, ec, 220, 80, 60, 1);
+}
+
+function gameControls() {
+  return `
+    <div class="control-group">
+      <label>Friction</label>
+      <input type="range" min="900" max="999" step="1" value="970" data-param="friction" data-scale="0.001">
+      <span class="val" data-for="friction">${gameParams.friction.toFixed(3)}</span>
+    </div>
+    <div class="control-group">
+      <label>Radius</label>
+      <input type="range" min="3" max="15" step="1" value="${gameParams.radius}" data-param="radius" data-scale="1">
+      <span class="val" data-for="radius">${gameParams.radius}</span>
+    </div>
+    <div class="control-group" style="margin-left:auto">
+      <span style="color:var(--text-muted);font-family:'JetBrains Mono';font-size:11px">WASD = move &nbsp; R = restart &nbsp; Collect orbs, dodge enemies!</span>
+    </div>`;
+}
+
+const gameCode = `<span class="cm">/* game.c — "Collect & Escape" arena survival</span>
+<span class="cm"> * Demonstrates: input buffer, physics buffer,</span>
+<span class="cm"> * particle buffer, game state buffer. */</span>
+
+<span class="kw">typedef struct</span> {
+    <span class="ty">float</span> x, y, vx, vy;
+} <span class="ty">player_t</span>;
+
+<span class="kw">typedef struct</span> {
+    <span class="ty">float</span> x, y, phase, life;
+} <span class="ty">collectible_t</span>;
+
+<span class="kw">typedef struct</span> {
+    <span class="ty">float</span> x, y, speed, radius;
+} <span class="ty">enemy_t</span>;
+
+<span class="cm">/* Game state — all buffers */</span>
+<span class="ty">player_t</span> player;
+<span class="ty">collectible_t</span> orbs[<span class="nu">8</span>];
+<span class="ty">enemy_t</span> enemies[<span class="nu">64</span>];
+<span class="ty">particle_t</span> particles[<span class="nu">300</span>];
+<span class="ty">int</span> score = <span class="nu">0</span>;
+<span class="ty">bool</span> game_over = <span class="nu">false</span>;
+
+<span class="kw">static void</span> <span class="fn">tick</span>(<span class="ty">rb_ctx_t</span> *ctx, <span class="ty">float</span> dt) {
+    <span class="cm">/* Read input buffer */</span>
+    <span class="kw">if</span> (<span class="fn">rb_key_down</span>(&ctx->input, RB_KEY_W))
+        player.vy -= <span class="nu">400.0f</span> * dt;
+
+    <span class="cm">/* Physics: friction + position update */</span>
+    player.vx *= <span class="nu">0.97f</span>;
+    player.vy *= <span class="nu">0.97f</span>;
+    player.x += player.vx * dt;
+    player.y += player.vy * dt;
+
+    <span class="cm">/* Collectible check — circle-circle test */</span>
+    <span class="kw">for</span> (<span class="ty">int</span> i = <span class="nu">0</span>; i < num_orbs; i++) {
+        <span class="ty">float</span> dx = player.x - orbs[i].x;
+        <span class="ty">float</span> dy = player.y - orbs[i].y;
+        <span class="kw">if</span> (dx*dx + dy*dy < pickup_radius_sq) {
+            score++;
+            <span class="fn">spawn_particles</span>(orbs[i].x, orbs[i].y, <span class="nu">15</span>);
+            <span class="fn">remove_orb</span>(i--);
+        }
+    }
+
+    <span class="cm">/* Enemies: chase player using normalized direction */</span>
+    <span class="kw">for</span> (<span class="ty">int</span> i = <span class="nu">0</span>; i < num_enemies; i++) {
+        <span class="ty">float</span> dx = player.x - enemies[i].x;
+        <span class="ty">float</span> dist = sqrtf(dx*dx + dy*dy);
+        enemies[i].x += (dx/dist) * enemies[i].speed * dt;
+        <span class="kw">if</span> (dist < hit_radius) game_over = <span class="nu">true</span>;
+    }
+}`;
+
+
+// ═══════════════════════════════════════════════
+//  DEMO: AUDIO SYNTH (polished)
+// ═══════════════════════════════════════════════
+const audioParams = {
+  waveform: 'sine',
+  frequency: 440,
+  gain: 0.3,
+  echoDelay: 0.25,
+  echoDecay: 0.3,
+  lowpass: 2000,
+  distortion: 0,
+  harmonics: 0,
+};
+
+let audioCtx = null;
+let audioOsc = null;
+let audioOsc2 = null;
+let audioGain = null;
+let audioGain2 = null;
+let audioDelay = null;
+let audioFeedback = null;
+let audioFilter = null;
+let audioDistortion = null;
+let audioAnalyser = null;
+let audioAnalyserFFT = null;
+
+function makeDistortionCurve(amount) {
+  const n = 256, curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    curve[i] = amount > 0
+      ? ((Math.PI + amount) * x) / (Math.PI + amount * Math.abs(x))
+      : x;
+  }
+  return curve;
+}
+
+let audioTimeBuf = null;
+let audioFreqBuf = null;
+let audioPlaying = false;
+const audioPianoKeys = {};
+const audioPianoMap = {
+  'a': 261.63, 's': 293.66, 'd': 329.63, 'f': 349.23,
+  'g': 392.00, 'h': 440.00, 'j': 493.88, 'k': 523.25,
+};
+const audioPianoLabels = ['C4','D4','E4','F4','G4','A4','B4','C5'];
+let smoothedFFT = null;
+
+function audioInit() {
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  audioOsc = audioCtx.createOscillator();
+  audioOsc.type = audioParams.waveform;
+  audioOsc.frequency.value = audioParams.frequency;
+
+  // Second oscillator for harmonics
+  audioOsc2 = audioCtx.createOscillator();
+  audioOsc2.type = audioParams.waveform;
+  audioOsc2.frequency.value = audioParams.frequency * 2;
+
+  audioGain = audioCtx.createGain();
+  audioGain.gain.value = 0;
+
+  audioGain2 = audioCtx.createGain();
+  audioGain2.gain.value = 0;
+
+  audioDelay = audioCtx.createDelay(1.0);
+  audioDelay.delayTime.value = audioParams.echoDelay;
+  audioFeedback = audioCtx.createGain();
+  audioFeedback.gain.value = audioParams.echoDecay;
+
+  audioFilter = audioCtx.createBiquadFilter();
+  audioFilter.type = 'lowpass';
+  audioFilter.frequency.value = audioParams.lowpass;
+
+  audioDistortion = audioCtx.createWaveShaper();
+  audioDistortion.curve = makeDistortionCurve(audioParams.distortion * 100);
+  audioDistortion.oversample = '4x';
+
+  audioAnalyser = audioCtx.createAnalyser();
+  audioAnalyser.fftSize = 2048;
+  audioTimeBuf = new Uint8Array(audioAnalyser.fftSize);
+
+  audioAnalyserFFT = audioCtx.createAnalyser();
+  audioAnalyserFFT.fftSize = 256;
+  audioFreqBuf = new Uint8Array(audioAnalyserFFT.frequencyBinCount);
+  smoothedFFT = new Float32Array(audioAnalyserFFT.frequencyBinCount);
+
+  // Osc1 → gain → mixer
+  audioOsc.connect(audioGain);
+  // Osc2 → gain2 → mixer (same distortion chain)
+  audioOsc2.connect(audioGain2);
+
+  // Merge into distortion
+  const merger = audioCtx.createGain();
+  audioGain.connect(merger);
+  audioGain2.connect(merger);
+  merger.connect(audioDistortion);
+  audioDistortion.connect(audioFilter);
+  audioFilter.connect(audioDelay);
+  audioDelay.connect(audioFeedback);
+  audioFeedback.connect(audioFilter);
+  audioFilter.connect(audioAnalyser);
+  audioAnalyser.connect(audioAnalyserFFT);
+  audioAnalyserFFT.connect(audioCtx.destination);
+
+  audioOsc.start();
+  audioOsc2.start();
+  audioPlaying = false;
+}
+
+function audioNoteOn(freq) {
+  if (!audioCtx) audioInit();
+  audioOsc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  audioOsc2.frequency.setValueAtTime(freq * 2, audioCtx.currentTime); // octave up
+  audioGain.gain.setTargetAtTime(audioParams.gain, audioCtx.currentTime, 0.01);
+  audioGain2.gain.setTargetAtTime(audioParams.gain * audioParams.harmonics, audioCtx.currentTime, 0.01);
+  audioPlaying = true;
+}
+
+function audioNoteOff() {
+  if (!audioCtx) return;
+  audioGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+  audioGain2.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+  audioPlaying = false;
+}
+
+function audioFrame(t, dt) {
+  clear(10, 10, 16);
+
+  // Update live params if audio is running
+  if (audioCtx && audioOsc) audioOsc.type = audioParams.waveform;
+  if (audioCtx && audioOsc2) audioOsc2.type = audioParams.waveform;
+  if (audioCtx && audioFilter) audioFilter.frequency.setValueAtTime(audioParams.lowpass, audioCtx.currentTime);
+  if (audioCtx && audioDelay) audioDelay.delayTime.setValueAtTime(audioParams.echoDelay, audioCtx.currentTime);
+  if (audioCtx && audioFeedback) audioFeedback.gain.setValueAtTime(audioParams.echoDecay, audioCtx.currentTime);
+  if (audioCtx && audioDistortion) audioDistortion.curve = makeDistortionCurve(audioParams.distortion * 100);
+
+  // Get analyser data (or use defaults if not init yet)
+  if (!audioTimeBuf) audioTimeBuf = new Uint8Array(2048).fill(128);
+  if (!audioFreqBuf) audioFreqBuf = new Uint8Array(128);
+  if (!smoothedFFT) smoothedFFT = new Float32Array(128);
+  if (audioAnalyser) audioAnalyser.getByteTimeDomainData(audioTimeBuf);
+  if (audioAnalyserFFT) audioAnalyserFFT.getByteFrequencyData(audioFreqBuf);
+  const waveH = (H * 0.5) | 0;
+
+  // Grid lines
+  for (let y = 0; y < waveH; y += 20)
+    for (let x = 0; x < W; x += 2) setPixel(x, y, 18, 18, 28);
+  for (let x = 0; x < W; x += 40)
+    for (let y = 0; y < waveH; y += 2) setPixel(x, y, 18, 18, 28);
+  // Center line
+  for (let x = 0; x < W; x++) setPixel(x, waveH / 2 | 0, 25, 25, 40);
+
+  // Waveform with thickness + afterglow
+  const step = audioTimeBuf.length / W;
+  let prevY = -1;
+  for (let x = 0; x < W; x++) {
+    const idx = (x * step) | 0;
+    const v = audioTimeBuf[idx] / 255.0;
+    const py = ((1 - v) * waveH) | 0;
+
+    // Afterglow (dim trail, wider)
+    for (let dy = -3; dy <= 3; dy++) {
+      const a = 1 - Math.abs(dy) / 4;
+      setPixel(x, py + dy, (20 * a) | 0, (60 * a) | 0, (30 * a) | 0);
+    }
+
+    // Main trace — 3px thick
+    for (let dy = -1; dy <= 1; dy++) {
+      setPixel(x, py + dy, 80, 240, 120);
+    }
+
+    // Vertical fill between prev and current
+    if (prevY >= 0 && Math.abs(py - prevY) > 2) {
+      const startY = Math.min(py, prevY);
+      const endY = Math.max(py, prevY);
+      for (let y = startY; y <= endY; y++) setPixel(x, y, 80, 230, 120);
+    }
+    prevY = py;
+  }
+
+  // FFT bars (bottom half) — smoothed
+  const barCount = 64;
+  const barW = (W / barCount) | 0;
+  const fftTop = waveH + 8;
+  const fftH = H - fftTop - 20;
+
+  for (let i = 0; i < barCount; i++) {
+    // Smooth FFT values
+    smoothedFFT[i] += (audioFreqBuf[i] - smoothedFFT[i]) * 0.3;
+    const v = smoothedFFT[i] / 255.0;
+    const bh = (v * fftH) | 0;
+    const bx = i * barW;
+    const [r, g, b] = hue(i / barCount * 0.7);
+
+    // Bar with gradient
+    for (let y = 0; y < bh; y++) {
+      const bright = 0.4 + 0.6 * (y / bh);
+      for (let dx = 0; dx < barW - 1; dx++)
+        setPixel(bx + dx, H - 20 - y, (r * bright) | 0, (g * bright) | 0, (b * bright) | 0);
+    }
+    // Bar cap (bright top)
+    if (bh > 0) {
+      for (let dx = 0; dx < barW - 1; dx++)
+        setPixel(bx + dx, H - 20 - bh, Math.min(255, r + 60), Math.min(255, g + 60), Math.min(255, b + 60));
+    }
+  }
+
+  // Distortion waveshaper visualization
+  if (audioParams.distortion > 0 && audioDistortion) {
+    const vizW = 60, vizH = 30;
+    const vizX = W - vizW - 8, vizY = 4;
+    // Background
+    fillRect(vizX, vizY, vizW, vizH, 15, 15, 22);
+    // Border
+    for (let x = vizX; x < vizX + vizW; x++) { setPixel(x, vizY, 30, 30, 45); setPixel(x, vizY + vizH, 30, 30, 45); }
+    for (let y = vizY; y < vizY + vizH; y++) { setPixel(vizX, y, 30, 30, 45); setPixel(vizX + vizW, y, 30, 30, 45); }
+    // Transfer curve
+    const curve = audioDistortion.curve;
+    if (curve) {
+      let py2 = -1;
+      for (let px = 0; px < vizW - 2; px++) {
+        const ci = (px / (vizW - 2) * (curve.length - 1)) | 0;
+        const cv = curve[ci];
+        const cy = (vizY + vizH / 2 - cv * vizH / 2) | 0;
+        if (py2 >= 0) {
+          const s2 = Math.min(cy, py2), e2 = Math.max(cy, py2);
+          for (let y = s2; y <= e2; y++) setPixel(vizX + 1 + px, y, 220, 120, 60);
+        }
+        setPixel(vizX + 1 + px, cy, 255, 150, 80);
+        py2 = cy;
+      }
+    }
+  }
+
+  // Piano key labels — rendered properly
+  const keyNames = ['A','S','D','F','G','H','J','K'];
+  const keyW = 34;
+  const pianoY = H - 16;
+  for (let i = 0; i < 8; i++) {
+    const bx = 6 + i * (keyW + 4);
+    const active = audioPianoKeys[keyNames[i].toLowerCase()];
+    const kr = active ? 230 : 40;
+    const kg = active ? 160 : 40;
+    const kb = active ? 60 : 50;
+    // Key background
+    fillRect(bx, pianoY, keyW, 14, kr, kg, kb);
+    // Key border
+    for (let x = bx; x < bx + keyW; x++) { setPixel(x, pianoY, 60, 60, 80); setPixel(x, pianoY + 13, 60, 60, 80); }
+    for (let y = pianoY; y < pianoY + 14; y++) { setPixel(bx, y, 60, 60, 80); setPixel(bx + keyW - 1, y, 60, 60, 80); }
+    // Key letter + note name
+    drawText(bx + 4, pianoY + 2, keyNames[i], active ? 40 : 160, active ? 40 : 160, active ? 20 : 170, 1);
+    drawText(bx + 14, pianoY + 2, audioPianoLabels[i].substring(0, 2), active ? 60 : 100, active ? 40 : 100, active ? 20 : 110, 1);
+  }
+
+  // Idle prompt when no note is playing
+  if (!audioPlaying && Math.sin(t * 2) > -0.3) {
+    drawText((W / 2 - 72) | 0, (waveH / 2 + 10) | 0, 'PRESS A KEY TO PLAY', 100, 100, 80, 1);
+  }
+}
+
+function audioControls() {
+  return `
+    <div class="control-group">
+      <label>Wave</label>
+      <select data-param="waveform" onchange="audioParams.waveform=this.value">
+        <option value="sine">Sine</option>
+        <option value="sawtooth">Saw</option>
+        <option value="square">Square</option>
+        <option value="triangle">Triangle</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label>Freq</label>
+      <input type="range" min="100" max="2000" step="1" value="440" data-param="frequency" data-scale="1">
+      <span class="val" data-for="frequency">440</span>
+    </div>
+    <div class="control-group">
+      <label>Gain</label>
+      <input type="range" min="0" max="100" step="1" value="30" data-param="gain" data-scale="0.01">
+      <span class="val" data-for="gain">0.30</span>
+    </div>
+    <div class="control-group">
+      <label>Harmonic</label>
+      <input type="range" min="0" max="100" step="1" value="0" data-param="harmonics" data-scale="0.01">
+      <span class="val" data-for="harmonics">0.00</span>
+    </div>
+    <div class="control-group">
+      <label>Echo</label>
+      <input type="range" min="0" max="100" step="1" value="25" data-param="echoDelay" data-scale="0.01">
+      <span class="val" data-for="echoDelay">0.25</span>
+    </div>
+    <div class="control-group">
+      <label>Decay</label>
+      <input type="range" min="0" max="80" step="1" value="30" data-param="echoDecay" data-scale="0.01">
+      <span class="val" data-for="echoDecay">0.30</span>
+    </div>
+    <div class="control-group">
+      <label>LPF</label>
+      <input type="range" min="100" max="8000" step="100" value="2000" data-param="lowpass" data-scale="1">
+      <span class="val" data-for="lowpass">2000</span>
+    </div>
+    <div class="control-group">
+      <label>Dist</label>
+      <input type="range" min="0" max="100" step="1" value="0" data-param="distortion" data-scale="0.01">
+      <span class="val" data-for="distortion">0.00</span>
+    </div>
+    <div class="control-group" style="margin-left:auto">
+      <span style="color:var(--text-muted);font-family:'JetBrains Mono';font-size:11px">A-K = piano &nbsp; Slider = drone</span>
+    </div>`;
+}
+
+function audioReset() {
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  audioPlaying = false;
+  Object.keys(audioPianoKeys).forEach(k => audioPianoKeys[k] = false);
+  smoothedFFT = null;
+}
+
+const audioCode = `<span class="cm">/* audio_synth.c — Dual-oscillator synth</span>
+<span class="cm"> * Ring buffer delay line, biquad filter,</span>
+<span class="cm"> * waveshaper distortion — all buffer math. */</span>
+
+<span class="kw">#define</span> SAMPLE_RATE <span class="nu">48000</span>
+<span class="kw">#define</span> BUFFER_SIZE <span class="nu">512</span>
+
+<span class="ty">float</span> buffer[BUFFER_SIZE];
+<span class="ty">float</span> phase1 = <span class="nu">0.0f</span>, phase2 = <span class="nu">0.0f</span>;
+<span class="ty">float</span> freq = <span class="nu">440.0f</span>;
+<span class="ty">float</span> harmonic_mix = <span class="nu">0.3f</span>;
+
+<span class="cm">// Dual oscillator — fundamental + octave harmonic</span>
+<span class="kw">void</span> <span class="fn">generate</span>(<span class="ty">float</span> *buf, <span class="ty">int</span> n) {
+    <span class="ty">float</span> inc1 = freq / SAMPLE_RATE;
+    <span class="ty">float</span> inc2 = freq * <span class="nu">2.0f</span> / SAMPLE_RATE;
+    <span class="kw">for</span> (<span class="ty">int</span> i = <span class="nu">0</span>; i < n; i++) {
+        <span class="ty">float</span> osc1 = <span class="fn">sinf</span>(phase1 * <span class="nu">2.0f</span> * M_PI);
+        <span class="ty">float</span> osc2 = <span class="fn">sinf</span>(phase2 * <span class="nu">2.0f</span> * M_PI);
+        buf[i] = osc1 * (<span class="nu">1.0f</span> - harmonic_mix)
+               + osc2 * harmonic_mix;
+        phase1 += inc1;
+        phase2 += inc2;
+        <span class="kw">if</span> (phase1 >= <span class="nu">1.0f</span>) phase1 -= <span class="nu">1.0f</span>;
+        <span class="kw">if</span> (phase2 >= <span class="nu">1.0f</span>) phase2 -= <span class="nu">1.0f</span>;
+    }
+}
+
+<span class="cm">// ECHO — ring buffer delay line</span>
+<span class="ty">float</span> delay_buf[SAMPLE_RATE];
+<span class="ty">int</span> delay_pos = <span class="nu">0</span>;
+<span class="kw">void</span> <span class="fn">echo</span>(<span class="ty">float</span> *buf, <span class="ty">int</span> n, <span class="ty">float</span> decay) {
+    <span class="kw">for</span> (<span class="ty">int</span> i = <span class="nu">0</span>; i < n; i++) {
+        <span class="ty">float</span> delayed = delay_buf[delay_pos];
+        buf[i] += delayed * decay;
+        delay_buf[delay_pos] = buf[i];
+        delay_pos = (delay_pos + <span class="nu">1</span>) % SAMPLE_RATE;
+    }
+}
+
+<span class="cm">// WAVESHAPER — soft clip with adjustable drive</span>
+<span class="kw">void</span> <span class="fn">waveshape</span>(<span class="ty">float</span> *buf, <span class="ty">int</span> n, <span class="ty">float</span> drive) {
+    <span class="kw">for</span> (<span class="ty">int</span> i = <span class="nu">0</span>; i < n; i++) {
+        <span class="ty">float</span> x = buf[i] * drive;
+        buf[i] = (M_PI + drive) * x
+               / (M_PI + drive * <span class="fn">fabsf</span>(x));
+    }
+}
+
+<span class="cm">// Pipeline: generate → waveshape → echo → lowpass</span>
+<span class="kw">while</span> (<span class="nu">1</span>) {
+    <span class="fn">generate</span>(buffer, BUFFER_SIZE);
+    <span class="fn">waveshape</span>(buffer, BUFFER_SIZE, drive);
+    <span class="fn">echo</span>(buffer, BUFFER_SIZE, decay);
+    <span class="fn">lowpass</span>(buffer, BUFFER_SIZE, alpha);
+    <span class="fn">snd_pcm_writei</span>(pcm, buffer, BUFFER_SIZE);
+}`;
+
+
+// ═══════════════════════════════════════════════
+//  DEMO: FIRE (classic demoscene)
+// ═══════════════════════════════════════════════
+const fireParams = {
+  heat: 80,
+  cooling: 3,
+  wind: 0,
+  sparks: 50,
+};
+
+let fireBuf, fireBuf2;
+
+// Fire palette: black → red → orange → yellow → white (256 entries)
+const firePalette = [];
+for (let i = 0; i < 256; i++) {
+  let r, g, b;
+  if (i < 64) {
+    r = i * 4; g = 0; b = 0;
+  } else if (i < 128) {
+    r = 255; g = (i - 64) * 4; b = 0;
+  } else if (i < 192) {
+    r = 255; g = 255; b = (i - 128) * 4;
+  } else {
+    r = 255; g = 255; b = 255;
+  }
+  firePalette.push([r, g, b]);
+}
+
+let fireMouseDown = false;
+let fireMouseX = 0, fireMouseY = 0;
+
+function fireReset() {
+  fireBuf = new Uint8Array(W * H);
+  fireBuf2 = new Uint8Array(W * H);
+}
+
+function fireFrame(t, dt) {
+  // Ignite bottom row with random sparks
+  const sparks = fireParams.sparks;
+  for (let x = 0; x < W; x++) {
+    if (Math.random() * 100 < sparks) {
+      fireBuf[(H - 1) * W + x] = Math.min(255, fireParams.heat + (Math.random() * 80) | 0);
+    }
+    if (Math.random() * 100 < sparks * 0.5) {
+      fireBuf[(H - 2) * W + x] = Math.min(255, fireParams.heat + (Math.random() * 60) | 0);
+    }
+  }
+
+  // Mouse/click ignition
+  if (fireMouseDown) {
+    const mx = fireMouseX, my = fireMouseY;
+    for (let dy = -5; dy <= 5; dy++) {
+      for (let dx = -5; dx <= 5; dx++) {
+        const px = mx + dx, py = my + dy;
+        if (px >= 0 && px < W && py >= 0 && py < H) {
+          if (dx * dx + dy * dy < 25) {
+            fireBuf[py * W + px] = Math.min(255, 200 + (Math.random() * 55) | 0);
+          }
+        }
+      }
+    }
+  }
+
+  // Fire propagation: each pixel = average of neighbors below + random decay
+  const cool = fireParams.cooling;
+  const wind = fireParams.wind;
+  for (let y = 0; y < H - 1; y++) {
+    for (let x = 0; x < W; x++) {
+      // Sample from row below (and neighbors)
+      const x0 = Math.max(0, Math.min(W - 1, x - 1 + wind));
+      const x1 = Math.max(0, Math.min(W - 1, x + wind));
+      const x2 = Math.max(0, Math.min(W - 1, x + 1 + wind));
+      const y1 = Math.min(H - 1, y + 1);
+      const y2 = Math.min(H - 1, y + 2);
+
+      const avg = (
+        fireBuf[y1 * W + x0] +
+        fireBuf[y1 * W + x1] +
+        fireBuf[y1 * W + x2] +
+        fireBuf[y2 * W + x1]
+      ) >> 2;
+
+      const decay = (Math.random() * cool) | 0;
+      fireBuf2[y * W + x] = Math.max(0, avg - decay);
+    }
+  }
+
+  // Swap
+  const tmp = fireBuf;
+  fireBuf = fireBuf2;
+  fireBuf2 = tmp;
+
+  // Render to pixel buffer
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const val = fireBuf[y * W + x];
+      const [r, g, b] = firePalette[val];
+      setPixel(x, y, r, g, b);
+    }
+  }
+}
+
+function fireControls() {
+  return `
+    <div class="control-group">
+      <label>Heat</label>
+      <input type="range" min="20" max="200" step="5" value="${fireParams.heat}" data-param="heat" data-scale="1">
+      <span class="val" data-for="heat">${fireParams.heat}</span>
+    </div>
+    <div class="control-group">
+      <label>Cooling</label>
+      <input type="range" min="0" max="10" step="1" value="${fireParams.cooling}" data-param="cooling" data-scale="1">
+      <span class="val" data-for="cooling">${fireParams.cooling}</span>
+    </div>
+    <div class="control-group">
+      <label>Wind</label>
+      <input type="range" min="-3" max="3" step="1" value="${fireParams.wind}" data-param="wind" data-scale="1">
+      <span class="val" data-for="wind">${fireParams.wind}</span>
+    </div>
+    <div class="control-group">
+      <label>Sparks</label>
+      <input type="range" min="0" max="100" step="5" value="${fireParams.sparks}" data-param="sparks" data-scale="1">
+      <span class="val" data-for="sparks">${fireParams.sparks}</span>
+    </div>
+    <div class="control-group" style="margin-left:auto">
+      <span style="color:var(--text-muted);font-family:'JetBrains Mono';font-size:11px">Click/drag to ignite</span>
+    </div>`;
+}
+
+const fireCode = `<span class="cm">/* fire.c — Classic demoscene fire effect</span>
+<span class="cm"> * Each pixel = average of neighbors below + random decay.</span>
+<span class="cm"> * Reads row N+1 to write row N (convolution on pixel buffer). */</span>
+
+<span class="kw">#define</span> RAWBUF_IMPLEMENTATION
+<span class="kw">#include</span> <span class="st">"../rawbuf.h"</span>
+
+<span class="ty">uint8_t</span> fire_a[W * H];  <span class="cm">// Front buffer</span>
+<span class="ty">uint8_t</span> fire_b[W * H];  <span class="cm">// Back buffer</span>
+
+<span class="cm">// Palette: black → red → orange → yellow → white</span>
+<span class="ty">uint32_t</span> palette[<span class="nu">256</span>];
+
+<span class="kw">static void</span> <span class="fn">ignite_bottom</span>(<span class="ty">uint8_t</span> *buf) {
+    <span class="kw">for</span> (<span class="ty">int</span> x = <span class="nu">0</span>; x < W; x++) {
+        <span class="kw">if</span> (<span class="fn">rand</span>() % <span class="nu">100</span> < spark_rate)
+            buf[(H-<span class="nu">1</span>) * W + x] = heat + <span class="fn">rand</span>() % <span class="nu">80</span>;
+    }
+}
+
+<span class="kw">static void</span> <span class="fn">propagate</span>(<span class="ty">uint8_t</span> *src, <span class="ty">uint8_t</span> *dst) {
+    <span class="kw">for</span> (<span class="ty">int</span> y = <span class="nu">0</span>; y < H - <span class="nu">1</span>; y++) {
+        <span class="kw">for</span> (<span class="ty">int</span> x = <span class="nu">0</span>; x < W; x++) {
+            <span class="cm">/* Average 4 neighbors below */</span>
+            <span class="ty">int</span> avg = (
+                src[(y+<span class="nu">1</span>)*W + <span class="fn">clamp</span>(x-<span class="nu">1</span>)] +
+                src[(y+<span class="nu">1</span>)*W + x] +
+                src[(y+<span class="nu">1</span>)*W + <span class="fn">clamp</span>(x+<span class="nu">1</span>)] +
+                src[(y+<span class="nu">2</span>)*W + x]
+            ) >> <span class="nu">2</span>;
+
+            <span class="cm">/* Random cooling decay */</span>
+            <span class="ty">int</span> decay = <span class="fn">rand</span>() % cooling_rate;
+            dst[y * W + x] = <span class="fn">MAX</span>(<span class="nu">0</span>, avg - decay);
+        }
+    }
+}
+
+<span class="cm">/* Main loop: ignite → propagate → palette map → swap */</span>
+<span class="kw">while</span> (<span class="nu">1</span>) {
+    <span class="fn">ignite_bottom</span>(fire_a);
+    <span class="fn">propagate</span>(fire_a, fire_b);
+    <span class="kw">for</span> (<span class="ty">int</span> i = <span class="nu">0</span>; i < W*H; i++)
+        framebuf[i] = palette[fire_b[i]];
+    <span class="fn">rb_present</span>(ctx);
+    <span class="cm">/* Swap: back becomes front */</span>
+    <span class="ty">uint8_t</span> *tmp = fire_a;
+    fire_a = fire_b;
+    fire_b = tmp;
+}`;
+
+
+// ═══════════════════════════════════════════════
+//  DEMO: RAYMARCHER (SDF)
+// ═══════════════════════════════════════════════
+const raymarchParams = {
+  rotSpeed: 1.0,
+  fov: 1.5,
+  scene: 0, // 0=torus+sphere, 1=pillars, 2=blob
+};
+
+let rmMouseDown = false;
+let rmDragX = 0, rmDragY = 0;
+let rmCamAngleX = 0, rmCamAngleY = 0.3;
+const RM_W = 160, RM_H = 100;
+
+// SDF primitives
+function sdSphere(px, py, pz, r) {
+  return Math.sqrt(px * px + py * py + pz * pz) - r;
+}
+
+function sdTorus(px, py, pz, R, r) {
+  const q = Math.sqrt(px * px + pz * pz) - R;
+  return Math.sqrt(q * q + py * py) - r;
+}
+
+function sdBox(px, py, pz, bx, by, bz) {
+  const dx = Math.abs(px) - bx;
+  const dy = Math.abs(py) - by;
+  const dz = Math.abs(pz) - bz;
+  const outside = Math.sqrt(
+    Math.max(dx, 0) ** 2 + Math.max(dy, 0) ** 2 + Math.max(dz, 0) ** 2
+  );
+  const inside = Math.min(Math.max(dx, dy, dz), 0);
+  return outside + inside;
+}
+
+function sdPlane(py, h) {
+  return py - h;
+}
+
+function opSmoothUnion(d1, d2, k) {
+  const h = Math.max(k - Math.abs(d1 - d2), 0) / k;
+  return Math.min(d1, d2) - h * h * k * 0.25;
+}
+
+function opRepeat(p, spacing) {
+  return ((p % spacing) + spacing) % spacing - spacing * 0.5;
+}
+
+function sceneSDF(px, py, pz, t, sceneId) {
+  if (sceneId === 0) {
+    // Torus + sphere
+    const cost = Math.cos(t), sint = Math.sin(t);
+    // Rotate torus around Y
+    const rx = px * cost - pz * sint;
+    const rz = px * sint + pz * cost;
+    const dTorus = sdTorus(rx, py - 0.3, rz, 0.8, 0.25);
+    const dSphere = sdSphere(px - Math.sin(t * 0.7) * 0.5, py - 0.8 - Math.sin(t * 1.3) * 0.2, pz, 0.35);
+    const dFloor = sdPlane(py, -0.5);
+    return Math.min(opSmoothUnion(dTorus, dSphere, 0.3), dFloor);
+  } else if (sceneId === 1) {
+    // Pillars — repeated boxes
+    const rpx = opRepeat(px, 2.0);
+    const rpz = opRepeat(pz, 2.0);
+    const dPillar = sdBox(rpx, py, rpz, 0.2, 1.5, 0.2);
+    const dFloor = sdPlane(py, -0.5);
+    const dCeiling = -sdPlane(py, 1.5);
+    return Math.min(Math.min(dPillar, dFloor), dCeiling);
+  } else {
+    // Blob — smooth union of several spheres
+    const s = Math.sin(t * 0.8);
+    const c = Math.cos(t * 0.6);
+    let d = sdSphere(px, py, pz, 0.5);
+    d = opSmoothUnion(d, sdSphere(px - 0.6 * s, py + 0.3, pz - 0.4 * c, 0.35), 0.4);
+    d = opSmoothUnion(d, sdSphere(px + 0.5 * c, py - 0.4, pz + 0.5 * s, 0.3), 0.4);
+    d = opSmoothUnion(d, sdSphere(px - 0.3, py + 0.5 * s, pz - 0.6, 0.25), 0.4);
+    const dFloor = sdPlane(py, -0.8);
+    return Math.min(d, dFloor);
+  }
+}
+
+function sceneNormal(px, py, pz, t, sceneId) {
+  const e = 0.001;
+  const d = sceneSDF(px, py, pz, t, sceneId);
+  return [
+    sceneSDF(px + e, py, pz, t, sceneId) - d,
+    sceneSDF(px, py + e, pz, t, sceneId) - d,
+    sceneSDF(px, py, pz + e, t, sceneId) - d,
+  ];
+}
+
+function raymarchFrame(t, dt) {
+  const sceneId = raymarchParams.scene;
+  const fov = raymarchParams.fov;
+  const rotT = t * raymarchParams.rotSpeed;
+
+  // Camera setup — orbit
+  const camDist = 3.5;
+  const angleX = rmCamAngleX + (sceneId === 1 ? rotT * 0.2 : 0);
+  const angleY = rmCamAngleY;
+  const camX = Math.sin(angleX) * Math.cos(angleY) * camDist;
+  const camY = Math.sin(angleY) * camDist + 0.5;
+  const camZ = Math.cos(angleX) * Math.cos(angleY) * camDist;
+
+  // Look-at matrix
+  const targetY = sceneId === 1 ? 0.3 : 0.2;
+  let fwdX = -camX, fwdY = targetY - camY, fwdZ = -camZ;
+  let fwdLen = Math.sqrt(fwdX * fwdX + fwdY * fwdY + fwdZ * fwdZ);
+  fwdX /= fwdLen; fwdY /= fwdLen; fwdZ /= fwdLen;
+
+  // Right = fwd × up(0,1,0)
+  let rightX = -fwdZ, rightY = 0, rightZ = fwdX;
+  let rightLen = Math.sqrt(rightX * rightX + rightZ * rightZ);
+  rightX /= rightLen; rightZ /= rightLen;
+
+  // Up = right × fwd
+  let upX = rightY * fwdZ - rightZ * fwdY;
+  let upY = rightZ * fwdX - rightX * fwdZ;
+  let upZ = rightX * fwdY - rightY * fwdX;
+
+  // Light direction
+  const ldx = 0.5, ldy = 0.8, ldz = -0.3;
+  const ldLen = Math.sqrt(ldx * ldx + ldy * ldy + ldz * ldz);
+  const lnx = ldx / ldLen, lny = ldy / ldLen, lnz = ldz / ldLen;
+
+  // Render at low res (RM_W x RM_H) then upscale
+  for (let sy = 0; sy < RM_H; sy++) {
+    for (let sx = 0; sx < RM_W; sx++) {
+      // Screen UV
+      const u = (sx / RM_W - 0.5) * fov * (RM_W / RM_H);
+      const v = (0.5 - sy / RM_H) * fov;
+
+      // Ray direction
+      let rdx = fwdX + rightX * u + upX * v;
+      let rdy = fwdY + rightY * u + upY * v;
+      let rdz = fwdZ + rightZ * u + upZ * v;
+      let rdLen = Math.sqrt(rdx * rdx + rdy * rdy + rdz * rdz);
+      rdx /= rdLen; rdy /= rdLen; rdz /= rdLen;
+
+      // March
+      let marchT = 0;
+      let hit = false;
+      for (let step = 0; step < 64; step++) {
+        const px = camX + rdx * marchT;
+        const py = camY + rdy * marchT;
+        const pz = camZ + rdz * marchT;
+        const d = sceneSDF(px, py, pz, rotT, sceneId);
+        if (d < 0.002) { hit = true; break; }
+        if (marchT > 20) break;
+        marchT += d;
+      }
+
+      let r, g, b;
+      if (hit) {
+        const hx = camX + rdx * marchT;
+        const hy = camY + rdy * marchT;
+        const hz = camZ + rdz * marchT;
+
+        // Normal
+        const n = sceneNormal(hx, hy, hz, rotT, sceneId);
+        const nLen = Math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]) + 0.0001;
+        n[0] /= nLen; n[1] /= nLen; n[2] /= nLen;
+
+        // Diffuse lighting
+        let diff = Math.max(0, n[0] * lnx + n[1] * lny + n[2] * lnz);
+
+        // Hard shadow
+        let shadowT = 0.05;
+        for (let si = 0; si < 32; si++) {
+          const sd = sceneSDF(hx + lnx * shadowT, hy + lny * shadowT, hz + lnz * shadowT, rotT, sceneId);
+          if (sd < 0.002) { diff *= 0.3; break; }
+          if (shadowT > 10) break;
+          shadowT += sd;
+        }
+
+        // Checkerboard floor
+        const isFloor = hy < -0.45;
+        let baseR, baseG, baseB;
+        if (isFloor) {
+          const check = ((Math.floor(hx) + Math.floor(hz)) & 1);
+          baseR = check ? 120 : 60;
+          baseG = check ? 110 : 55;
+          baseB = check ? 100 : 50;
+        } else {
+          // Object color — warm tones
+          baseR = 180; baseG = 140; baseB = 100;
+        }
+
+        const ambient = 0.15;
+        const intensity = ambient + diff * 0.85;
+
+        // Distance fog
+        const fog = Math.min(1, marchT / 12);
+        r = ((baseR * intensity) * (1 - fog) + 15 * fog) | 0;
+        g = ((baseG * intensity) * (1 - fog) + 12 * fog) | 0;
+        b = ((baseB * intensity) * (1 - fog) + 18 * fog) | 0;
+      } else {
+        // Background gradient
+        const gy = v * 0.5 + 0.5;
+        r = (15 + gy * 10) | 0;
+        g = (12 + gy * 8) | 0;
+        b = (20 + gy * 15) | 0;
+      }
+
+      // Write 2x2 block (upscale 160x100 → 320x200)
+      const px0 = sx * 2, py0 = sy * 2;
+      setPixel(px0, py0, r, g, b);
+      setPixel(px0 + 1, py0, r, g, b);
+      setPixel(px0, py0 + 1, r, g, b);
+      setPixel(px0 + 1, py0 + 1, r, g, b);
+    }
+  }
+}
+
+function raymarchReset() {
+  rmCamAngleX = 0;
+  rmCamAngleY = 0.3;
+}
+
+function raymarchControls() {
+  return `
+    <div class="control-group">
+      <label>Rotate</label>
+      <input type="range" min="0" max="30" step="1" value="10" data-param="rotSpeed" data-scale="0.1">
+      <span class="val" data-for="rotSpeed">${raymarchParams.rotSpeed.toFixed(1)}</span>
+    </div>
+    <div class="control-group">
+      <label>FOV</label>
+      <input type="range" min="5" max="30" step="1" value="15" data-param="fov" data-scale="0.1">
+      <span class="val" data-for="fov">${raymarchParams.fov.toFixed(1)}</span>
+    </div>
+    <div class="control-group">
+      <label>Scene</label>
+      <select data-param="scene" onchange="raymarchParams.scene=parseInt(this.value)">
+        <option value="0">Torus+Sphere</option>
+        <option value="1">Pillars</option>
+        <option value="2">Blob</option>
+      </select>
+    </div>
+    <div class="control-group" style="margin-left:auto">
+      <span style="color:var(--text-muted);font-family:'JetBrains Mono';font-size:11px">Drag to orbit camera</span>
+    </div>`;
+}
+
+const raymarchCode = `<span class="cm">/* raymarcher.c — Real-time SDF ray marching</span>
+<span class="cm"> * Per-pixel ray casting at 160×100, 2× upscale.</span>
+<span class="cm"> * framebuffer = render target, each pixel = independent ray. */</span>
+
+<span class="kw">#include</span> <span class="st">&lt;math.h&gt;</span>
+
+<span class="cm">/* SDF primitives */</span>
+<span class="ty">float</span> <span class="fn">sd_sphere</span>(<span class="ty">vec3</span> p, <span class="ty">float</span> r) {
+    <span class="kw">return</span> <span class="fn">length</span>(p) - r;
+}
+
+<span class="ty">float</span> <span class="fn">sd_torus</span>(<span class="ty">vec3</span> p, <span class="ty">float</span> R, <span class="ty">float</span> r) {
+    <span class="ty">float</span> q = <span class="fn">length</span>((<span class="ty">vec2</span>){p.x, p.z}) - R;
+    <span class="kw">return</span> <span class="fn">length</span>((<span class="ty">vec2</span>){q, p.y}) - r;
+}
+
+<span class="cm">/* SDF operations */</span>
+<span class="ty">float</span> <span class="fn">op_smooth_union</span>(<span class="ty">float</span> d1, <span class="ty">float</span> d2, <span class="ty">float</span> k) {
+    <span class="ty">float</span> h = <span class="fn">fmaxf</span>(k - <span class="fn">fabsf</span>(d1 - d2), <span class="nu">0.0f</span>) / k;
+    <span class="kw">return</span> <span class="fn">fminf</span>(d1, d2) - h*h*k*<span class="nu">0.25f</span>;
+}
+
+<span class="cm">/* Ray march loop */</span>
+<span class="kw">for</span> (<span class="ty">int</span> y = <span class="nu">0</span>; y < <span class="nu">100</span>; y++) {
+    <span class="kw">for</span> (<span class="ty">int</span> x = <span class="nu">0</span>; x < <span class="nu">160</span>; x++) {
+        <span class="ty">vec3</span> rd = <span class="fn">ray_dir</span>(x, y, fov, cam_mat);
+        <span class="ty">float</span> t = <span class="nu">0.0f</span>;
+
+        <span class="kw">for</span> (<span class="ty">int</span> i = <span class="nu">0</span>; i < <span class="nu">64</span>; i++) {
+            <span class="ty">vec3</span> p = cam_pos + rd * t;
+            <span class="ty">float</span> d = <span class="fn">scene_sdf</span>(p);
+            <span class="kw">if</span> (d < <span class="nu">0.002f</span>) <span class="kw">break</span>;
+            t += d;
+        }
+
+        <span class="cm">/* Normal via central differences */</span>
+        <span class="ty">vec3</span> n = <span class="fn">scene_normal</span>(hit_pos);
+
+        <span class="cm">/* Diffuse + hard shadow + checkerboard */</span>
+        <span class="ty">float</span> light = <span class="fn">fmaxf</span>(<span class="nu">0</span>, <span class="fn">dot</span>(n, light_dir));
+        light *= <span class="fn">shadow_march</span>(hit_pos, light_dir);
+
+        <span class="cm">/* Write 2×2 block (upscale) */</span>
+        <span class="ty">uint32_t</span> c = <span class="fn">shade</span>(hit_pos, n, light);
+        <span class="fn">rb_pixel</span>(s, x*<span class="nu">2</span>,   y*<span class="nu">2</span>,   c);
+        <span class="fn">rb_pixel</span>(s, x*<span class="nu">2</span>+<span class="nu">1</span>, y*<span class="nu">2</span>,   c);
+        <span class="fn">rb_pixel</span>(s, x*<span class="nu">2</span>,   y*<span class="nu">2</span>+<span class="nu">1</span>, c);
+        <span class="fn">rb_pixel</span>(s, x*<span class="nu">2</span>+<span class="nu">1</span>, y*<span class="nu">2</span>+<span class="nu">1</span>, c);
+    }
+}`;
+
+
+// ═══════════════════════════════════════════════
+//  ENGINE
+// ═══════════════════════════════════════════════
+
+const demos = {
+  plasma:   { frame: plasmaFrame,   controls: plasmaControls,   code: plasmaCode,
+              params: plasmaParams,  file: 'demos/plasma.c',     reset: () => {} },
+  game:     { frame: gameFrame,     controls: gameControls,     code: gameCode,
+              params: gameParams,    file: 'demos/game.c',       reset: gameReset },
+  audio:    { frame: audioFrame,    controls: audioControls,    code: audioCode,
+              params: audioParams,   file: 'demos/audio_synth.c', reset: audioReset },
+  fire:     { frame: fireFrame,     controls: fireControls,     code: fireCode,
+              params: fireParams,    file: 'demos/fire.c',       reset: fireReset },
+  raymarch: { frame: raymarchFrame, controls: raymarchControls, code: raymarchCode,
+              params: raymarchParams,file: 'demos/raymarcher.c', reset: raymarchReset },
+};
+
+function resizeCanvas() {
+  const wrap = document.querySelector('.canvas-wrap');
+  const aspect = W / H;
+  let cw = wrap.clientWidth;
+  let ch = wrap.clientHeight;
+  if (cw / ch > aspect) {
+    cw = ch * aspect;
+  } else {
+    ch = cw / aspect;
+  }
+  canvas.style.width = cw + 'px';
+  canvas.style.height = ch + 'px';
+}
+
+function initDemo(name) {
+  // Tear down audio if switching away
+  if (currentDemo !== name && audioCtx) { audioCtx.close(); audioCtx = null; }
+
+  currentDemo = name;
+  const demo = demos[name];
+
+  // Update tabs
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.demo === name);
+  });
+
+  // Size
+  W = 320; H = 200;
+  canvas.width = W;
+  canvas.height = H;
+  imageData = ctx2d.createImageData(W, H);
+  pixels = imageData.data;
+  resizeCanvas();
+
+  // Controls
+  controlsEl.innerHTML = demo.controls();
+  controlsEl.querySelectorAll('input[type="range"]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const param = inp.dataset.param;
+      const scale = parseFloat(inp.dataset.scale || 1);
+      const val = parseFloat(inp.value) * scale;
+      demo.params[param] = val;
+      const label = controlsEl.querySelector(`.val[data-for="${param}"]`);
+      if (label) {
+        if (scale < 0.01) label.textContent = val.toFixed(3);
+        else if (scale < 1) label.textContent = val.toFixed(2);
+        else label.textContent = val + '';
+      }
+      if (inp.dataset.reinit) demo.reset();
+    });
+  });
+
+  // Palette swatch rendering + click handlers
+  controlsEl.querySelectorAll('.pal-swatch').forEach(sw => {
+    const palIdx = parseInt(sw.dataset.pal);
+    const palFn = plasmaPalettes[palIdx];
+    // Render mini gradient into swatch canvas
+    const sctx = sw.getContext('2d');
+    for (let x = 0; x < 48; x++) {
+      const v = (x / 48) * 8 - 4; // sweep -4..4 for visible range
+      const [r, g, b] = palFn(v);
+      sctx.fillStyle = `rgb(${r},${g},${b})`;
+      sctx.fillRect(x, 0, 1, 22);
+    }
+    // Label overlay
+    const labels = ['CLASSIC','FIRE','OCEAN','NEON','ACID'];
+    sctx.font = '7px JetBrains Mono, monospace';
+    sctx.fillStyle = 'rgba(0,0,0,0.5)';
+    sctx.fillText(labels[palIdx], 4, 16);
+    sctx.fillStyle = 'rgba(255,255,255,0.85)';
+    sctx.fillText(labels[palIdx], 3, 15);
+
+    sw.addEventListener('click', () => {
+      plasmaParams.palette = palIdx;
+      controlsEl.querySelectorAll('.pal-swatch').forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+    });
+  });
+
+  // Auto-init audio context when switching to audio tab
+  // Note: browsers may suspend AudioContext without user gesture,
+  // but we init so the visualizer shows something immediately
+  if (name === 'audio' && !audioCtx) {
+    audioInit();
+  }
+  if (name === 'audio' && audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+
+  // Code panel
+  codeView.innerHTML = demo.code;
+  if (!demo._origFrame) demo._origFrame = demo.frame;
+  jsEditor.value = demo.frame.toString();
+  runError.textContent = '';
+  switchCodeTab(activeCodeTab);
+
+  // Reset state
+  demo.reset();
+  startTime = performance.now();
+  lastTime = 0;
+}
+
+function switchCodeTab(tab) {
+  activeCodeTab = tab;
+  cTabBtn.classList.toggle('active', tab === 'c');
+  jsTabBtn.classList.toggle('active', tab === 'js');
+  codeBodyC.style.display = tab === 'c' ? '' : 'none';
+  codeBodyJS.style.display = tab === 'js' ? '' : 'none';
+  runBtn.style.display = tab === 'js' ? '' : 'none';
+  resetCodeBtn.style.display = tab === 'js' ? '' : 'none';
+}
+
+function runCode() {
+  try {
+    const fn = eval('(' + jsEditor.value + ')');
+    if (typeof fn !== 'function') throw new Error('Not a function');
+    demos[currentDemo].frame = fn;
+    runError.textContent = '';
+    runError.style.color = 'var(--green)';
+    runError.textContent = 'OK';
+    setTimeout(() => { runError.textContent = ''; }, 1500);
+  } catch (e) {
+    runError.style.color = 'var(--red)';
+    runError.textContent = e.message;
+  }
+}
+
+function resetCode() {
+  const demo = demos[currentDemo];
+  if (demo._origFrame) {
+    demo.frame = demo._origFrame;
+    jsEditor.value = demo._origFrame.toString();
+    runError.textContent = '';
+  }
+}
+
+let lastTime = 0;
+function frame(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
+  lastTime = timestamp;
+
+  if (!paused) {
+    const t = (timestamp - startTime) / 1000;
+    demos[currentDemo].frame(t, dt);
+    ctx2d.putImageData(imageData, 0, 0);
+  }
+
+  frameCount++;
+  if (timestamp - lastFpsTime >= 1000) {
+    fpsEl.textContent = frameCount + ' FPS';
+    frameCount = 0;
+    lastFpsTime = timestamp;
+  }
+
+  animId = requestAnimationFrame(frame);
+}
+
+// --- Events ---
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => initDemo(tab.dataset.demo));
+});
+
+pauseBtn.addEventListener('click', () => {
+  paused = !paused;
+  pauseBtn.textContent = paused ? 'Play' : 'Pause';
+  pauseBtn.classList.toggle('active', paused);
+});
+
+resetBtn.addEventListener('click', () => {
+  demos[currentDemo].reset();
+  startTime = performance.now();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (document.activeElement === jsEditor) return;
+  keys[e.key] = true;
+  keys[e.key.toLowerCase()] = true; // also store lowercase
+
+  // Game keys
+  if (currentDemo === 'game') {
+    const k = e.key.toLowerCase();
+    if (k === 'w' || k === 'a' || k === 's' || k === 'd' ||
+        e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+    }
+    if (k === 'r' && gameOver) {
+      gameReset();
+    }
+  }
+
+  // Audio piano keys
+  if (currentDemo === 'audio') {
+    const k = e.key.toLowerCase();
+    if (audioPianoMap[k] && !audioPianoKeys[k]) {
+      e.preventDefault();
+      audioPianoKeys[k] = true;
+      if (!audioCtx) audioInit();
+      audioNoteOn(audioPianoMap[k]);
+    }
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  keys[e.key] = false;
+  keys[e.key.toLowerCase()] = false;
+  if (currentDemo === 'audio') {
+    const k = e.key.toLowerCase();
+    if (audioPianoMap[k]) {
+      audioPianoKeys[k] = false;
+      const anyHeld = Object.keys(audioPianoMap).some(key => audioPianoKeys[key]);
+      if (!anyHeld) audioNoteOff();
+    }
+  }
+});
+
+window.addEventListener('resize', resizeCanvas);
+
+// Canvas interactions
+canvas.addEventListener('click', () => {
+  if (currentDemo === 'audio') {
+    if (!audioCtx) audioInit();
+    else if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+});
+
+// Mouse events for fire ignition + raymarch orbit
+function canvasCoords(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = W / rect.width;
+  const scaleY = H / rect.height;
+  return {
+    x: ((e.clientX - rect.left) * scaleX) | 0,
+    y: ((e.clientY - rect.top) * scaleY) | 0,
+  };
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  if (currentDemo === 'fire') {
+    fireMouseDown = true;
+    const c = canvasCoords(e);
+    fireMouseX = c.x; fireMouseY = c.y;
+  }
+  if (currentDemo === 'raymarch') {
+    rmMouseDown = true;
+    rmDragX = e.clientX;
+    rmDragY = e.clientY;
+  }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (currentDemo === 'fire' && fireMouseDown) {
+    const c = canvasCoords(e);
+    fireMouseX = c.x; fireMouseY = c.y;
+  }
+  if (currentDemo === 'raymarch' && rmMouseDown) {
+    const dx = e.clientX - rmDragX;
+    const dy = e.clientY - rmDragY;
+    rmCamAngleX += dx * 0.01;
+    rmCamAngleY = Math.max(-1.2, Math.min(1.2, rmCamAngleY + dy * 0.01));
+    rmDragX = e.clientX;
+    rmDragY = e.clientY;
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  fireMouseDown = false;
+  rmMouseDown = false;
+});
+
+// Code tab switching
+cTabBtn.addEventListener('click', () => switchCodeTab('c'));
+jsTabBtn.addEventListener('click', () => switchCodeTab('js'));
+
+// Tab key in editor
+jsEditor.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const start = jsEditor.selectionStart;
+    jsEditor.value = jsEditor.value.substring(0, start) + '  ' + jsEditor.value.substring(jsEditor.selectionEnd);
+    jsEditor.selectionStart = jsEditor.selectionEnd = start + 2;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    runCode();
+  }
+  e.stopPropagation();
+});
+
+// --- Boot ---
+initDemo('plasma');
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

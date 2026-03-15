@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Geometry Is Math</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0f0e0c;--bg-surface:#1a1815;--bg-elevated:#242119;--bg-code:#1e1c18;
+  --text:#d4c8b0;--text-muted:#8a7e6a;--text-bright:#f0e8d8;
+  --accent:#e6a756;--accent-dim:#c4853a;
+  --blue:#5b9bd5;--cyan:#4ecdc4;--pink:#e06b8d;--green:#7ec97e;
+  --red:#d45b5b;--purple:#a78bdb;
+  --border:#2e2a24;--border-light:#3d3730;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;display:flex;flex-direction:column}
+
+/* ─── Header ─── */
+header{background:var(--bg-surface);border-bottom:1px solid var(--border);padding:0 1.2rem;height:44px;display:flex;align-items:center;gap:1rem;flex-shrink:0}
+.logo{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:var(--text-bright);white-space:nowrap}
+.logo span{color:var(--accent)}
+.thesis{flex:1;font-size:12px;color:var(--text-muted);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.header-right{display:flex;align-items:center;gap:.8rem;flex-shrink:0}
+.fps-display{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);min-width:52px}
+.badge{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);background:var(--bg-elevated);padding:2px 6px;border-radius:3px;border:1px solid var(--border)}
+
+/* ─── Main layout: sidebar | canvas | right panel ─── */
+.main{flex:1;display:flex;overflow:hidden}
+
+/* ─── Category tabs (top bar) ─── */
+.tab-bar{display:flex;gap:2px;padding:0 1rem;overflow-x:auto;background:var(--bg-surface);border-bottom:1px solid var(--border);flex-shrink:0;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab{background:transparent;border:none;color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.04em;padding:.45rem .7rem;cursor:pointer;border-radius:6px 6px 0 0;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--text);background:var(--bg-elevated)}
+.tab.active{color:var(--accent);background:var(--bg);border:1px solid var(--border);border-bottom-color:var(--bg);margin-bottom:-1px}
+
+/* ─── Demo pills (below canvas) ─── */
+.pill-strip{display:flex;gap:4px;padding:.4rem 1rem;overflow-x:auto;background:var(--bg-surface);border-top:1px solid var(--border);flex-shrink:0;scrollbar-width:none}
+.pill-strip::-webkit-scrollbar{display:none}
+.pill{background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:10px;padding:.25rem .6rem;border-radius:12px;cursor:pointer;white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:4px}
+.pill:hover{color:var(--text);border-color:var(--border-light)}
+.pill.active{color:var(--accent);border-color:var(--accent-dim);background:rgba(230,167,86,.1)}
+.pill .dot{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0}
+
+/* ─── Canvas area ─── */
+.canvas-area{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#000;position:relative;overflow:hidden}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;cursor:grab}
+canvas:active{cursor:grabbing}
+
+/* ─── Right panel: code + params ─── */
+.right-panel{width:360px;flex-shrink:0;display:flex;flex-direction:column;background:var(--bg-code);border-left:1px solid var(--border);overflow:hidden}
+
+/* params section */
+.params{padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.params h3{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-bottom:8px;letter-spacing:.04em}
+.param-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.param-row label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);width:80px;flex-shrink:0}
+.param-row input[type=range]{flex:1;height:4px;-webkit-appearance:none;appearance:none;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
+.param-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--accent);cursor:pointer}
+.param-row input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--accent);border:none;cursor:pointer}
+.param-row .val{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);width:36px;text-align:right;flex-shrink:0}
+.param-row select{background:var(--bg-elevated);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 6px;border-radius:3px;cursor:pointer;flex:1}
+.toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.toggle-row label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);width:80px;flex-shrink:0}
+.toggle{position:relative;width:32px;height:16px;cursor:pointer;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle .slider{position:absolute;inset:0;background:var(--border);border-radius:8px;transition:.2s}
+.toggle .slider:before{content:"";position:absolute;width:12px;height:12px;left:2px;bottom:2px;background:var(--text-muted);border-radius:50%;transition:.2s}
+.toggle input:checked + .slider{background:var(--accent-dim)}
+.toggle input:checked + .slider:before{transform:translateX(16px);background:var(--accent)}
+
+/* code section */
+.code-section{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.code-header{background:var(--bg-surface);border-bottom:1px solid var(--border);padding:6px 14px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
+.code-header .demo-fn{color:var(--blue)}
+.code-body{flex:1;overflow-y:auto;padding:10px 14px;scrollbar-width:thin;scrollbar-color:var(--border) var(--bg-code)}
+.code-body::-webkit-scrollbar{width:5px}
+.code-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.code-body pre{font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.55;color:var(--text);white-space:pre-wrap;word-break:break-word;tab-size:4}
+.code-body .kw{color:var(--pink)}
+.code-body .fn{color:var(--blue)}
+.code-body .ty{color:var(--cyan)}
+.code-body .cm{color:var(--text-muted);font-style:italic}
+.code-body .nu{color:var(--accent)}
+.code-body .st{color:var(--green)}
+
+/* ─── Bottom bar ─── */
+.bottom-bar{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);padding:4px 1rem;background:var(--bg-surface);border-top:1px solid var(--border);flex-shrink:0;display:flex;justify-content:space-between}
+
+/* ─── Responsive ─── */
+@media(max-width:1100px){.right-panel{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Geometry<span>IsMath</span></div>
+  <div class="thesis" id="thesis"></div>
+  <div class="header-right">
+    <span class="fps-display" id="fps">-- FPS</span>
+    <span class="badge" id="resBadge">640x400</span>
+    <span class="badge" id="backend">loading</span>
+  </div>
+</header>
+<div class="tab-bar" id="catTabs"></div>
+<div class="main">
+  <div class="canvas-area">
+    <div class="canvas-wrap" id="canvasWrap"><canvas id="canvas"></canvas></div>
+    <div class="pill-strip" id="pills"></div>
+  </div>
+  <div class="right-panel">
+    <div class="params">
+      <h3>PARAMETERS</h3>
+      <div class="param-row">
+        <label>Speed</label>
+        <input type="range" id="speedSlider" min="0" max="300" value="100">
+        <span class="val" id="speedVal">1.0x</span>
+      </div>
+      <div class="param-row">
+        <label>Resolution</label>
+        <select id="resSelect">
+          <option value="320x200">320 x 200</option>
+          <option value="480x300">480 x 300</option>
+          <option value="640x400" selected>640 x 400</option>
+          <option value="800x500">800 x 500</option>
+        </select>
+      </div>
+      <div class="toggle-row">
+        <label>Auto Rotate</label>
+        <label class="toggle"><input type="checkbox" id="autoRotate"><span class="slider"></span></label>
+      </div>
+    </div>
+    <div class="code-section">
+      <div class="code-header">
+        <span>C source</span>
+        <span class="demo-fn" id="codeFn"></span>
+      </div>
+      <div class="code-body"><pre id="codeView"></pre></div>
+    </div>
+  </div>
+</div>
+<div class="bottom-bar">
+  <span>drag: orbit &middot; arrows: navigate &middot; 1-9: category</span>
+  <span>48 demos &middot; pure C math &middot; zero libraries</span>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  State
+ * ═══════════════════════════════════════════════════════════════════════════ */
+let curCat = 0, curItem = 0;
+let mouseX = 0, mouseY = -0.3;
+let dragging = false, lastDragX = 0, lastDragY = 0;
+let W, H, bufferPtr;
+let useWebGPU = false;
+let mouseSens = 0.01;
+
+/* WebGPU state */
+let gpuDevice, gpuContext, gpuPipeline, gpuBindGroup, gpuTexture, gpuSampler;
+let gpuFormat;
+
+/* Canvas2D state */
+let ctx2d;
+
+/* FPS counter */
+let frameCount = 0, lastFpsTime = 0;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  WASM init
+ * ═══════════════════════════════════════════════════════════════════════════ */
+var Module = {
+  onRuntimeInitialized: function() {
+    W = Module._get_width();
+    H = Module._get_height();
+    bufferPtr = Module._get_buffer();
+    buildTabs();
+    buildPills();
+    updateSelection();
+    initParams();
+    initRenderer();
+  }
+};
+</script>
+{{{ SCRIPT }}}
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  Sidebar
+ * ═══════════════════════════════════════════════════════════════════════════ */
+function buildTabs() {
+  const bar = document.getElementById('catTabs');
+  const numCats = Module._get_num_categories();
+  bar.innerHTML = '';
+  for (let c = 0; c < numCats; c++) {
+    const label = UTF8ToString(Module._get_category_label(c));
+    const btn = document.createElement('button');
+    btn.className = 'tab' + (c === curCat ? ' active' : '');
+    btn.textContent = label;
+    btn.dataset.cat = c;
+    btn.onclick = () => { selectDemo(c, 0); };
+    bar.appendChild(btn);
+  }
+}
+
+function buildPills() {
+  const strip = document.getElementById('pills');
+  const count = Module._get_category_count(curCat);
+  strip.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const title = UTF8ToString(Module._get_item_title(curCat, i));
+    const pill = document.createElement('button');
+    pill.className = 'pill' + (i === curItem ? ' active' : '');
+    pill.innerHTML = `<span class="dot"></span>${title}`;
+    pill.onclick = () => selectDemo(curCat, i);
+    strip.appendChild(pill);
+  }
+}
+
+function selectDemo(cat, item) {
+  curCat = cat;
+  curItem = item;
+  mouseX = 0; mouseY = -0.3;
+  Module._set_demo(curCat, curItem);
+  Module._set_mouse(mouseX, mouseY);
+  updateSelection();
+}
+
+function updateSelection() {
+  /* Update tab highlights */
+  document.querySelectorAll('.tab').forEach(t => {
+    const c = parseInt(t.dataset.cat);
+    t.className = 'tab' + (c === curCat ? ' active' : '');
+  });
+
+  /* Rebuild pills for current category */
+  buildPills();
+
+  /* Update thesis */
+  const thesis = UTF8ToString(Module._get_category_thesis(curCat));
+  document.getElementById('thesis').textContent = thesis;
+
+  /* Update code panel */
+  updateCode();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  Parameter controls
+ * ═══════════════════════════════════════════════════════════════════════════ */
+function initParams() {
+  const speedSlider = document.getElementById('speedSlider');
+  const speedVal = document.getElementById('speedVal');
+  speedSlider.oninput = () => {
+    const v = speedSlider.value / 100;
+    Module._set_time_scale(v);
+    speedVal.textContent = v.toFixed(1) + 'x';
+  };
+
+  const resSelect = document.getElementById('resSelect');
+  resSelect.onchange = () => {
+    const [w, h] = resSelect.value.split('x').map(Number);
+    changeResolution(w, h);
+  };
+
+  const autoRotate = document.getElementById('autoRotate');
+  autoRotate.onchange = () => {
+    Module._set_auto_rotate(autoRotate.checked ? 1 : 0);
+  };
+}
+
+async function changeResolution(newW, newH) {
+  Module._set_resolution(newW, newH);
+  W = Module._get_width();
+  H = Module._get_height();
+  bufferPtr = Module._get_buffer();
+  document.getElementById('resBadge').textContent = W + 'x' + H;
+
+  const canvas = document.getElementById('canvas');
+  canvas.width = W;
+  canvas.height = H;
+
+  if (useWebGPU) {
+    /* Recreate texture at new size */
+    if (gpuTexture) gpuTexture.destroy();
+    gpuTexture = gpuDevice.createTexture({
+      size: [W, H],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+    });
+    /* Recreate bind group with new texture view */
+    const layout = gpuPipeline.getBindGroupLayout(0);
+    gpuBindGroup = gpuDevice.createBindGroup({
+      layout: layout,
+      entries: [
+        { binding: 0, resource: gpuSampler },
+        { binding: 1, resource: gpuTexture.createView() }
+      ]
+    });
+    /* Recreate shader + pipeline with new dimensions */
+    await rebuildGPUPipeline();
+  }
+
+  fitCanvas();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  Code panel — C source snippets per demo
+ * ═══════════════════════════════════════════════════════════════════════════ */
+const CODE = {
+  heightfield: {fn:'demo_heightfield', code:`<span class="cm">/* 6-octave FBM heightfield with parallax layers */</span>
+<span class="kw">for</span> (<span class="kw">int</span> layer = <span class="nu">2</span>; layer >= <span class="nu">0</span>; layer--) {
+    <span class="kw">for</span> (<span class="kw">int</span> x = <span class="nu">0</span>; x < W; x++) {
+        <span class="kw">float</span> h = <span class="nu">0</span>, amp = <span class="nu">0.5f</span>;
+        <span class="kw">for</span> (<span class="kw">int</span> o = <span class="nu">0</span>; o < <span class="nu">6</span>; o++) {
+            h += <span class="fn">gm_noise2</span>(fx * (<span class="nu">1</span> << o), ...) * amp;
+            amp *= <span class="nu">0.5f</span>;
+        }
+        <span class="cm">/* Snow above threshold, haze per layer */</span>
+    }
+}`},
+  erosion: {fn:'demo_erosion', code:`<span class="cm">/* Ridged FBM: abs(noise) creates sharp ridges */</span>
+<span class="kw">for</span> (<span class="kw">int</span> o = <span class="nu">0</span>; o < <span class="nu">5</span>; o++) {
+    <span class="kw">float</span> n = <span class="fn">gm_noise2</span>((fx + warp) * (<span class="nu">1</span> << o), ...);
+    h += (<span class="nu">1.0f</span> - <span class="fn">fabsf</span>(n)) * amp;  <span class="cm">// ridge trick</span>
+    amp *= <span class="nu">0.45f</span>;
+}`},
+  dunes: {fn:'demo_dunes', code:`<span class="cm">/* Sand dunes: sum of sines + noise texture */</span>
+<span class="kw">float</span> h = <span class="fn">sinf</span>(fx*<span class="nu">2</span> + t*<span class="nu">0.5</span>) * <span class="nu">0.3f</span>
+        + <span class="fn">sinf</span>(fx*<span class="nu">5</span> - t*<span class="nu">0.65</span>) * <span class="nu">0.15f</span>
+        + <span class="fn">sinf</span>(fx*<span class="nu">11</span> + t*<span class="nu">0.35</span>) * <span class="nu">0.08f</span>;
+h += <span class="fn">gm_noise2</span>(fx*<span class="nu">3</span> + t*<span class="nu">0.1</span>, <span class="nu">0</span>) * <span class="nu">0.05f</span>;`},
+  metaballs: {fn:'demo_metaballs', code:`<span class="cm">/* 4 orbiting spheres with smooth union */</span>
+<span class="kw">float</span> d = <span class="nu">999.0f</span>;
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i < <span class="nu">4</span>; i++) {
+    <span class="kw">float</span> a = t * <span class="nu">0.8f</span> + i * <span class="nu">1.57f</span>;
+    d = <span class="fn">gm_op_smooth_union</span>(d,
+        <span class="fn">gm_sd_sphere</span>(sx, sy, sz, <span class="nu">0.6f</span>), <span class="nu">0.5f</span>);
+}
+<span class="kw">return</span> <span class="fn">gm_op_union</span>(d, y + <span class="nu">1.5f</span>);`},
+  voronoi_cells: {fn:'demo_voronoi_cells', code:`<span class="cm">/* Voronoi: nearest-seed distance + edge detection */</span>
+<span class="kw">float</span> d, id;
+<span class="fn">gm_voronoi</span>(x, y, &d, &id);
+<span class="kw">float</span> edge = <span class="fn">gm_voronoi_edge</span>(x, y);
+<span class="fn">gm_hue</span>(id, &hr, &hg, &hb);  <span class="cm">// color per cell</span>
+<span class="kw">float</span> e = <span class="fn">gm_smoothstep</span>(<span class="nu">0.02f</span>, <span class="nu">0.08f</span>, edge);`},
+  coral: {fn:'demo_coral', code:`<span class="cm">/* Recursive L-system branching (depth=5) */</span>
+<span class="kw">float</span> <span class="fn">coral_branch</span>(px, py, cx, cy, r, angle, depth, t) {
+    <span class="kw">float</span> d = <span class="fn">sqrtf</span>(dx*dx + dy*dy) - r;
+    <span class="kw">if</span> (depth <= <span class="nu">0</span>) <span class="kw">return</span> d;
+    <span class="cm">// two child branches, each 0.62x smaller</span>
+    d = <span class="fn">fminf</span>(d, <span class="fn">coral_branch</span>(..., r*<span class="nu">0.62f</span>, depth-<span class="nu">1</span>));
+    d = <span class="fn">fminf</span>(d, <span class="fn">coral_branch</span>(..., r*<span class="nu">0.62f</span>, depth-<span class="nu">1</span>));
+}`},
+  pillars: {fn:'demo_pillars', code:`<span class="cm">/* Infinite pillar grid via domain repetition */</span>
+<span class="kw">float</span> rx = <span class="fn">gm_op_repeat</span>(x, <span class="nu">3.0f</span>);
+<span class="kw">float</span> rz = <span class="fn">gm_op_repeat</span>(z, <span class="nu">3.0f</span>);
+<span class="kw">float</span> pillar = <span class="fn">gm_sd_box3</span>(rx, y, rz,
+    <span class="nu">0.25f</span>, <span class="nu">1.5f</span>, <span class="nu">0.25f</span>);
+<span class="kw">return</span> <span class="fn">gm_op_union</span>(floor_d, pillar);`},
+  arch: {fn:'demo_arch', code:`<span class="cm">/* Gothic arch: intersection of two offset circles */</span>
+<span class="kw">float</span> d1 = <span class="fn">sqrtf</span>((x+<span class="nu">0.3</span>)*(x+<span class="nu">0.3</span>) + y*y) - rad;
+<span class="kw">float</span> d2 = <span class="fn">sqrtf</span>((x-<span class="nu">0.3</span>)*(x-<span class="nu">0.3</span>) + y*y) - rad;
+<span class="kw">float</span> d = <span class="fn">fmaxf</span>(d1, d2);  <span class="cm">// intersection</span>
+d = <span class="fn">fmaxf</span>(d, -y - <span class="nu">0.8f</span>);  <span class="cm">// clip bottom</span>`},
+  staircase: {fn:'demo_staircase', code:`<span class="cm">/* Spiral staircase: atan2 → spiral Y mapping */</span>
+<span class="kw">float</span> a = <span class="fn">atan2f</span>(z, x);
+<span class="kw">float</span> spiralY = a / <span class="nu">6.2832f</span> * <span class="nu">2.0f</span>;
+<span class="kw">float</span> dy = y - spiralY;
+<span class="kw">float</span> mdy = dy - <span class="fn">roundf</span>(dy/<span class="nu">2</span>) * <span class="nu">2</span>;
+<span class="kw">float</span> step = <span class="fn">fmaxf</span>(<span class="fn">fabsf</span>(mdy) - <span class="nu">0.05f</span>,
+    <span class="fn">fmaxf</span>(r - <span class="nu">1.2f</span>, <span class="nu">0.2f</span> - r));`},
+  waves: {fn:'demo_waves', code:`<span class="cm">/* Gerstner wave superposition (5 components) */</span>
+<span class="kw">static const float</span> waves[][<span class="nu">3</span>] = {
+    {<span class="nu">0.25f</span>, <span class="nu">1.5f</span>,  <span class="nu">1.2f</span>},  <span class="cm">// amp, k, speed</span>
+    {<span class="nu">0.15f</span>, <span class="nu">2.5f</span>, <span class="nu">-0.8f</span>}, ...
+};
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i < <span class="nu">5</span>; i++)
+    h += waves[i][<span class="nu">0</span>] * <span class="fn">cosf</span>(fx*waves[i][<span class="nu">1</span>] - t*waves[i][<span class="nu">2</span>]);`},
+  vortex: {fn:'demo_vortex', code:`<span class="cm">/* Curl of FBM noise → velocity field */</span>
+<span class="kw">float</span> n0 = <span class="fn">gm_fbm</span>(x + t*<span class="nu">0.2</span>, y, <span class="nu">3</span>);
+<span class="kw">float</span> dx = <span class="fn">gm_fbm</span>(x+e + t*<span class="nu">0.2</span>, y, <span class="nu">3</span>) - n0;
+<span class="kw">float</span> dy = <span class="fn">gm_fbm</span>(x + t*<span class="nu">0.2</span>, y+e, <span class="nu">3</span>) - n0;
+<span class="kw">float</span> vx = dy / e, vy = -dx / e;  <span class="cm">// curl</span>`},
+  ripples: {fn:'demo_ripples', code:`<span class="cm">/* 8 radial wave emitters with decay */</span>
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i < <span class="nu">8</span>; i++) {
+    <span class="kw">float</span> r = <span class="fn">sqrtf</span>(dx*dx + dy*dy);
+    <span class="kw">float</span> age = t - drops[i].birth;
+    val += <span class="fn">cosf</span>(r*<span class="nu">0.3f</span> - age*<span class="nu">5</span>) *
+           <span class="fn">expf</span>(-age*<span class="nu">0.8f</span>) * <span class="fn">expf</span>(-r*<span class="nu">0.02f</span>);
+}`},
+  gem: {fn:'demo_gem', code:`<span class="cm">/* 14-plane intersection → faceted gem */</span>
+<span class="kw">float</span> d = <span class="fn">gm_sd_sphere</span>(x, y, z, <span class="nu">1.1f</span>);
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i < <span class="nu">14</span>; i++) {
+    <span class="kw">float</span> plane = x*n[i].x + y*n[i].y + z*n[i].z - n[i].w;
+    d = <span class="fn">fmaxf</span>(d, plane);  <span class="cm">// CSG intersection</span>
+}
+<span class="cm">/* + spectral dispersion via hue shift */</span>`},
+  voronoi_growth: {fn:'demo_voronoi_growth', code:`<span class="cm">/* Voronoi edges glow with pulsating intensity */</span>
+<span class="kw">float</span> edge = <span class="fn">gm_voronoi_edge</span>(x, y);
+<span class="kw">float</span> glow = <span class="fn">expf</span>(-edge * <span class="nu">25</span>) *
+    (<span class="fn">sinf</span>(t*<span class="nu">3</span>)*<span class="nu">0.3f</span> + <span class="nu">0.7f</span>);`},
+  snowflake: {fn:'demo_snowflake', code:`<span class="cm">/* 6-fold symmetry via angle folding */</span>
+<span class="kw">float</span> a = <span class="fn">atan2f</span>(y, x);
+a = <span class="fn">gm_mod</span>(a, PI/<span class="nu">3</span>);
+<span class="kw">if</span> (a > PI/<span class="nu">6</span>) a = PI/<span class="nu">3</span> - a; <span class="cm">// mirror</span>
+x = r * <span class="fn">cosf</span>(a);
+y = r * <span class="fn">sinf</span>(a);
+<span class="cm">/* SDF branches in folded space */</span>`},
+  gear: {fn:'demo_gear', code:`<span class="cm">/* Gear: radial cos modulation for teeth */</span>
+<span class="kw">float</span> tooth = <span class="fn">cosf</span>(a * <span class="nu">12</span>) * <span class="nu">0.12f</span>;
+<span class="kw">float</span> body = r - (<span class="nu">0.8f</span> + tooth);
+<span class="kw">float</span> hole = <span class="nu">0.18f</span> - r;
+<span class="kw">float</span> spoke = <span class="fn">fminf</span>(<span class="fn">fabsf</span>(<span class="fn">sinf</span>(a*<span class="nu">3</span>))*r, r-<span class="nu">0.2</span>);`},
+  helix: {fn:'demo_helix', code:`<span class="cm">/* Thread helix: wind around cylinder */</span>
+<span class="kw">float</span> core = <span class="fn">gm_sd_cylinder</span>(x, y, z, <span class="nu">0.45f</span>, <span class="nu">1.5f</span>);
+<span class="kw">float</span> a = <span class="fn">atan2f</span>(x, z) + t * <span class="nu">0.5f</span>;
+<span class="kw">float</span> helixY = <span class="fn">gm_mod</span>(y + a*pitch/<span class="nu">TAU</span>, pitch);
+<span class="kw">float</span> helixR = <span class="fn">sqrtf</span>(x*x+z*z) - <span class="nu">0.6f</span>;
+<span class="kw">float</span> thread = <span class="fn">sqrtf</span>(helixR*helixR + helixY*helixY) - <span class="nu">0.12f</span>;`},
+  pipes: {fn:'demo_pipes', code:`<span class="cm">/* 3 orthogonal cylinders, smooth-unioned */</span>
+<span class="kw">float</span> c1 = <span class="fn">gm_sd_cylinder</span>(x, y, z, <span class="nu">0.35f</span>, <span class="nu">2</span>);
+<span class="kw">float</span> c2 = <span class="fn">gm_sd_cylinder</span>(y, z, x, <span class="nu">0.35f</span>, <span class="nu">2</span>);
+<span class="kw">float</span> c3 = <span class="fn">gm_sd_cylinder</span>(z, x, y, <span class="nu">0.35f</span>, <span class="nu">2</span>);
+d = <span class="fn">gm_op_smooth_union</span>(c1, c2, <span class="nu">0.25f</span>);
+d = <span class="fn">gm_op_smooth_union</span>(d,  c3, <span class="nu">0.25f</span>);`},
+  mandelbrot: {fn:'demo_mandelbrot', code:`<span class="cm">/* Mandelbrot: z = z² + c, 128 iterations */</span>
+<span class="kw">float</span> zr = <span class="nu">0</span>, zi = <span class="nu">0</span>;
+<span class="kw">for</span> (; i < <span class="nu">128</span>; i++) {
+    <span class="kw">if</span> (zr*zr + zi*zi > <span class="nu">256</span>) <span class="kw">break</span>;
+    zi = <span class="nu">2</span>*zr*zi + ci;
+    zr = zr*zr - zi*zi + cr;
+}
+<span class="cm">/* Smooth iteration count for continuous color */</span>
+<span class="kw">float</span> sm = i + <span class="nu">1</span> - <span class="fn">log2f</span>(<span class="fn">log2f</span>(zr*zr + zi*zi));`},
+  julia: {fn:'demo_julia', code:`<span class="cm">/* Julia set: fixed c, varying z₀ */</span>
+<span class="kw">float</span> jcr = <span class="nu">-0.7269f</span> + <span class="fn">sinf</span>(t*<span class="nu">0.3</span>)*<span class="nu">0.15f</span>;
+<span class="kw">float</span> jci =  <span class="nu">0.1889f</span> + <span class="fn">cosf</span>(t*<span class="nu">0.23</span>)*<span class="nu">0.15f</span>;
+<span class="cm">/* Same iteration as Mandelbrot but c is fixed,
+   initial z comes from pixel coordinates */</span>`},
+  gyroid: {fn:'demo_gyroid', code:`<span class="cm">/* Gyroid TPMS: sin(x)cos(y)+sin(y)cos(z)+sin(z)cos(x) */</span>
+<span class="kw">float</span> g = <span class="fn">sinf</span>(x*<span class="nu">2.5</span>)*<span class="fn">cosf</span>(y*<span class="nu">2.5</span>)
+        + <span class="fn">sinf</span>(y*<span class="nu">2.5</span>)*<span class="fn">cosf</span>(z*<span class="nu">2.5</span>)
+        + <span class="fn">sinf</span>(z*<span class="nu">2.5</span>)*<span class="fn">cosf</span>(x*<span class="nu">2.5</span>);
+<span class="kw">return</span> <span class="fn">fabsf</span>(g) / <span class="nu">2.5f</span> - <span class="nu">0.08f</span>;`},
+  fog: {fn:'demo_fog', code:`<span class="cm">/* Volume ray march: 40 steps, FBM density */</span>
+<span class="kw">float</span> T = <span class="nu">1.0f</span>;  <span class="cm">// transmittance</span>
+<span class="kw">for</span> (<span class="kw">int</span> s = <span class="nu">0</span>; s < <span class="nu">40</span>; s++) {
+    <span class="kw">float</span> density = <span class="fn">gm_fbm3</span>(sx, sy, sz, <span class="nu">4</span>);
+    <span class="kw">float</span> absorption = <span class="fn">expf</span>(-dt * <span class="nu">2</span>);
+    color += T * (<span class="nu">1</span> - absorption) * fog_color;
+    T *= absorption;
+}`},
+  aurora: {fn:'demo_aurora', code:`<span class="cm">/* 3 curtain layers: sine waves + noise */</span>
+<span class="kw">for</span> (<span class="kw">int</span> layer = <span class="nu">0</span>; layer < <span class="nu">3</span>; layer++) {
+    <span class="kw">float</span> wave = <span class="fn">sinf</span>(u*freq*PI + t*speed);
+    wave += <span class="fn">gm_noise2</span>(u*<span class="nu">4</span>, layer*<span class="nu">10</span>) * <span class="nu">0.08f</span>;
+    <span class="kw">float</span> curtain = <span class="fn">expf</span>(-dist*dist*<span class="nu">80</span>);
+    curtain *= ripple * height_fade;
+}`},
+  lightning: {fn:'demo_lightning', code:`<span class="cm">/* Recursive midpoint bolt + branching */</span>
+<span class="fn">lightning_gen_bolt</span>(x0, y0, x1, y1, brightness, depth) {
+    <span class="kw">float</span> mx = (x0+x1)*<span class="nu">0.5</span> + random*<span class="nu">0.15</span>;
+    <span class="fn">lightning_gen_bolt</span>(x0,y0, mx,my, b, depth-<span class="nu">1</span>);
+    <span class="fn">lightning_gen_bolt</span>(mx,my, x1,y1, b, depth-<span class="nu">1</span>);
+    <span class="cm">/* Branch with probability at each split */</span>
+}
+<span class="cm">/* Per-pixel glow via segment SDF */</span>`},
+  woven: {fn:'demo_woven', code:`<span class="cm">/* Warp/weft: alternating over-under pattern */</span>
+<span class="kw">int</span> over = ((ix + iy) & <span class="nu">1</span>) == <span class="nu">0</span>;
+<span class="kw">float</span> warpD = <span class="fn">fabsf</span>(fx) - <span class="nu">0.35f</span>;
+<span class="kw">float</span> weftD = <span class="fn">fabsf</span>(fy) - <span class="nu">0.35f</span>;
+<span class="kw">float</span> lift = over ? <span class="fn">sinf</span>(fy*PI)*<span class="nu">0.15</span>
+                  : -<span class="fn">sinf</span>(fx*PI)*<span class="nu">0.15</span>;`},
+  moire: {fn:'demo_moire', code:`<span class="cm">/* Moiré: two rotated line grids multiplied */</span>
+<span class="kw">float</span> r1x = x*<span class="fn">cosf</span>(a1) - y*<span class="fn">sinf</span>(a1);
+<span class="kw">float</span> r2x = x*<span class="fn">cosf</span>(a2) - y*<span class="fn">sinf</span>(a2);
+<span class="kw">float</span> g1 = <span class="fn">sinf</span>(r1x*<span class="nu">1.5</span>)*<span class="nu">0.5</span> + <span class="nu">0.5</span>;
+<span class="kw">float</span> g2 = <span class="fn">sinf</span>(r2x*<span class="nu">1.5</span>)*<span class="nu">0.5</span> + <span class="nu">0.5</span>;
+<span class="kw">float</span> v = g1 * g2;  <span class="cm">// interference</span>`},
+  chainmail: {fn:'demo_chainmail', code:`<span class="cm">/* Interlocked tori on a grid (alternating axis) */</span>
+<span class="kw">float</span> rx = <span class="fn">gm_op_repeat</span>(x, <span class="nu">1.0f</span>);
+<span class="kw">if</span> ((ix + iz) & <span class="nu">1</span>)
+    d = <span class="fn">gm_sd_torus</span>(rz, ry, rx, <span class="nu">0.32f</span>, <span class="nu">0.06f</span>);
+<span class="kw">else</span>
+    d = <span class="fn">gm_sd_torus</span>(rx, ry, rz, <span class="nu">0.32f</span>, <span class="nu">0.06f</span>);`},
+  sdf_glow: {fn:'demo_sdf_glow', code:`<span class="cm">/* SDF text: segment-based letter SDFs */</span>
+<span class="kw">float</span> d = <span class="fn">letter_S</span>(x, y, <span class="nu">-1.2</span>);
+d = <span class="fn">fminf</span>(d, <span class="fn">letter_D</span>(x, y, <span class="nu">-0.3</span>));
+d = <span class="fn">fminf</span>(d, <span class="fn">letter_F</span>(x, y,  <span class="nu">0.6</span>));
+d -= <span class="nu">0.04f</span>;  <span class="cm">// thickness</span>
+<span class="kw">float</span> glow = <span class="fn">expf</span>(-d * <span class="nu">6</span>) * pulse;`},
+  neon: {fn:'demo_neon', code:`<span class="cm">/* Neon: tube + exponential glow + flicker */</span>
+<span class="kw">float</span> flicker = <span class="nu">0.85</span> + <span class="nu">0.15</span>*<span class="fn">sinf</span>(t*<span class="nu">8</span> + x*<span class="nu">2</span>)
+             + <span class="nu">0.1</span>*<span class="fn">sinf</span>(t*<span class="nu">13</span> + y*<span class="nu">3</span>);
+<span class="kw">float</span> tube = <span class="fn">gm_smoothstep</span>(<span class="nu">0.06</span>, <span class="nu">0.03</span>, <span class="fn">fabsf</span>(d));
+<span class="kw">float</span> glow = <span class="fn">expf</span>(-<span class="fn">fabsf</span>(d)*<span class="nu">4</span>) * <span class="nu">0.5</span>;
+<span class="cm">/* + gm_bloom() post-process */</span>`},
+  liquid_text: {fn:'demo_liquid_text', code:`<span class="cm">/* Liquid: letter SDF + orbiting blob smooth union */</span>
+<span class="kw">float</span> d = <span class="fn">letter_F</span>(...) | <span class="fn">letter_E</span>(...);
+d -= <span class="nu">0.06f</span>;  <span class="cm">// thickness</span>
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i < <span class="nu">4</span>; i++) {
+    <span class="kw">float</span> bd = <span class="fn">gm_sd_circle</span>(x-bx, y-by, <span class="nu">0.15</span>);
+    d = <span class="fn">gm_op_smooth_union</span>(d, bd, <span class="nu">0.3f</span>);
+}`},
+  galaxy_pts: {fn:'demo_galaxy_pts', code:`<span class="cm">/* 500 particles on 3 logarithmic spiral arms */</span>
+<span class="kw">float</span> angle = arm * <span class="nu">2.094f</span> + <span class="fn">logf</span>(r) * <span class="nu">2.5f</span>;
+sx[i] = r * <span class="fn">cosf</span>(angle) + scatter;
+sy[i] = r * <span class="fn">sinf</span>(angle) + scatter;
+<span class="cm">/* Rotate all particles each frame */</span>
+rx = sx[i]*<span class="fn">cosf</span>(rot) - sy[i]*<span class="fn">sinf</span>(rot);`},
+  boids: {fn:'demo_boids', code:`<span class="cm">/* Craig Reynolds flocking: 3 rules */</span>
+<span class="cm">// Separation: avoid crowding neighbors</span>
+sep -= dx / dist;
+<span class="cm">// Alignment: steer toward avg heading</span>
+ali += neighbor.velocity;
+<span class="cm">// Cohesion: steer toward avg position</span>
+coh += neighbor.position;
+<span class="cm">/* Speed-limited, edge-wrapped */</span>`},
+  smoke: {fn:'demo_smoke', code:`<span class="cm">/* Curl-noise advection: semi-Lagrangian */</span>
+<span class="kw">float</span> vx = -(<span class="fn">gm_noise2</span>(x, y+e) - <span class="fn">gm_noise2</span>(x, y-e));
+<span class="kw">float</span> vy =  (<span class="fn">gm_noise2</span>(x+e, y) - <span class="fn">gm_noise2</span>(x-e, y));
+vy -= <span class="nu">1.5f</span>;  <span class="cm">// buoyancy</span>
+density[py*W+px] = density[sy*W+sx] * <span class="nu">0.995f</span>;`},
+  ct_slice: {fn:'demo_ct_slice', code:`<span class="cm">/* CT scan: concentric density rings + organs */</span>
+d += <span class="fn">gm_smoothstep</span>(<span class="nu">0.05</span>, <span class="nu">0</span>, <span class="fn">fabsf</span>(r-<span class="nu">0.85</span>)-<span class="nu">0.04</span>) * <span class="nu">0.55</span>;
+<span class="cm">/* Spine */</span>
+<span class="kw">float</span> spine = <span class="fn">sqrtf</span>(rx*rx + (ry+<span class="nu">0.3</span>)*(ry+<span class="nu">0.3</span>));
+d += <span class="fn">gm_smoothstep</span>(<span class="nu">0.15</span>, <span class="nu">0.05</span>, spine) * <span class="nu">0.6</span>;
+<span class="cm">/* + noise texture for tissue detail */</span>`},
+  ecg: {fn:'demo_ecg', code:`<span class="cm">/* ECG: Gaussian peaks for P, QRS, T waves */</span>
+<span class="kw">float</span> p = <span class="nu">0.1</span> * <span class="fn">expf</span>(-(phase-<span class="nu">0.1</span>)²/<span class="nu">0.035</span>²);
+<span class="kw">float</span> r = <span class="nu">1.0</span> * <span class="fn">expf</span>(-(phase-<span class="nu">0.25</span>)²/<span class="nu">0.012</span>²);
+<span class="kw">float</span> t = <span class="nu">0.18</span> * <span class="fn">expf</span>(-(phase-<span class="nu">0.42</span>)²/<span class="nu">0.04</span>²);
+ecg = p + q + r + s + t;`},
+  molecular: {fn:'demo_molecular', code:`<span class="cm">/* Water: 6 atoms (2 O + 4 H), smooth union */</span>
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="nu">0</span>; i < <span class="nu">6</span>; i++) {
+    <span class="kw">float</span> sd = <span class="fn">gm_sd_sphere</span>(x-ax, y-ay, z-az, r);
+    d = <span class="fn">gm_op_smooth_union</span>(d, sd, <span class="nu">0.3f</span>);
+}
+<span class="cm">/* Color by nearest atom: O=red, H=white */</span>`},
+  marching_sq: {fn:'demo_marching_sq', code:`<span class="cm">/* Marching squares: 16-case edge table */</span>
+<span class="kw">int</span> idx = <span class="nu">0</span>;
+<span class="kw">if</span> (v0 > <span class="nu">0</span>) idx |= <span class="nu">1</span>;
+<span class="kw">if</span> (v1 > <span class="nu">0</span>) idx |= <span class="nu">2</span>;
+<span class="kw">if</span> (v2 > <span class="nu">0</span>) idx |= <span class="nu">4</span>;
+<span class="kw">if</span> (v3 > <span class="nu">0</span>) idx |= <span class="nu">8</span>;
+<span class="cm">/* Draw edge pairs from lookup table */</span>`},
+  dungeon: {fn:'demo_dungeon', code:`<span class="cm">/* BSP tree splits space → rooms + corridors */</span>
+<span class="kw">void</span> <span class="fn">bsp_split</span>(x, y, w, h, depth) {
+    <span class="kw">if</span> (depth >= <span class="nu">4</span> || w < <span class="nu">60</span>) {
+        <span class="cm">/* leaf: place random room */</span>
+        rooms[count++] = {rx, ry, rw, rh};
+        <span class="kw">return</span>;
+    }
+    <span class="cm">/* split horiz or vert, recurse both halves */</span>
+    <span class="fn">bsp_split</span>(x, y, w, split, depth+<span class="nu">1</span>);
+}`},
+  destruct: {fn:'demo_destruct', code:`<span class="cm">/* Terrain stored as heightmap, craters modify it */</span>
+<span class="kw">if</span> (<span class="fn">fabsf</span>(dx) < rad) {
+    <span class="kw">float</span> f = <span class="nu">1</span> - (dx*dx) / (rad*rad);
+    terrain[x] += f * depth;  <span class="cm">// parabolic crater</span>
+}
+<span class="cm">/* New crater every 0.6 seconds */</span>`},
+  waveform: {fn:'demo_waveform', code:`<span class="cm">/* Additive synthesis: Σ sin(kx)/k */</span>
+<span class="kw">for</span> (<span class="kw">int</span> k = <span class="nu">1</span>; k <= harmonics; k++)
+    sum += <span class="fn">sinf</span>(phase * k) / k;
+<span class="cm">/* Harmonics count cycles 1..8 over time */</span>
+<span class="cm">/* Individual harmonics drawn dim, sum bright */</span>`},
+  fft_butterfly: {fn:'demo_fft_butterfly', code:`<span class="cm">/* FFT butterfly diagram (N=16, 4 stages) */</span>
+<span class="kw">for</span> (<span class="kw">int</span> s = <span class="nu">0</span>; s < stages; s++) {
+    <span class="kw">int</span> group_size = <span class="nu">1</span> << (s + <span class="nu">1</span>);
+    <span class="cm">/* Draw straight + cross connections */</span>
+    <span class="cm">/* Animate: highlight current stage */</span>
+}`},
+  convolution: {fn:'demo_convolution', code:`<span class="cm">/* Sliding kernel: Gaussian / derivative / box */</span>
+<span class="kw">for</span> (<span class="kw">int</span> j = <span class="nu">0</span>; j < ksize; j++) {
+    v += signal[i+j-ksize/<span class="nu">2</span>] * kernel[j];
+}
+<span class="cm">/* Input (blue) + output (yellow) + kernel highlight */</span>`},
+  cnc: {fn:'demo_cnc', code:`<span class="cm">/* CNC: tool orbits star-shaped SDF contour */</span>
+<span class="kw">float</span> star = r - (<span class="nu">0.6</span> + <span class="fn">sinf</span>(a*<span class="nu">5</span>)*<span class="nu">0.15</span> + <span class="fn">sinf</span>(a*<span class="nu">3</span>)*<span class="nu">0.1</span>);
+<span class="kw">float</span> offset = star - toolR;  <span class="cm">// offset contour</span>
+<span class="kw">float</span> toolD = <span class="fn">sqrtf</span>(tdx*tdx+tdy*tdy) - toolR;`},
+  slicing: {fn:'demo_slicing', code:`<span class="cm">/* 3D print slice: evaluate SDF at z=const */</span>
+<span class="kw">float</span> d = <span class="fn">slicing_scene</span>(x, y, zslice);
+<span class="kw">if</span> (d < <span class="nu">-0.05</span>) {
+    <span class="cm">/* Inside: gyroid infill pattern */</span>
+    infill = <span class="fn">sinf</span>(x*<span class="nu">30</span>)*<span class="fn">sinf</span>(y*<span class="nu">30</span>) > <span class="nu">0</span>;
+} <span class="kw">else if</span> (d < <span class="nu">0.05</span>) { <span class="cm">/* Shell */</span> }`},
+  kerf: {fn:'demo_kerf', code:`<span class="cm">/* Laser kerf: SDF offset creates cut width */</span>
+<span class="kw">float</span> d = <span class="fn">kerf_shape</span>(x, y);
+<span class="kw">float</span> inner = d + k*<span class="nu">0.5</span>;  <span class="cm">// part boundary</span>
+<span class="kw">float</span> outer = d - k*<span class="nu">0.5</span>;  <span class="cm">// waste boundary</span>
+<span class="cm">/* k oscillates: k = 0.04 + sin(t)*0.02 */</span>
+<span class="cm">/* Kerf zone: heat glow + noise flicker */</span>`},
+  galaxy_spiral: {fn:'demo_galaxy_spiral', code:`<span class="cm">/* Spiral galaxy: log-spiral arm density field */</span>
+<span class="kw">float</span> armA = a - <span class="fn">logf</span>(r) * twist;
+<span class="kw">float</span> armMod = <span class="fn">fmodf</span>(armA, TAU/<span class="nu">3</span>);
+<span class="kw">float</span> density = <span class="fn">expf</span>(-armDist² * <span class="nu">3</span>) * <span class="fn">expf</span>(-r*<span class="nu">0.3</span>);
+<span class="kw">float</span> core = <span class="fn">expf</span>(-r*r*<span class="nu">2</span>) * <span class="nu">0.8</span>;`},
+  lensing: {fn:'demo_lensing', code:`<span class="cm">/* Gravitational lensing: deflection ∝ 1/r */</span>
+<span class="kw">float</span> deflect = einsteinR² / r;
+<span class="kw">int</span> sx = px + nx * deflect;
+<span class="kw">int</span> sy = py + ny * deflect;
+<span class="cm">/* Sample background star field at deflected coords */</span>
+<span class="cm">/* Einstein ring glow at r = einsteinR */</span>`},
+  cosmic_web: {fn:'demo_cosmic_web', code:`<span class="cm">/* Cosmic web: voronoi filaments + galaxy clusters */</span>
+<span class="kw">float</span> edge = <span class="fn">gm_voronoi_edge</span>(x, y);
+<span class="kw">float</span> filament = <span class="fn">gm_smoothstep</span>(<span class="nu">0.15</span>, <span class="nu">0</span>, edge);
+<span class="cm">/* Cluster glow at voronoi cell centers */</span>
+cluster += <span class="fn">expf</span>(-d * <span class="nu">8</span>) * <span class="nu">0.5</span>;`},
+};
+
+function updateCode() {
+  const id = UTF8ToString(Module._get_item_id(curCat, curItem));
+  const title = UTF8ToString(Module._get_item_title(curCat, curItem));
+  const entry = CODE[id];
+  if (entry) {
+    document.getElementById('codeFn').textContent = entry.fn + '()';
+    document.getElementById('codeView').innerHTML = entry.code;
+  } else {
+    document.getElementById('codeFn').textContent = id;
+    document.getElementById('codeView').innerHTML = `<span class="cm">/* ${title} */</span>`;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  Input
+ * ═══════════════════════════════════════════════════════════════════════════ */
+const canvas = document.getElementById('canvas');
+
+canvas.addEventListener('mousedown', (e) => {
+  dragging = true;
+  lastDragX = e.clientX;
+  lastDragY = e.clientY;
+});
+window.addEventListener('mousemove', (e) => {
+  if (!dragging) return;
+  mouseX += (e.clientX - lastDragX) * mouseSens;
+  mouseY = Math.max(-1.2, Math.min(0.5, mouseY + (e.clientY - lastDragY) * mouseSens));
+  lastDragX = e.clientX;
+  lastDragY = e.clientY;
+  Module._set_mouse(mouseX, mouseY);
+});
+window.addEventListener('mouseup', () => { dragging = false; });
+
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  dragging = true;
+  lastDragX = e.touches[0].clientX;
+  lastDragY = e.touches[0].clientY;
+}, {passive: false});
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (!dragging) return;
+  mouseX += (e.touches[0].clientX - lastDragX) * mouseSens;
+  mouseY = Math.max(-1.2, Math.min(0.5, mouseY + (e.touches[0].clientY - lastDragY) * mouseSens));
+  lastDragX = e.touches[0].clientX;
+  lastDragY = e.touches[0].clientY;
+  Module._set_mouse(mouseX, mouseY);
+}, {passive: false});
+canvas.addEventListener('touchend', () => { dragging = false; });
+
+document.addEventListener('keydown', (e) => {
+  const numCats = Module._get_num_categories();
+  const catCount = Module._get_category_count(curCat);
+
+  if (e.key === 'ArrowRight') {
+    selectDemo(curCat, (curItem + 1) % catCount);
+  } else if (e.key === 'ArrowLeft') {
+    selectDemo(curCat, (curItem - 1 + catCount) % catCount);
+  } else if (e.key === 'ArrowDown' || e.key === 'Tab') {
+    e.preventDefault();
+    selectDemo((curCat + 1) % numCats, 0);
+  } else if (e.key === 'ArrowUp') {
+    selectDemo((curCat - 1 + numCats) % numCats, 0);
+  } else if (e.key >= '1' && e.key <= '9') {
+    const idx = parseInt(e.key) - 1;
+    if (idx < numCats) selectDemo(idx, 0);
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  Renderer
+ * ═══════════════════════════════════════════════════════════════════════════ */
+async function initRenderer() {
+  canvas.width = W;
+  canvas.height = H;
+  fitCanvas();
+  window.addEventListener('resize', fitCanvas);
+
+  if (await tryWebGPU()) {
+    useWebGPU = true;
+    document.getElementById('backend').textContent = 'WebGPU';
+    requestAnimationFrame(frameWebGPU);
+  } else {
+    ctx2d = canvas.getContext('2d');
+    document.getElementById('backend').textContent = 'Canvas2D';
+    requestAnimationFrame(frameCanvas2D);
+  }
+}
+
+function fitCanvas() {
+  const wrap = document.getElementById('canvasWrap');
+  const ww = wrap.clientWidth, wh = wrap.clientHeight;
+  /* Fill the container, maintaining aspect ratio */
+  const scale = Math.min(ww / W, wh / H);
+  canvas.style.width = Math.round(W * scale) + 'px';
+  canvas.style.height = Math.round(H * scale) + 'px';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  WebGPU
+ * ═══════════════════════════════════════════════════════════════════════════ */
+async function tryWebGPU() {
+  if (!navigator.gpu) return false;
+  try {
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) return false;
+    gpuDevice = await adapter.requestDevice();
+
+    gpuContext = canvas.getContext('webgpu');
+    gpuFormat = navigator.gpu.getPreferredCanvasFormat();
+    gpuContext.configure({ device: gpuDevice, format: gpuFormat, alphaMode: 'opaque' });
+
+    gpuTexture = gpuDevice.createTexture({
+      size: [W, H],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST
+    });
+
+    gpuSampler = gpuDevice.createSampler({ magFilter: 'nearest', minFilter: 'nearest' });
+
+    await rebuildGPUPipeline();
+    return true;
+  } catch (e) {
+    console.warn('WebGPU init failed:', e);
+    return false;
+  }
+}
+
+async function rebuildGPUPipeline() {
+  const needSwizzle = (gpuFormat === 'bgra8unorm');
+  const shaderCode = `
+@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
+  let x = f32(i32(i & 1u)) * 4.0 - 1.0;
+  let y = f32(i32(i >> 1u)) * 4.0 - 1.0;
+  return vec4f(x, -y, 0, 1);
+}
+@group(0) @binding(0) var samp: sampler;
+@group(0) @binding(1) var tex: texture_2d<f32>;
+@fragment fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
+  let uv = pos.xy / vec2f(${W}.0, ${H}.0);
+  let c = textureSample(tex, samp, uv);
+  ${needSwizzle ? 'return vec4f(c.b, c.g, c.r, c.a);' : 'return c;'}
+}`;
+  const shaderModule = gpuDevice.createShaderModule({ code: shaderCode });
+
+  const bindGroupLayout = gpuDevice.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+      { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: {} }
+    ]
+  });
+
+  gpuPipeline = gpuDevice.createRenderPipeline({
+    layout: gpuDevice.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
+    vertex: { module: shaderModule, entryPoint: 'vs' },
+    fragment: { module: shaderModule, entryPoint: 'fs', targets: [{ format: gpuFormat }] },
+    primitive: { topology: 'triangle-list' }
+  });
+
+  gpuBindGroup = gpuDevice.createBindGroup({
+    layout: bindGroupLayout,
+    entries: [
+      { binding: 0, resource: gpuSampler },
+      { binding: 1, resource: gpuTexture.createView() }
+    ]
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  Frame loops
+ * ═══════════════════════════════════════════════════════════════════════════ */
+function updateFPS(now) {
+  frameCount++;
+  if (now - lastFpsTime >= 1000) {
+    document.getElementById('fps').textContent = frameCount + ' FPS';
+    frameCount = 0;
+    lastFpsTime = now;
+  }
+}
+
+function frameWebGPU(now) {
+  Module._render_frame(now / 1000);
+  const buf = new Uint8Array(Module.HEAPU8.buffer, bufferPtr, W * H * 4);
+  gpuDevice.queue.writeTexture({ texture: gpuTexture }, buf, { bytesPerRow: W * 4 }, { width: W, height: H });
+
+  const encoder = gpuDevice.createCommandEncoder();
+  const pass = encoder.beginRenderPass({
+    colorAttachments: [{ view: gpuContext.getCurrentTexture().createView(), loadOp: 'clear', clearValue: {r:0,g:0,b:0,a:1}, storeOp: 'store' }]
+  });
+  pass.setPipeline(gpuPipeline);
+  pass.setBindGroup(0, gpuBindGroup);
+  pass.draw(3);
+  pass.end();
+  gpuDevice.queue.submit([encoder.finish()]);
+  updateFPS(now);
+  requestAnimationFrame(frameWebGPU);
+}
+
+function frameCanvas2D(now) {
+  Module._render_frame(now / 1000);
+  const buf = new Uint8ClampedArray(Module.HEAPU8.buffer, bufferPtr, W * H * 4);
+  ctx2d.putImageData(new ImageData(buf, W, H), 0, 0);
+  updateFPS(now);
+  requestAnimationFrame(frameCanvas2D);
+}
+</script>
+</body>
+</html>

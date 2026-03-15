@@ -2,11 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>rawcut — video editor</title>
 <style>
 :root {
     --bg: #1a1a2e; --bg2: #16213e; --bg3: #0f3460;
     --fg: #e0e0e0; --fg2: #888; --accent: #e94560; --accent2: #0ea5e9;
+    --touch-min: 44px;
+    --mobile-font: 14px;
+    --mobile-font-sm: 13px;
+    --mobile-font-xs: 12px;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 13px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -17,39 +22,110 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
 .toolbar button { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 4px 12px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 12px; }
 .toolbar button:hover { background: #1a4a7a; }
 .toolbar .spacer { flex: 1; }
-.toolbar .status { color: var(--fg2); font-size: 11px; }
+.toolbar .status { color: var(--fg2); font-size: 11px; display: flex; align-items: center; gap: 4px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.status-dot.ready { background: #22c55e; }
+.status-dot.loading { background: #eab308; }
+.status-dot.error { background: #ef4444; }
 
 /* Main area */
 .main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
 /* Preview */
-.preview { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; min-height: 0; position: relative; }
-.preview canvas { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+.preview { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; min-height: 0; position: relative; overflow: hidden; }
+.preview canvas { max-width: 100%; max-height: 100%; image-rendering: pixelated; transition: transform 0.1s ease; transform-origin: center center; }
+#annot-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+#annot-canvas.active { pointer-events: auto; cursor: crosshair; }
+#face-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
 .preview .no-video { color: #444; font-size: 18px; position: absolute; }
 
 /* Transport */
-.transport { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg2); border-top: 1px solid #222; }
+.transport { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg2); border-top: 1px solid rgba(255,255,255,0.05); }
 .transport button { background: none; border: 1px solid #444; color: var(--fg); width: 32px; height: 28px; border-radius: 3px; cursor: pointer; font-size: 14px; }
 .transport button:hover { background: var(--bg3); }
 .transport button.active { background: var(--accent); border-color: var(--accent); }
 .transport .time { font-size: 13px; font-variant-numeric: tabular-nums; min-width: 120px; }
 .transport .spacer { flex: 1; }
 
+/* FPS counter colorized */
+.fps-green { color: #22c55e; font-size: 11px; }
+.fps-yellow { color: #eab308; font-size: 11px; }
+.fps-red { color: #ef4444; font-size: 11px; }
+
 /* Seek bar */
-.seek-bar { padding: 0 12px 6px; background: var(--bg2); }
+.seek-bar { padding: 0 12px 6px; background: var(--bg2); border-top: 1px solid rgba(255,255,255,0.05); }
 .seek-bar input[type="range"] { width: 100%; height: 6px; -webkit-appearance: none; background: #333; border-radius: 3px; outline: none; }
 .seek-bar input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--accent2); border-radius: 50%; cursor: pointer; }
 .seek-bar .markers { display: flex; justify-content: space-between; font-size: 10px; color: var(--fg2); margin-top: 2px; }
 
+/* Effects tabs */
+.effects-tabs { display: flex; gap: 2px; padding: 4px 12px 0; background: var(--bg2); border-top: 1px solid rgba(255,255,255,0.05); }
+.effects-tabs button { background: none; border: none; border-bottom: 2px solid transparent; color: var(--fg2); padding: 4px 10px; cursor: pointer; font-family: inherit; font-size: 11px; transition: all 0.2s ease; position: relative; }
+.effects-tabs button:hover { color: var(--fg); }
+.effects-tabs button.active { background: var(--accent2); color: #fff; border-radius: 12px; padding: 4px 14px; border-bottom-color: transparent; box-shadow: 0 0 8px rgba(14,165,233,0.4); }
+.tab-badge { font-size: 9px; background: rgba(255,255,255,0.15); color: var(--fg2); border-radius: 8px; padding: 0 5px; margin-left: 4px; display: inline-block; min-width: 16px; text-align: center; line-height: 16px; }
+
 /* Effects panel */
-.effects { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--bg2); border-top: 1px solid #222; overflow-x: auto; }
+.effects { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; background: var(--bg2); overflow-x: auto; min-height: 44px; border-bottom: 1px solid rgba(255,255,255,0.05); position: relative; }
 .effects .label { color: var(--fg2); font-size: 11px; margin-right: 4px; white-space: nowrap; }
-.effects button { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 11px; white-space: nowrap; }
+.effects button { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 11px; white-space: nowrap; position: relative; transition: all 0.15s ease; }
 .effects button:hover { border-color: var(--accent2); }
 .effects button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.effects button.active::after { content: ''; position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.effects-group { display: none; }
+.effects-group.active { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#current-fx-name { font-size: 10px; color: var(--accent2); margin-left: auto; white-space: nowrap; }
+
+/* Effect controls inline - styled as dark cards */
+.fx-controls { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(15,52,96,0.6); font-size: 11px; border-radius: 8px; margin: 4px 12px; border: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap; }
+.fx-controls label { color: var(--fg2); }
+.fx-controls input[type="color"] { width: 28px; height: 22px; border: 1px solid #333; background: none; cursor: pointer; }
+.fx-controls input[type="range"] { width: 100px; height: 4px; }
+.fx-controls select { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 2px 6px; font-family: inherit; font-size: 11px; }
+.fx-controls input[type="checkbox"] { accent-color: var(--accent2); }
+.fx-controls .reset-btn { background: var(--bg3); color: var(--accent); border: 1px solid var(--accent); padding: 2px 8px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 10px; margin-left: auto; }
+.fx-controls .reset-btn:hover { background: var(--accent); color: #fff; }
+.range-val { color: var(--accent2); font-size: 10px; min-width: 28px; display: inline-block; text-align: right; }
+
+/* VJ chain redesigned */
+.vj-chain-list { display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow-y: auto; padding: 4px 0; }
+.vj-header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 4px; }
+.vj-header span { color: var(--fg2); font-size: 11px; font-weight: bold; }
+.vj-header select, .vj-header button { font-family: inherit; font-size: 10px; }
+.vj-header select { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 2px 6px; border-radius: 3px; }
+.vj-header button { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 2px 8px; border-radius: 3px; cursor: pointer; }
+.vj-header button:hover { border-color: var(--accent2); }
+.vj-chain-item { display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: rgba(15,52,96,0.4); border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; cursor: grab; transition: background 0.15s ease; }
+.vj-chain-item:hover { background: rgba(15,52,96,0.7); }
+.vj-chain-item.drag-over { border-color: var(--accent2); background: rgba(14,165,233,0.1); }
+.vj-drag-handle { color: var(--fg2); cursor: grab; font-size: 14px; user-select: none; }
+.vj-fx-name { color: var(--fg); font-size: 11px; flex: 1; }
+.vj-intensity { width: 60px; height: 4px; }
+.vj-intensity-val { font-size: 10px; color: var(--accent2); min-width: 30px; }
+.vj-remove { background: none; border: 1px solid #555; color: var(--accent); width: 18px; height: 18px; border-radius: 50%; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center; padding: 0; }
+.vj-remove:hover { background: var(--accent); color: #fff; }
+
+/* Annotator controls */
+.annot-controls { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(15,52,96,0.6); font-size: 11px; border-radius: 8px; margin: 4px 12px; border: 1px solid rgba(255,255,255,0.06); }
+.annot-controls button { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 2px 8px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 11px; }
+
+/* Tools panel */
+.tools-panel { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.tools-section { background: rgba(15,52,96,0.6); border-radius: 8px; padding: 8px 16px; border: 1px solid rgba(255,255,255,0.06); }
+.tools-section h4 { font-size: 10px; color: var(--accent2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.tool-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 11px; }
+.tool-row label { color: var(--fg2); min-width: 70px; }
+.tool-row input[type="range"] { width: 120px; height: 4px; }
+.tool-row button { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 3px 10px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 11px; }
+.tool-row button:hover { border-color: var(--accent2); }
+.tool-row button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Webcam controls */
+#webcam-controls { flex-wrap: wrap; }
+#webcam-controls button.active { background: #dc2626; border-color: #dc2626; color: #fff; }
 
 /* Timeline */
-.timeline { height: 80px; background: var(--bg2); border-top: 1px solid #222; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
+.timeline { height: 80px; background: var(--bg2); border-top: 1px solid rgba(255,255,255,0.05); padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
 .timeline .track { display: flex; align-items: center; gap: 8px; }
 .timeline .track-label { width: 24px; font-size: 11px; color: var(--fg2); }
 .timeline .track-bar { flex: 1; height: 20px; background: #222; border-radius: 3px; position: relative; overflow: hidden; }
@@ -68,6 +144,104 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
 .modal h3 { margin-bottom: 12px; color: var(--accent); }
 .modal pre { background: #111; padding: 12px; border-radius: 4px; font-size: 12px; overflow-x: auto; margin: 8px 0; color: #0ea5e9; }
 .modal button { margin-top: 8px; }
+
+/* Timeline toggle — hidden on desktop */
+.timeline-toggle { display: none; }
+
+/* Safe area insets */
+body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+
+/* ===== MOBILE (max-width: 600px) ===== */
+@media (max-width: 600px) {
+    body { font-size: var(--mobile-font); overflow-y: auto; overflow-x: hidden; height: auto; }
+
+    /* Toolbar: icon-only */
+    .toolbar { flex-wrap: wrap; gap: 4px; padding: 4px 8px; }
+    .toolbar .brand { font-size: 14px; margin-right: 6px; }
+    .toolbar label[for="file-input"] { font-size: 0; min-width: var(--touch-min); min-height: var(--touch-min); display: inline-flex; align-items: center; justify-content: center; padding: 0 8px; }
+    .toolbar label[for="file-input"]::before { content: '📂'; font-size: 18px; }
+    .toolbar button { font-size: 0; min-width: var(--touch-min); min-height: var(--touch-min); display: inline-flex; align-items: center; justify-content: center; }
+    #btn-webcam::before { content: '📷'; font-size: 18px; }
+    #btn-export::before { content: '⬇'; font-size: 18px; }
+    .toolbar .status { font-size: 10px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Preview: fixed 55vh */
+    .preview { flex: none; height: 55vh; min-height: 200px; }
+
+    /* Effects tabs: horizontal scroll */
+    .effects-tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 4px 8px 0; gap: 4px; }
+    .effects-tabs::-webkit-scrollbar { display: none; }
+    .effects-tabs button { flex-shrink: 0; min-height: var(--touch-min); font-size: var(--mobile-font-xs); padding: 6px 12px; }
+
+    /* Effects buttons: horizontal scroll carousel */
+    .effects { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 8px; gap: 6px; }
+    .effects::-webkit-scrollbar { display: none; }
+    .effects-group.active { flex-wrap: nowrap; }
+    .effects button { flex-shrink: 0; min-height: var(--touch-min); font-size: var(--mobile-font-sm); padding: 6px 12px; }
+
+    /* FX controls: stacked full-width */
+    .fx-controls { flex-direction: column; align-items: stretch; padding: 8px; margin: 4px 8px; gap: 8px; }
+    .fx-controls input[type="range"] { width: 100%; }
+    .fx-controls select { width: 100%; min-height: var(--touch-min); font-size: var(--mobile-font-sm); }
+    .fx-controls input[type="color"] { width: var(--touch-min); height: 36px; }
+
+    /* Transport: wrapped, centered */
+    .transport { flex-wrap: wrap; justify-content: center; gap: 6px; padding: 8px; }
+    .transport button { width: var(--touch-min); height: var(--touch-min); border-radius: 50%; font-size: 16px; }
+    .transport .time { order: 10; flex-basis: 100%; text-align: center; font-size: 12px; }
+    .transport .spacer { display: none; }
+
+    /* Seek bar: fat thumb */
+    .seek-bar { padding: 0 8px 8px; }
+    .seek-bar input[type="range"] { height: 10px; touch-action: none; }
+    .seek-bar input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; }
+    .seek-bar input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; }
+
+    /* Timeline: collapsible */
+    .timeline-toggle { display: block; width: 100%; background: var(--bg2); color: var(--fg2); border: none; border-top: 1px solid rgba(255,255,255,0.05); padding: 8px; font-family: inherit; font-size: var(--mobile-font-xs); cursor: pointer; }
+    .timeline { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; padding: 0 12px; }
+    .timeline.expanded { max-height: 120px; padding: 8px 12px; }
+
+    /* Trim handles: wider */
+    .timeline .trim-handle { width: 16px; margin-left: -8px; }
+
+    /* VJ controls */
+    .vj-remove { width: 32px; height: 32px; font-size: 14px; }
+    .vj-intensity { width: 100px; }
+    .vj-chain-item { padding: 8px; }
+    .vj-header { flex-wrap: wrap; gap: 6px; }
+    .vj-header select, .vj-header button { min-height: var(--touch-min); font-size: var(--mobile-font-xs); }
+
+    /* Tools panel */
+    .tool-row { flex-wrap: wrap; }
+    .tool-row input[type="range"] { width: 100%; flex: 1; }
+    .tool-row button { min-height: var(--touch-min); }
+
+    /* Annotator controls */
+    .annot-controls { flex-wrap: wrap; gap: 6px; padding: 8px; }
+    .annot-controls button, .annot-controls select { min-height: var(--touch-min); }
+
+    /* Modal */
+    .modal { padding: 16px; }
+    .modal pre { word-break: break-all; white-space: pre-wrap; }
+    .modal button { min-height: var(--touch-min); }
+}
+
+/* ===== TABLET (601-900px) ===== */
+@media (min-width: 601px) and (max-width: 900px) {
+    .fx-controls input[type="range"] { width: 150px; }
+    .transport button { width: 38px; height: 36px; }
+    .effects-tabs button { padding: 6px 12px; font-size: 12px; }
+}
+
+/* ===== TOUCH DEVICE POLISH ===== */
+@media (hover: none) {
+    .toolbar button:hover, .transport button:hover, .effects button:hover { background: inherit; }
+    .effects button:active, .transport button:active { background: var(--bg3); transform: scale(0.95); }
+}
+
+/* Prevent text selection on controls */
+.transport, .effects-tabs, .effects, .fx-controls, .timeline { user-select: none; -webkit-user-select: none; }
 </style>
 </head>
 <body>
@@ -79,27 +253,529 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
     <button id="btn-webcam">Webcam</button>
     <button id="btn-export">Export</button>
     <div class="spacer"></div>
-    <span class="status" id="status">No video loaded</span>
+    <span class="status" id="status"><span class="status-dot ready" id="status-dot"></span> No video loaded</span>
 </div>
 
 <!-- Preview -->
 <div class="preview">
     <canvas id="rawbuf" width="640" height="360"></canvas>
+    <canvas id="annot-canvas" width="640" height="360"></canvas>
+    <canvas id="face-overlay" width="640" height="360"></canvas>
     <span class="no-video" id="no-video">Open a video to begin</span>
 </div>
 
-<!-- Effects -->
-<div class="effects">
-    <span class="label">FX:</span>
-    <button class="active" data-fx="0">None</button>
-    <button data-fx="1">Thermal</button>
-    <button data-fx="2">Edge Detect</button>
-    <button data-fx="3">Night Vision</button>
-    <button data-fx="4">VHS</button>
-    <button data-fx="5">Glitch</button>
-    <button data-fx="6">Pixelate</button>
-    <button data-fx="7">Invert</button>
+<!-- Effects Tabs -->
+<div class="effects-tabs" id="effects-tabs">
+    <button class="active" data-tab="basic">Basic <span class="tab-badge">8</span></button>
+    <button data-tab="color">Color <span class="tab-badge">2</span></button>
+    <button data-tab="retro">Retro <span class="tab-badge">1</span></button>
+    <button data-tab="audio">Audio <span class="tab-badge">3</span></button>
+    <button data-tab="ml">ML <span class="tab-badge">10</span></button>
+    <button data-tab="compose">Compose <span class="tab-badge">2</span></button>
+    <button data-tab="creative">Creative <span class="tab-badge">3</span></button>
+    <button data-tab="tools">Tools</button>
 </div>
+
+<!-- Effects Groups -->
+<div class="effects" id="effects-panel">
+    <div class="effects-group active" data-group="basic">
+        <button class="active" data-fx="0">None</button>
+        <button data-fx="1">Thermal</button>
+        <button data-fx="2">Edge Detect</button>
+        <button data-fx="3">Night Vision</button>
+        <button data-fx="4">VHS</button>
+        <button data-fx="5">Glitch</button>
+        <button data-fx="6">Pixelate</button>
+        <button data-fx="7">Invert</button>
+        <button data-fx="11">Time Freeze</button>
+    </div>
+    <div class="effects-group" data-group="color">
+        <button data-fx="8">Chroma Key</button>
+        <button data-fx="9">Channel Split</button>
+    </div>
+    <div class="effects-group" data-group="retro">
+        <button data-fx="10">Old Film</button>
+    </div>
+    <div class="effects-group" data-group="audio">
+        <button data-fx="12">FFT Color Grade</button>
+        <button data-fx="13">Beat Glitch</button>
+        <button data-fx="14">Waveform Overlay</button>
+    </div>
+    <div class="effects-group" data-group="ml">
+        <button data-fx="15">BG Removal</button>
+        <button data-fx="16">Object Detect</button>
+        <button data-fx="17">Pose Skeleton</button>
+        <button data-fx="18">Face Filter</button>
+        <button data-fx="19">Depth Fog</button>
+        <button data-fx="20">Auto Color</button>
+        <button data-fx="21">Hand Gesture</button>
+        <button data-fx="27">Hair Color</button>
+        <button data-fx="28">Body Outline</button>
+        <button data-fx="29">Tilt-Shift</button>
+    </div>
+    <div class="effects-group" data-group="compose">
+        <button data-fx="22">PiP</button>
+        <button data-fx="23">Webcam+Screen</button>
+    </div>
+    <div class="effects-group" data-group="creative">
+        <button data-fx="24">VJ Tool</button>
+        <button data-fx="25">Annotator</button>
+        <button data-fx="26">Live Subtitles</button>
+    </div>
+    <div class="effects-group" data-group="tools">
+        <div class="tools-panel">
+            <div class="tools-section">
+                <h4>Adjustments</h4>
+                <div class="tool-row"><label>Brightness</label><input type="range" id="tool-brightness" min="-100" max="100" value="0"><span class="range-val">0</span></div>
+                <div class="tool-row"><label>Contrast</label><input type="range" id="tool-contrast" min="-100" max="100" value="0"><span class="range-val">0</span></div>
+                <div class="tool-row"><label>Saturation</label><input type="range" id="tool-saturation" min="-100" max="100" value="0"><span class="range-val">0</span></div>
+                <div class="tool-row"><label>Hue Rotate</label><input type="range" id="tool-hue" min="0" max="360" value="0"><span class="range-val">0</span></div>
+                <div class="tool-row">
+                    <button id="tool-flip-h">Flip H</button>
+                    <button id="tool-flip-v">Flip V</button>
+                    <button id="tool-reset-adj">Reset</button>
+                </div>
+            </div>
+            <div class="tools-section">
+                <h4>Playback</h4>
+                <div class="tool-row"><label>Speed</label><input type="range" id="tool-speed" min="25" max="400" value="100" step="25"><span class="range-val">1.0x</span></div>
+            </div>
+            <div class="tools-section">
+                <div class="tool-row">
+                    <button id="tool-snapshot">Snapshot (S)</button>
+                    <button id="tool-zoom-reset">Reset Zoom</button>
+                    <span id="tool-zoom-level">100%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <span id="current-fx-name"></span>
+</div>
+
+<!-- Thermal Controls -->
+<div class="fx-controls" id="thermal-controls" style="display:none;">
+    <label>Palette:</label>
+    <select id="thermal-palette">
+        <option value="0">Classic</option>
+        <option value="1">Arctic</option>
+        <option value="2">Lava</option>
+    </select>
+    <button class="reset-btn" data-reset="thermal">Reset</button>
+</div>
+
+<!-- Edge Controls -->
+<div class="fx-controls" id="edge-controls" style="display:none;">
+    <label>Threshold:</label>
+    <input type="range" id="edge-threshold" min="0" max="255" value="128">
+    <span class="range-val">128</span>
+    <label><input type="checkbox" id="edge-mono"> Mono</label>
+    <button class="reset-btn" data-reset="edge">Reset</button>
+</div>
+
+<!-- Night Vision Controls -->
+<div class="fx-controls" id="nightvision-controls" style="display:none;">
+    <label>Gain:</label>
+    <input type="range" id="nv-gain" min="5" max="30" value="15">
+    <span class="range-val">1.5</span>
+    <label>Noise:</label>
+    <input type="range" id="nv-noise" min="0" max="30" value="8">
+    <span class="range-val">8</span>
+    <button class="reset-btn" data-reset="nightvision">Reset</button>
+</div>
+
+<!-- VHS Controls -->
+<div class="fx-controls" id="vhs-controls" style="display:none;">
+    <label>Aberration:</label>
+    <input type="range" id="vhs-aber" min="0" max="10" value="2">
+    <span class="range-val">2</span>
+    <label>Noise Freq:</label>
+    <input type="range" id="vhs-freq" min="0" max="60" value="30">
+    <span class="range-val">30</span>
+    <button class="reset-btn" data-reset="vhs">Reset</button>
+</div>
+
+<!-- Glitch Controls -->
+<div class="fx-controls" id="glitch-controls" style="display:none;">
+    <label>Intensity:</label>
+    <input type="range" id="glitch-intensity" min="1" max="20" value="5">
+    <span class="range-val">5</span>
+    <label>Block Size:</label>
+    <input type="range" id="glitch-block" min="5" max="80" value="30">
+    <span class="range-val">30</span>
+    <button class="reset-btn" data-reset="glitch">Reset</button>
+</div>
+
+<!-- Pixelate Controls -->
+<div class="fx-controls" id="pixelate-controls" style="display:none;">
+    <label>Block:</label>
+    <input type="range" id="pixelate-block" min="2" max="32" value="6">
+    <span class="range-val">6</span>
+    <button class="reset-btn" data-reset="pixelate">Reset</button>
+</div>
+
+<!-- Chroma Key Controls -->
+<div class="fx-controls" id="chroma-controls" style="display:none;">
+    <label>Key Color:</label>
+    <input type="color" id="chroma-color" value="#00ff00">
+    <label>Threshold:</label>
+    <input type="range" id="chroma-threshold" min="10" max="150" value="60">
+    <span class="range-val">60</span>
+    <label>BG Color:</label>
+    <input type="color" id="chroma-bg" value="#000000">
+    <button class="reset-btn" data-reset="chroma">Reset</button>
+</div>
+
+<!-- Channel Split Controls -->
+<div class="fx-controls" id="chansplit-controls" style="display:none;">
+    <label>Offset:</label>
+    <input type="range" id="chansplit-offset" min="1" max="40" value="10">
+    <span class="range-val">10</span>
+    <label>Mode:</label>
+    <select id="chansplit-mode">
+        <option value="0">Horizontal</option>
+        <option value="1">Vertical</option>
+    </select>
+    <button class="reset-btn" data-reset="chansplit">Reset</button>
+</div>
+
+<!-- Old Film Controls -->
+<div class="fx-controls" id="oldfilm-controls" style="display:none;">
+    <label>Dust:</label>
+    <input type="range" id="oldfilm-dust" min="0" max="30" value="8">
+    <span class="range-val">8</span>
+    <label>Scratches:</label>
+    <input type="range" id="oldfilm-scratches" min="0" max="15" value="4">
+    <span class="range-val">4</span>
+    <label>Flicker:</label>
+    <input type="range" id="oldfilm-flicker" min="0" max="100" value="10">
+    <span class="range-val">10</span>
+    <button class="reset-btn" data-reset="oldfilm">Reset</button>
+</div>
+
+<!-- FFT Color Grade Controls -->
+<div class="fx-controls" id="fft-controls" style="display:none;">
+    <label>Bass:</label>
+    <input type="range" id="fft-bass" min="0" max="300" value="100">
+    <span class="range-val">100</span>
+    <label>Mid:</label>
+    <input type="range" id="fft-mid" min="0" max="300" value="100">
+    <span class="range-val">100</span>
+    <label>High:</label>
+    <input type="range" id="fft-high" min="0" max="300" value="100">
+    <span class="range-val">100</span>
+    <button class="reset-btn" data-reset="fft">Reset</button>
+</div>
+
+<!-- Waveform Controls -->
+<div class="fx-controls" id="waveform-controls" style="display:none;">
+    <label>Color:</label>
+    <input type="color" id="waveform-color" value="#00ff64">
+    <label>Position:</label>
+    <select id="waveform-pos">
+        <option value="0">Bottom</option>
+        <option value="1">Center</option>
+        <option value="2">Top</option>
+    </select>
+    <button class="reset-btn" data-reset="waveform">Reset</button>
+</div>
+
+<!-- BG Removal Controls (expanded) -->
+<div class="fx-controls" id="bgremoval-controls" style="display:none;">
+    <label>Mode:</label>
+    <select id="bgremoval-mode">
+        <option value="0">Solid Color</option>
+        <option value="1">Blur</option>
+        <option value="2">Image</option>
+        <option value="3">Video</option>
+    </select>
+    <label>BG Color:</label>
+    <input type="color" id="bgremoval-color" value="#000000">
+    <label>Blur:</label>
+    <input type="range" id="bgremoval-blur" min="5" max="50" value="20">
+    <span class="range-val">20</span>
+    <input type="file" id="bgremoval-image" accept="image/*" style="display:none">
+    <button id="bgremoval-load-img">Load BG Image</button>
+    <input type="file" id="bgremoval-video" accept="video/*" style="display:none">
+    <button id="bgremoval-load-vid">Load BG Video</button>
+    <button class="reset-btn" data-reset="bgremoval">Reset</button>
+</div>
+
+<!-- Pose Controls -->
+<div class="fx-controls" id="pose-controls" style="display:none;">
+    <label>Bone:</label>
+    <input type="color" id="pose-bone-color" value="#00ffc8">
+    <label>Joint:</label>
+    <input type="color" id="pose-joint-color" value="#ff6464">
+    <button class="reset-btn" data-reset="pose">Reset</button>
+</div>
+
+<!-- Face Filter Controls (expanded) -->
+<div class="fx-controls" id="face-controls" style="display:none;">
+    <label>Mode:</label>
+    <select id="face-mode">
+        <optgroup label="Basic">
+            <option value="0">Pixelate</option>
+            <option value="1">Blur</option>
+            <option value="2">Mask</option>
+            <option value="3">Wireframe Mesh</option>
+        </optgroup>
+        <optgroup label="Texture Masks">
+            <option value="4">Skull</option>
+            <option value="5">Cyber Visor</option>
+            <option value="6">Animal</option>
+            <option value="7">Demon</option>
+            <option value="8">Gold Leaf</option>
+            <option value="9">Glitch Face</option>
+            <option value="10">Galaxy</option>
+        </optgroup>
+        <optgroup label="Generative Art">
+            <option value="11">Neon Contour</option>
+            <option value="12">Constellation</option>
+            <option value="13">Voronoi</option>
+            <option value="14">Flow Field</option>
+            <option value="15">Geometric Mesh</option>
+            <option value="16">Tribal Paint</option>
+        </optgroup>
+        <optgroup label="Production">
+            <option value="17">Contour Blur</option>
+            <option value="18">Spotlight</option>
+            <option value="19">Face Color Grade</option>
+            <option value="20">Beauty Filter</option>
+            <option value="21">Anime Eyes</option>
+        </optgroup>
+    </select>
+    <label>Block:</label>
+    <input type="range" id="face-block" min="4" max="24" value="8">
+    <span class="range-val">8</span>
+    <button class="reset-btn" data-reset="face">Reset</button>
+</div>
+
+<!-- Depth Fog Controls -->
+<div class="fx-controls" id="fog-controls" style="display:none;">
+    <label>Fog Color:</label>
+    <input type="color" id="fog-color" value="#b4bed2">
+    <label>Intensity:</label>
+    <input type="range" id="fog-intensity" min="0" max="100" value="80">
+    <span class="range-val">80</span>
+    <button class="reset-btn" data-reset="fog">Reset</button>
+</div>
+
+<!-- VJ Chain Controls (redesigned) -->
+<div class="fx-controls" id="vj-controls" style="display:none;">
+    <div class="vj-header">
+        <span>Effect Chain</span>
+        <select id="vj-add-select">
+            <optgroup label="Basic">
+                <option value="1">Thermal</option>
+                <option value="2">Edge Detect</option>
+                <option value="3">Night Vision</option>
+                <option value="4">VHS</option>
+                <option value="5">Glitch</option>
+                <option value="6">Pixelate</option>
+                <option value="7">Invert</option>
+                <option value="11">Time Freeze</option>
+            </optgroup>
+            <optgroup label="Color">
+                <option value="8">Chroma Key</option>
+                <option value="9">Channel Split</option>
+            </optgroup>
+            <optgroup label="Retro">
+                <option value="10">Old Film</option>
+            </optgroup>
+            <optgroup label="Audio">
+                <option value="12">FFT Color Grade</option>
+                <option value="13">Beat Glitch</option>
+                <option value="14">Waveform</option>
+            </optgroup>
+            <optgroup label="ML">
+                <option value="15">BG Removal</option>
+                <option value="16">Object Detect</option>
+                <option value="17">Pose</option>
+                <option value="18">Face</option>
+                <option value="19">Depth Fog</option>
+                <option value="20">Auto Color</option>
+                <option value="21">Hands</option>
+                <option value="27">Hair Color</option>
+                <option value="28">Body Outline</option>
+                <option value="29">Tilt-Shift</option>
+            </optgroup>
+            <optgroup label="Overlay">
+                <option value="22">PiP</option>
+                <option value="23">Webcam+Screen</option>
+                <option value="25">Annotator</option>
+                <option value="26">Subtitles</option>
+            </optgroup>
+        </select>
+        <button id="vj-add-btn">+ Add</button>
+        <select id="vj-preset-select">
+            <option value="">Presets...</option>
+            <option value="cyberpunk">Cyberpunk</option>
+            <option value="retrowave">Retro Wave</option>
+            <option value="dream">Dream</option>
+            <option value="surveillance">Surveillance</option>
+            <option value="analog">Analog</option>
+            <option value="horror">Horror</option>
+            <option value="beauty">Beauty</option>
+            <option value="matrix">Matrix</option>
+            <option value="vaporwave">Vaporwave</option>
+        </select>
+        <button id="vj-save-chain">Save</button>
+        <button id="vj-load-chain">Load</button>
+    </div>
+    <div id="vj-chain-list" class="vj-chain-list">
+    </div>
+</div>
+
+<!-- Annotator Controls (Fabric.js) -->
+<div class="annot-controls" id="annot-controls" style="display:none;">
+    <label>Tool:</label>
+    <select id="annot-tool">
+        <option value="freehand">Freehand</option>
+        <option value="rect">Rectangle</option>
+        <option value="circle">Circle</option>
+        <option value="line">Line</option>
+        <option value="arrow">Arrow</option>
+        <option value="text">Text</option>
+        <option value="eraser">Eraser</option>
+    </select>
+    <label>Color:</label>
+    <input type="color" id="annot-color" value="#ff0000">
+    <label>Size:</label>
+    <input type="range" id="annot-brush" min="1" max="30" value="4">
+    <span class="range-val">4</span>
+    <label>Opacity:</label>
+    <input type="range" id="annot-opacity" min="10" max="100" value="100" step="10">
+    <span class="range-val">100%</span>
+    <button id="annot-undo">Undo</button>
+    <button id="annot-redo">Redo</button>
+    <button id="annot-clear">Clear</button>
+</div>
+
+<!-- Subtitle Controls -->
+<div class="fx-controls" id="subtitle-controls" style="display:none;">
+    <label>Font:</label>
+    <select id="sub-font">
+        <option value="default">Inter</option>
+        <option value="impact">Oswald (Impact)</option>
+        <option value="handwritten">Caveat</option>
+        <option value="mono">JetBrains Mono</option>
+        <option value="elegant">Playfair Display</option>
+        <option value="heavy">Bebas Neue</option>
+        <option value="clean">Roboto</option>
+        <option value="cinematic">Cinzel</option>
+        <option value="display">Permanent Marker</option>
+        <option value="news">Source Serif Pro</option>
+    </select>
+    <label>Size:</label>
+    <input type="range" id="sub-size" min="14" max="72" value="28">
+    <span class="range-val">28</span>
+    <label>Color:</label>
+    <input type="color" id="sub-color" value="#ffffff">
+    <label>Outline:</label>
+    <input type="color" id="sub-outline" value="#000000">
+    <label>Outline W:</label>
+    <input type="range" id="sub-outline-w" min="0" max="6" value="2">
+    <span class="range-val">2</span>
+    <label>Shadow:</label>
+    <input type="range" id="sub-shadow" min="0" max="20" value="4">
+    <span class="range-val">4</span>
+    <label>Position:</label>
+    <select id="sub-pos">
+        <option value="bottom">Bottom</option>
+        <option value="center">Center</option>
+        <option value="top">Top</option>
+    </select>
+    <label>Animate:</label>
+    <select id="sub-style">
+        <option value="static">Static</option>
+        <option value="typewriter">Typewriter</option>
+        <option value="fade">Fade In</option>
+        <option value="karaoke">Karaoke</option>
+        <option value="bounce">Bounce In</option>
+    </select>
+    <label>Decay:</label>
+    <input type="range" id="sub-decay" min="1" max="10" value="3">
+    <span class="range-val">3s</span>
+    <label>BG:</label>
+    <select id="sub-bg">
+        <option value="bar">Dark Bar</option>
+        <option value="none">None</option>
+        <option value="pill">Rounded Pill</option>
+    </select>
+    <button class="reset-btn" data-reset="subtitle">Reset</button>
+</div>
+<div class="fx-controls" id="subtitle-input-controls" style="display:none;">
+    <input type="text" id="sub-manual-input" placeholder="Type or dictate subtitle..."
+           style="flex:1;min-height:var(--touch-min);background:var(--bg3);color:var(--fg);border:1px solid #333;padding:4px 8px;font-family:inherit;font-size:14px;border-radius:4px;">
+    <button id="sub-manual-send">Add</button>
+</div>
+
+<!-- Hair Color Controls -->
+<div class="fx-controls" id="haircolor-controls" style="display:none;">
+    <label>Hair Color:</label>
+    <input type="color" id="haircolor-color" value="#8B00FF">
+    <label>Intensity:</label>
+    <input type="range" id="haircolor-intensity" min="20" max="100" value="50">
+    <span class="range-val">50%</span>
+    <button class="reset-btn" data-reset="haircolor">Reset</button>
+</div>
+
+<!-- Body Outline Controls -->
+<div class="fx-controls" id="outline-controls" style="display:none;">
+    <label>Color:</label>
+    <input type="color" id="outline-color" value="#00ff00">
+    <label>Thickness:</label>
+    <input type="range" id="outline-thickness" min="1" max="4" value="2">
+    <span class="range-val">2</span>
+    <button class="reset-btn" data-reset="outline">Reset</button>
+</div>
+
+<!-- Tilt-Shift Controls -->
+<div class="fx-controls" id="tiltshift-controls" style="display:none;">
+    <label>Focus Depth:</label>
+    <input type="range" id="tiltshift-focus" min="0" max="100" value="50">
+    <span class="range-val">50</span>
+    <label>Range:</label>
+    <input type="range" id="tiltshift-range" min="5" max="80" value="20">
+    <span class="range-val">20</span>
+    <button class="reset-btn" data-reset="tiltshift">Reset</button>
+</div>
+
+<!-- PiP Position Controls -->
+<div class="fx-controls" id="pip-controls" style="display:none;">
+    <label>Opacity:</label>
+    <input type="range" id="pip-opacity" min="10" max="100" value="100" step="5">
+    <span class="range-val">100%</span>
+    <button id="pip-reset-pos">Reset Position</button>
+    <button class="reset-btn" data-reset="pip">Reset</button>
+</div>
+
+<!-- Webcam Controls -->
+<div class="fx-controls" id="webcam-controls" style="display:none;">
+    <button id="webcam-mirror">Mirror</button>
+    <label>Resolution:</label>
+    <select id="webcam-res">
+        <option value="auto" selected>Auto (Native)</option>
+        <option value="320x240">320x240</option>
+        <option value="640x360">640x360</option>
+        <option value="1280x720">1280x720</option>
+        <option value="1920x1080">1920x1080</option>
+    </select>
+    <label>Camera:</label>
+    <select id="webcam-device"></select>
+    <button id="webcam-mic" title="Toggle microphone">🎙 Mic</button>
+    <label>Mic:</label>
+    <select id="webcam-mic-device"></select>
+    <label>Gain:</label>
+    <input type="range" id="webcam-mic-gain" min="0" max="200" value="100">
+    <span class="range-val">100%</span>
+    <button id="webcam-monitor" title="Monitor mic through speakers">🎧 Monitor</button>
+    <button id="webcam-snapshot">Snapshot</button>
+    <button id="webcam-record">Record</button>
+</div>
+
+<!-- PiP file input (hidden) -->
+<input type="file" id="pip-input" accept="video/*" style="display:none">
 
 <!-- Transport -->
 <div class="transport">
@@ -110,7 +786,11 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
     <button id="btn-mark-out" title="Set Out point">]</button>
     <span class="time" id="timecode">00:00.0 / 00:00.0</span>
     <div class="spacer"></div>
-    <span class="status" id="fps-display">-- FPS</span>
+    <span id="fps-display" class="fps-green">-- FPS</span>
+    <span id="vu-meter" title="Audio level" style="display:inline-flex;align-items:center;gap:2px;margin-left:6px;">
+        <span style="font-size:10px;color:var(--fg2);">🔊</span>
+        <canvas id="vu-canvas" width="48" height="12" style="border-radius:2px;background:#111;"></canvas>
+    </span>
 </div>
 
 <!-- Seek bar -->
@@ -121,6 +801,9 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
         <span id="mark-out-label">OUT: --</span>
     </div>
 </div>
+
+<!-- Timeline toggle (mobile) -->
+<button class="timeline-toggle" id="timeline-toggle">Timeline &#9660;</button>
 
 <!-- Timeline -->
 <div class="timeline">
@@ -157,6 +840,8 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
 
 <input type="file" id="file-input" accept="video/*" style="display:none">
 
+<script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/perfect-freehand@1.2.2/dist/perfect-freehand.min.js"></script>
 <script src="editor.js"></script>
 <script>
 /* Wire up file open IMMEDIATELY — before WASM loads */
@@ -169,24 +854,156 @@ const fileInput = document.getElementById('file-input');
 let fileName = '';
 let webcamActive = false;
 let webcamStream = null;
+let webcamMirrored = false;
+let mediaRecorder = null;
+let recordedChunks = [];
 
+let pendingFile = null;
 fileInput.onchange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     stopWebcam();
     fileName = file.name;
-    const url = URL.createObjectURL(file);
-    video.src = url;
-    video.load();
+    pendingFile = URL.createObjectURL(file);
+    /* If WASM is ready, load immediately. Otherwise defer. */
+    if (window._wasmReady) {
+        video.src = pendingFile;
+        video.load();
+        pendingFile = null;
+    }
 };
 
+function setStatus(text, state) {
+    const dot = document.getElementById('status-dot');
+    dot.className = 'status-dot ' + (state || 'ready');
+    document.getElementById('status').innerHTML = '';
+    document.getElementById('status').appendChild(dot);
+    document.getElementById('status').appendChild(document.createTextNode(' ' + text));
+}
+
 function stopWebcam() {
+    if (webcamAnalyser) { webcamAnalyser.disconnect(); webcamAnalyser = null; }
+    if (webcamMicStream) { webcamMicStream.disconnect(); webcamMicStream = null; }
+    if (webcamGainNode) { webcamGainNode.disconnect(); webcamGainNode = null; }
+    window._micAnalyser = null;
     if (webcamStream) {
         webcamStream.getTracks().forEach(t => t.stop());
         webcamStream = null;
     }
     webcamActive = false;
     document.getElementById('btn-webcam').textContent = 'Webcam';
+    document.getElementById('webcam-controls').style.display = 'none';
+}
+
+async function enumerateCameras() {
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const sel = document.getElementById('webcam-device');
+        sel.innerHTML = '';
+        devices.filter(d => d.kind === 'videoinput').forEach((d, i) => {
+            const opt = document.createElement('option');
+            opt.value = d.deviceId;
+            opt.textContent = d.label || ('Camera ' + (i + 1));
+            sel.appendChild(opt);
+        });
+    } catch (e) { /* ignore */ }
+}
+
+let webcamMicEnabled = true;
+let micMonitorEnabled = false;
+let webcamGainNode = null;
+let webcamAudioCtx = null;
+let webcamMicStream = null;
+let webcamAnalyser = null;
+
+async function enumerateMics() {
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const sel = document.getElementById('webcam-mic-device');
+        sel.innerHTML = '';
+        devices.filter(d => d.kind === 'audioinput').forEach((d, i) => {
+            const opt = document.createElement('option');
+            opt.value = d.deviceId;
+            opt.textContent = d.label || ('Mic ' + (i + 1));
+            sel.appendChild(opt);
+        });
+    } catch (e) { /* ignore */ }
+}
+
+async function startWebcamWithConstraints(deviceId, resStr) {
+    resStr = resStr || 'auto';
+    const constraints = { video: {}, audio: webcamMicEnabled };
+    if (resStr === 'auto') {
+        constraints.video.width = { ideal: 4096 };
+        constraints.video.height = { ideal: 2160 };
+    } else {
+        const parts = resStr.split('x');
+        constraints.video.width = { ideal: parseInt(parts[0]) };
+        constraints.video.height = { ideal: parseInt(parts[1]) };
+    }
+    if (deviceId) constraints.video.deviceId = { exact: deviceId };
+    const micDeviceId = document.getElementById('webcam-mic-device').value;
+    if (webcamMicEnabled && micDeviceId) {
+        constraints.audio = { deviceId: { exact: micDeviceId } };
+    }
+    if (webcamStream) {
+        webcamStream.getTracks().forEach(t => t.stop());
+    }
+    webcamStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = webcamStream;
+    video.muted = true;
+    video.play();
+
+    /* Wait for video metadata to know actual resolution */
+    await new Promise(resolve => {
+        if (video.videoWidth > 0) resolve();
+        else video.onloadedmetadata = resolve;
+    });
+
+    const actualW = video.videoWidth;
+    const actualH = video.videoHeight;
+
+    /* Cap at 1920x1080 for performance (effects are per-pixel) */
+    const maxW = 1920, maxH = 1080;
+    let targetW = actualW, targetH = actualH;
+    if (targetW > maxW || targetH > maxH) {
+        const scale = Math.min(maxW / targetW, maxH / targetH);
+        targetW = Math.round(targetW * scale);
+        targetH = Math.round(targetH * scale);
+    }
+    /* Ensure even dimensions */
+    targetW = targetW & ~1;
+    targetH = targetH & ~1;
+
+    /* Resize if different from current */
+    if (targetW !== W || targetH !== H) {
+        resizeEditor(targetW, targetH);
+    }
+
+    webcamActive = true;
+    fileName = 'webcam';
+    document.getElementById('btn-webcam').textContent = 'Stop Cam';
+    document.getElementById('no-video').style.display = 'none';
+    setStatus('Webcam (' + actualW + 'x' + actualH + '\u2192' + W + 'x' + H + ')' + (webcamMicEnabled ? ' + Mic' : ''), 'ready');
+    document.getElementById('webcam-controls').style.display = 'flex';
+    /* Set up audio: mic → gain → analyser (always). gain → destination only when monitoring */
+    const audioTracks = webcamStream.getAudioTracks();
+    if (audioTracks.length > 0) {
+        if (!webcamAudioCtx) webcamAudioCtx = new AudioContext();
+        webcamMicStream = webcamAudioCtx.createMediaStreamSource(webcamStream);
+        webcamGainNode = webcamAudioCtx.createGain();
+        webcamGainNode.gain.value = parseInt(document.getElementById('webcam-mic-gain').value) / 100;
+        webcamAnalyser = webcamAudioCtx.createAnalyser();
+        webcamAnalyser.fftSize = 256;
+        webcamMicStream.connect(webcamGainNode);
+        webcamGainNode.connect(webcamAnalyser);
+        /* Only connect to speakers if monitoring is enabled */
+        if (micMonitorEnabled) {
+            webcamGainNode.connect(webcamAudioCtx.destination);
+        }
+    }
+    await enumerateCameras();
+    await enumerateMics();
 }
 
 document.getElementById('btn-webcam').onclick = async () => {
@@ -197,34 +1014,165 @@ document.getElementById('btn-webcam').onclick = async () => {
         return;
     }
     try {
-        webcamStream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 360 } },
-            audio: false
-        });
-        video.srcObject = webcamStream;
-        video.muted = true;
-        video.play();
-        webcamActive = true;
-        fileName = 'webcam';
-        document.getElementById('btn-webcam').textContent = 'Stop Cam';
-        document.getElementById('no-video').style.display = 'none';
-        document.getElementById('status').textContent = 'Webcam (live)';
+        const res = document.getElementById('webcam-res').value;
+        await startWebcamWithConstraints(null, res);
     } catch (err) {
         alert('Webcam error: ' + err.message);
     }
 };
 
+document.getElementById('webcam-res').onchange = async function() {
+    if (!webcamActive) return;
+    try {
+        const deviceId = document.getElementById('webcam-device').value;
+        await startWebcamWithConstraints(deviceId, this.value);
+    } catch (e) {
+        setStatus('Resolution change failed', 'error');
+    }
+};
+
+document.getElementById('webcam-device').onchange = async function() {
+    if (!webcamActive) return;
+    try {
+        const res = document.getElementById('webcam-res').value;
+        await startWebcamWithConstraints(this.value, res);
+    } catch (e) {
+        setStatus('Camera switch failed', 'error');
+    }
+};
+
+/* Mic toggle */
+document.getElementById('webcam-mic').onclick = function() {
+    webcamMicEnabled = !webcamMicEnabled;
+    this.classList.toggle('active', webcamMicEnabled);
+    this.textContent = webcamMicEnabled ? '🎙 Mic ON' : '🎙 Mic OFF';
+    if (webcamActive) {
+        const res = document.getElementById('webcam-res').value;
+        const deviceId = document.getElementById('webcam-device').value;
+        startWebcamWithConstraints(deviceId, res).catch(() => {});
+    }
+    haptic(15);
+};
+
+/* Mic device change */
+document.getElementById('webcam-mic-device').onchange = async function() {
+    if (!webcamActive || !webcamMicEnabled) return;
+    try {
+        const res = document.getElementById('webcam-res').value;
+        const deviceId = document.getElementById('webcam-device').value;
+        await startWebcamWithConstraints(deviceId, res);
+    } catch (e) {
+        setStatus('Mic switch failed', 'error');
+    }
+};
+
+/* Mic gain */
+document.getElementById('webcam-mic-gain').oninput = function() {
+    this.nextElementSibling.textContent = this.value + '%';
+    if (webcamGainNode) webcamGainNode.gain.value = parseInt(this.value) / 100;
+};
+
+document.getElementById('webcam-monitor').onclick = function() {
+    micMonitorEnabled = !micMonitorEnabled;
+    this.classList.toggle('active', micMonitorEnabled);
+    if (webcamGainNode && webcamAudioCtx) {
+        if (micMonitorEnabled) {
+            webcamGainNode.connect(webcamAudioCtx.destination);
+        } else {
+            try { webcamGainNode.disconnect(webcamAudioCtx.destination); } catch(e) {}
+        }
+    }
+};
+
+document.getElementById('webcam-mirror').onclick = function() {
+    const canvas = document.getElementById('rawbuf');
+    webcamMirrored = !webcamMirrored;
+    if (webcamMirrored) {
+        canvas.style.transform = (canvas.style.transform || '').includes('scaleX(-1)')
+            ? canvas.style.transform.replace('scaleX(-1)', '')
+            : (canvas.style.transform || '') + ' scaleX(-1)';
+    } else {
+        canvas.style.transform = (canvas.style.transform || '').replace('scaleX(-1)', '');
+    }
+    this.classList.toggle('active', webcamMirrored);
+};
+
+document.getElementById('webcam-snapshot').onclick = function() {
+    const canvas = document.getElementById('rawbuf');
+    canvas.toBlob(function(blob) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'rawcut-snapshot.png';
+        a.click();
+    });
+};
+
+document.getElementById('webcam-record').onclick = function() {
+    const canvas = document.getElementById('rawbuf');
+    haptic(25);
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        this.textContent = 'Record';
+        this.classList.remove('active');
+        return;
+    }
+    recordedChunks = [];
+    const videoStream = canvas.captureStream(30);
+    /* Mix in mic audio if available */
+    let stream = videoStream;
+    if (webcamStream) {
+        const audioTracks = webcamStream.getAudioTracks();
+        if (audioTracks.length > 0) {
+            stream = new MediaStream([...videoStream.getVideoTracks(), ...audioTracks]);
+        }
+    }
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+    mediaRecorder.ondataavailable = function(e) {
+        if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+    mediaRecorder.onstop = function() {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'rawcut-recording.webm';
+        a.click();
+    };
+    mediaRecorder.start();
+    this.textContent = 'Stop Rec';
+    this.classList.add('active');
+};
+
+/* --- Haptic Feedback --- */
+function haptic(ms) {
+    if (navigator.vibrate) navigator.vibrate(ms || 10);
+}
+
+/* --- VU Meter --- */
+const vuCanvas = document.getElementById('vu-canvas');
+const vuCtx = vuCanvas ? vuCanvas.getContext('2d') : null;
+function drawVU(level) {
+    if (!vuCtx) return;
+    vuCtx.clearRect(0, 0, 48, 12);
+    const bars = Math.round(level * 12);
+    for (let i = 0; i < 12; i++) {
+        vuCtx.fillStyle = i < 8 ? (i < bars ? '#22c55e' : '#222')
+            : i < 10 ? (i < bars ? '#eab308' : '#222')
+            : (i < bars ? '#ef4444' : '#222');
+        vuCtx.fillRect(i * 4, 1, 3, 10);
+    }
+}
+
 (async function() {
-    /* ─── WASM Init ─── */
-    document.getElementById('status').textContent = 'Loading WASM...';
+    /* --- WASM Init --- */
+    setStatus('Loading WASM...', 'loading');
     const Module = await RawBuf();
-    document.getElementById('status').textContent = 'Ready — open a video';
+    setStatus('Ready -- open a video', 'ready');
 
     const canvas = document.getElementById('rawbuf');
-    const W = canvas.width;
-    const H = canvas.height;
-    const bufPtr = Module._editor_init(W, H);
-    const pixelCount = W * H;
+    let W = canvas.width;
+    let H = canvas.height;
+    let bufPtr = Module._editor_init(W, H);
+    let pixelCount = W * H;
 
     /* Offscreen canvas for video frame extraction */
     const offCanvas = document.createElement('canvas');
@@ -232,18 +1180,41 @@ document.getElementById('btn-webcam').onclick = async () => {
     offCanvas.height = H;
     const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
 
+    function resizeEditor(w, h) {
+        W = w; H = h;
+        pixelCount = W * H;
+        canvas.width = W; canvas.height = H;
+        document.getElementById('annot-canvas').width = W;
+        document.getElementById('annot-canvas').height = H;
+        document.getElementById('face-overlay').width = W;
+        document.getElementById('face-overlay').height = H;
+        offCanvas.width = W; offCanvas.height = H;
+        bufPtr = Module._editor_reinit(W, H);
+        if (window._fabricCanvas) {
+            window._fabricCanvas.setDimensions({ width: W, height: H });
+        }
+    }
+
+    let prevMask = null;
+
     let videoLoaded = false;
     let playing = false;
     let currentEffect = 0;
+    let currentTab = 'basic';
     let markIn = 0;
     let markOut = 0;
+
+    /* Zoom state */
+    let zoomLevel = 1;
+    let panX = 0, panY = 0;
+    let isPanning = false, panStartX = 0, panStartY = 0;
 
     video.onloadedmetadata = () => {
         if (!isFinite(video.duration)) return; /* webcam has no duration */
         markIn = 0;
         markOut = video.duration;
         document.getElementById('no-video').style.display = 'none';
-        document.getElementById('status').textContent = fileName + ' (' + W + 'x' + H + ')';
+        setStatus(fileName + ' (' + W + 'x' + H + ')', 'ready');
         document.getElementById('seek').max = Math.floor(video.duration * 100);
         document.getElementById('ruler-mid').textContent = fmtTime(video.duration / 2);
         document.getElementById('ruler-end').textContent = fmtTime(video.duration);
@@ -255,14 +1226,23 @@ document.getElementById('btn-webcam').onclick = async () => {
         renderFrame();
     };
 
+    /* Mark WASM ready and load any file that was selected while loading */
+    window._wasmReady = true;
+    if (pendingFile) {
+        video.src = pendingFile;
+        video.load();
+        pendingFile = null;
+    }
+
     video.onplay = () => {
         if (webcamActive) { videoLoaded = true; playing = true; }
     };
 
-    /* ─── Transport ─── */
+    /* --- Transport --- */
     const btnPlay = document.getElementById('btn-play');
     btnPlay.onclick = () => {
         if (!videoLoaded) return;
+        haptic(15);
         if (playing) { video.pause(); playing = false; btnPlay.innerHTML = '&#9654;'; }
         else { video.play(); playing = true; btnPlay.innerHTML = '&#9646;&#9646;'; }
     };
@@ -276,7 +1256,7 @@ document.getElementById('btn-webcam').onclick = async () => {
         video.currentTime = Math.min(video.duration, video.currentTime + 1/30);
     };
 
-    /* ─── Seek ─── */
+    /* --- Seek --- */
     const seekBar = document.getElementById('seek');
     let seeking = false;
     seekBar.oninput = () => {
@@ -286,14 +1266,16 @@ document.getElementById('btn-webcam').onclick = async () => {
     };
     seekBar.onchange = () => { seeking = false; };
 
-    /* ─── In/Out Markers ─── */
+    /* --- In/Out Markers --- */
     document.getElementById('btn-mark-in').onclick = () => {
         if (!videoLoaded) return;
+        haptic(20);
         markIn = video.currentTime;
         updateMarkers();
     };
     document.getElementById('btn-mark-out').onclick = () => {
         if (!videoLoaded) return;
+        haptic(20);
         markOut = video.currentTime;
         updateMarkers();
     };
@@ -314,22 +1296,2229 @@ document.getElementById('btn-webcam').onclick = async () => {
         }
     }
 
-    /* ─── Effects ─── */
-    const effectNames = ['none', 'thermal', 'edge', 'nightvision', 'vhs', 'glitch', 'pixelate', 'invert'];
+    /* --- Effects Tabs --- */
+    const tabButtons = document.querySelectorAll('.effects-tabs button[data-tab]');
+    const effectGroups = document.querySelectorAll('.effects-group[data-group]');
+
+    tabButtons.forEach(btn => {
+        btn.onclick = () => {
+            haptic(8);
+            tabButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentTab = btn.dataset.tab;
+            effectGroups.forEach(g => g.classList.remove('active'));
+            const group = document.querySelector('.effects-group[data-group="' + currentTab + '"]');
+            if (group) group.classList.add('active');
+
+            /* Lazy-init audio context when Audio tab is clicked */
+            if (currentTab === 'audio') initAudio();
+
+            /* Lazy-init ML when ML tab is clicked */
+            if (currentTab === 'ml') {
+                /* Just show the tab; models load on effect select */
+            }
+        };
+    });
+
+    /* --- Effects Selection --- */
+    const effectNames = [
+        'none', 'thermal', 'edge', 'nightvision', 'vhs', 'glitch', 'pixelate', 'invert',
+        'chromakey', 'channelsplit', 'oldfilm', 'timefreeze',
+        'fftcolorgrade', 'beatglitch', 'waveformoverlay',
+        'bgremoval', 'objectdetect', 'poseskeleton', 'facefilter', 'depthfog', 'autocolor', 'handgesture',
+        'pip', 'webcamscreen',
+        'vjtool', 'annotator', 'livesubtitles',
+        'haircolor', 'bodyoutline', 'tiltshift'
+    ];
+
+    const effectDisplayNames = [
+        'None', 'Thermal', 'Edge Detect', 'Night Vision', 'VHS', 'Glitch', 'Pixelate', 'Invert',
+        'Chroma Key', 'Channel Split', 'Old Film', 'Time Freeze',
+        'FFT Color Grade', 'Beat Glitch', 'Waveform Overlay',
+        'BG Removal', 'Object Detect', 'Pose Skeleton', 'Face Filter', 'Depth Fog', 'Auto Color', 'Hand Gesture',
+        'PiP', 'Webcam+Screen',
+        'VJ Tool', 'Annotator', 'Live Subtitles',
+        'Hair Color', 'Body Outline', 'Tilt-Shift'
+    ];
+
+    function hideAllFxControls() {
+        document.getElementById('thermal-controls').style.display = 'none';
+        document.getElementById('edge-controls').style.display = 'none';
+        document.getElementById('nightvision-controls').style.display = 'none';
+        document.getElementById('vhs-controls').style.display = 'none';
+        document.getElementById('glitch-controls').style.display = 'none';
+        document.getElementById('pixelate-controls').style.display = 'none';
+        document.getElementById('chroma-controls').style.display = 'none';
+        document.getElementById('chansplit-controls').style.display = 'none';
+        document.getElementById('oldfilm-controls').style.display = 'none';
+        document.getElementById('fft-controls').style.display = 'none';
+        document.getElementById('waveform-controls').style.display = 'none';
+        document.getElementById('bgremoval-controls').style.display = 'none';
+        document.getElementById('pose-controls').style.display = 'none';
+        document.getElementById('face-controls').style.display = 'none';
+        document.getElementById('fog-controls').style.display = 'none';
+        document.getElementById('vj-controls').style.display = 'none';
+        document.getElementById('annot-controls').style.display = 'none';
+        document.getElementById('subtitle-controls').style.display = 'none';
+        document.getElementById('subtitle-input-controls').style.display = 'none';
+        document.getElementById('haircolor-controls').style.display = 'none';
+        document.getElementById('outline-controls').style.display = 'none';
+        document.getElementById('tiltshift-controls').style.display = 'none';
+        document.getElementById('pip-controls').style.display = 'none';
+    }
+
+    function showFxControls(fx) {
+        hideAllFxControls();
+        if (fx === 1) document.getElementById('thermal-controls').style.display = 'flex';
+        if (fx === 2) document.getElementById('edge-controls').style.display = 'flex';
+        if (fx === 3) document.getElementById('nightvision-controls').style.display = 'flex';
+        if (fx === 4) document.getElementById('vhs-controls').style.display = 'flex';
+        if (fx === 5) document.getElementById('glitch-controls').style.display = 'flex';
+        if (fx === 6) document.getElementById('pixelate-controls').style.display = 'flex';
+        if (fx === 8) document.getElementById('chroma-controls').style.display = 'flex';
+        if (fx === 9) document.getElementById('chansplit-controls').style.display = 'flex';
+        if (fx === 10) document.getElementById('oldfilm-controls').style.display = 'flex';
+        if (fx === 12) document.getElementById('fft-controls').style.display = 'flex';
+        if (fx === 14) document.getElementById('waveform-controls').style.display = 'flex';
+        if (fx === 15) document.getElementById('bgremoval-controls').style.display = 'flex';
+        if (fx === 17) document.getElementById('pose-controls').style.display = 'flex';
+        if (fx === 18) document.getElementById('face-controls').style.display = 'flex';
+        if (fx === 19) document.getElementById('fog-controls').style.display = 'flex';
+        if (fx === 24) document.getElementById('vj-controls').style.display = 'flex';
+        if (fx === 25) document.getElementById('annot-controls').style.display = 'flex';
+        if (fx === 26) document.getElementById('subtitle-controls').style.display = 'flex';
+        if (fx === 22 || fx === 23) document.getElementById('pip-controls').style.display = 'flex';
+        if (fx === 27) document.getElementById('haircolor-controls').style.display = 'flex';
+        if (fx === 28) document.getElementById('outline-controls').style.display = 'flex';
+        if (fx === 29) document.getElementById('tiltshift-controls').style.display = 'flex';
+    }
+
     document.querySelectorAll('.effects button[data-fx]').forEach(btn => {
         btn.onclick = () => {
-            document.querySelectorAll('.effects button').forEach(b => b.classList.remove('active'));
+            haptic(10);
+            /* Remove active from ALL effect buttons across all groups */
+            document.querySelectorAll('.effects button[data-fx]').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentEffect = parseInt(btn.dataset.fx);
+            showFxControls(currentEffect);
+
+            /* Update current effect name display */
+            document.getElementById('current-fx-name').textContent = effectDisplayNames[currentEffect] || '';
+
+            /* Audio effects need audio context */
+            if (currentEffect >= 12 && currentEffect <= 14) initAudio();
+
+            /* ML effects need model loading */
+            if ((currentEffect >= 15 && currentEffect <= 21) || currentEffect >= 27) initMLEffect(currentEffect);
+
+            /* PiP effect: prompt for file */
+            if (currentEffect === 22 && !pipActive) {
+                document.getElementById('pip-input').click();
+            }
+
+            /* Webcam+Screen */
+            if (currentEffect === 23) initWebcamScreen();
+
+            /* Live Subtitles */
+            if (currentEffect === 26) {
+                initSpeechRecognition();
+                loadFont(subtitleSettings.font);
+            }
+
+            /* Annotator: init Fabric.js canvas */
+            if (currentEffect === 25) {
+                initFabricCanvas();
+                setupFabricShapeHandlers();
+                setAnnotTool('freehand');
+                document.getElementById('annot-canvas').classList.add('active');
+            } else {
+                document.getElementById('annot-canvas').classList.remove('active');
+            }
+
             if (!playing && videoLoaded) renderFrame();
         };
     });
 
-    /* ─── Export ─── */
+    /* --- Thermal Controls --- */
+    document.getElementById('thermal-palette').onchange = function() {
+        Module._editor_set_thermal(parseInt(this.value));
+        if (!playing && videoLoaded) renderFrame();
+    };
+
+    /* --- Edge Controls --- */
+    function applyEdgeParams() {
+        const thr = parseInt(document.getElementById('edge-threshold').value);
+        const mono = document.getElementById('edge-mono').checked ? 1 : 0;
+        Module._editor_set_edge(thr, mono);
+        if (!playing && videoLoaded) renderFrame();
+    }
+    document.getElementById('edge-threshold').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyEdgeParams();
+    };
+    document.getElementById('edge-mono').onchange = applyEdgeParams;
+
+    /* --- Night Vision Controls --- */
+    function applyNightVisionParams() {
+        const gain = parseInt(document.getElementById('nv-gain').value) / 10;
+        const noise = parseInt(document.getElementById('nv-noise').value);
+        Module._editor_set_nightvision(gain, noise);
+        if (!playing && videoLoaded) renderFrame();
+    }
+    document.getElementById('nv-gain').oninput = function() {
+        this.nextElementSibling.textContent = (parseInt(this.value) / 10).toFixed(1);
+        applyNightVisionParams();
+    };
+    document.getElementById('nv-noise').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyNightVisionParams();
+    };
+
+    /* --- VHS Controls --- */
+    function applyVHSParams() {
+        const aber = parseInt(document.getElementById('vhs-aber').value);
+        const freq = parseInt(document.getElementById('vhs-freq').value);
+        Module._editor_set_vhs(aber, freq);
+        if (!playing && videoLoaded) renderFrame();
+    }
+    document.getElementById('vhs-aber').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyVHSParams();
+    };
+    document.getElementById('vhs-freq').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyVHSParams();
+    };
+
+    /* --- Glitch Controls --- */
+    function applyGlitchParams() {
+        const intensity = parseInt(document.getElementById('glitch-intensity').value);
+        const block = parseInt(document.getElementById('glitch-block').value);
+        Module._editor_set_glitch(intensity, block);
+        if (!playing && videoLoaded) renderFrame();
+    }
+    document.getElementById('glitch-intensity').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyGlitchParams();
+    };
+    document.getElementById('glitch-block').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyGlitchParams();
+    };
+
+    /* --- Pixelate Controls --- */
+    document.getElementById('pixelate-block').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        Module._editor_set_pixelate(parseInt(this.value));
+        if (!playing && videoLoaded) renderFrame();
+    };
+
+    /* --- Chroma Key Controls --- */
+    document.getElementById('chroma-color').oninput = function() {
+        if (currentEffect === 8) applyChromaParams();
+    };
+    document.getElementById('chroma-threshold').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        if (currentEffect === 8) applyChromaParams();
+    };
+    document.getElementById('chroma-bg').oninput = function() {
+        if (currentEffect === 8) applyChromaParams();
+    };
+
+    function applyChromaParams() {
+        const keyHex = document.getElementById('chroma-color').value;
+        const kr = parseInt(keyHex.slice(1,3), 16);
+        const kg = parseInt(keyHex.slice(3,5), 16);
+        const kb = parseInt(keyHex.slice(5,7), 16);
+        const threshold = parseInt(document.getElementById('chroma-threshold').value);
+        const bgHex = document.getElementById('chroma-bg').value;
+        const br = parseInt(bgHex.slice(1,3), 16);
+        const bg = parseInt(bgHex.slice(3,5), 16);
+        const bb = parseInt(bgHex.slice(5,7), 16);
+        Module._editor_set_chroma(kr, kg, kb, threshold, br, bg, bb);
+        if (!playing && videoLoaded) renderFrame();
+    }
+
+    /* --- Channel Split Controls --- */
+    document.getElementById('chansplit-offset').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        if (currentEffect === 9) {
+            Module._editor_set_channel_split(parseInt(document.getElementById('chansplit-mode').value), parseInt(this.value));
+            if (!playing && videoLoaded) renderFrame();
+        }
+    };
+    document.getElementById('chansplit-mode').onchange = function() {
+        if (currentEffect === 9) {
+            Module._editor_set_channel_split(parseInt(this.value), parseInt(document.getElementById('chansplit-offset').value));
+            if (!playing && videoLoaded) renderFrame();
+        }
+    };
+
+    /* --- Old Film Controls --- */
+    function applyOldFilmParams() {
+        const dust = parseInt(document.getElementById('oldfilm-dust').value);
+        const scratch = parseInt(document.getElementById('oldfilm-scratches').value);
+        const flicker = parseInt(document.getElementById('oldfilm-flicker').value) / 100;
+        Module._editor_set_old_film(dust, scratch, flicker);
+        if (!playing && videoLoaded) renderFrame();
+    }
+    document.getElementById('oldfilm-dust').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyOldFilmParams();
+    };
+    document.getElementById('oldfilm-scratches').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyOldFilmParams();
+    };
+    document.getElementById('oldfilm-flicker').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyOldFilmParams();
+    };
+
+    /* --- FFT Color Grade Controls --- */
+    function applyFFTParams() {
+        const b = parseInt(document.getElementById('fft-bass').value) / 100;
+        const m = parseInt(document.getElementById('fft-mid').value) / 100;
+        const h = parseInt(document.getElementById('fft-high').value) / 100;
+        Module._editor_set_fft_gains(b, m, h);
+        if (!playing && videoLoaded) renderFrame();
+    }
+    document.getElementById('fft-bass').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyFFTParams();
+    };
+    document.getElementById('fft-mid').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyFFTParams();
+    };
+    document.getElementById('fft-high').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyFFTParams();
+    };
+
+    /* --- Waveform Controls --- */
+    function applyWaveformParams() {
+        const hex = document.getElementById('waveform-color').value;
+        const r = parseInt(hex.slice(1,3), 16);
+        const g = parseInt(hex.slice(3,5), 16);
+        const b = parseInt(hex.slice(5,7), 16);
+        const pos = parseInt(document.getElementById('waveform-pos').value);
+        Module._editor_set_waveform(r, g, b, pos);
+        if (!playing && videoLoaded) renderFrame();
+    }
+    document.getElementById('waveform-color').oninput = applyWaveformParams;
+    document.getElementById('waveform-pos').onchange = applyWaveformParams;
+
+    /* --- BG Removal Controls --- */
+    document.getElementById('bgremoval-color').oninput = function() {
+        const hex = this.value;
+        const r = parseInt(hex.slice(1,3), 16);
+        const g = parseInt(hex.slice(3,5), 16);
+        const b = parseInt(hex.slice(5,7), 16);
+        Module._editor_set_ml_bg_color(r, g, b);
+        if (!playing && videoLoaded) renderFrame();
+    };
+
+    /* --- BG Removal Mode Controls --- */
+    document.getElementById('bgremoval-mode').onchange = function() {
+        Module._editor_set_bg_mode(parseInt(this.value));
+        if (!playing && videoLoaded) renderFrame();
+    };
+    document.getElementById('bgremoval-blur').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        Module._editor_set_bg_blur(parseInt(this.value));
+        if (!playing && videoLoaded) renderFrame();
+    };
+    document.getElementById('bgremoval-load-img').onclick = function() {
+        document.getElementById('bgremoval-image').click();
+    };
+    document.getElementById('bgremoval-image').onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const img = new Image();
+        img.onload = function() {
+            const tmpC = document.createElement('canvas');
+            tmpC.width = W; tmpC.height = H;
+            const tmpCtx = tmpC.getContext('2d');
+            tmpCtx.drawImage(img, 0, 0, W, H);
+            const imgData = tmpCtx.getImageData(0, 0, W, H);
+            const src32 = new Uint32Array(imgData.data.buffer);
+            const bgPtr = Module._editor_get_bg_image_buffer();
+            const heap = Module.HEAPU32;
+            const off = bgPtr >> 2;
+            for (let i = 0; i < W * H; i++) {
+                const v = src32[i];
+                heap[off + i] = (v & 0xFF00FF00) | ((v >> 16) & 0xFF) | ((v & 0xFF) << 16);
+            }
+            Module._editor_set_bg_mode(2);
+            document.getElementById('bgremoval-mode').value = '2';
+        };
+        img.src = URL.createObjectURL(file);
+    };
+    let bgVideo = null;
+    document.getElementById('bgremoval-load-vid').onclick = function() {
+        document.getElementById('bgremoval-video').click();
+    };
+    document.getElementById('bgremoval-video').onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        bgVideo = document.createElement('video');
+        bgVideo.muted = true;
+        bgVideo.loop = true;
+        bgVideo.src = URL.createObjectURL(file);
+        bgVideo.play();
+        Module._editor_set_bg_mode(3);
+        document.getElementById('bgremoval-mode').value = '3';
+    };
+
+    /* Update BG video frames in render loop — handled via helper */
+    function updateBGVideo() {
+        if (!bgVideo || bgVideo.readyState < 2) return;
+        const tmpC = document.createElement('canvas');
+        tmpC.width = W; tmpC.height = H;
+        const tmpCtx = tmpC.getContext('2d');
+        tmpCtx.drawImage(bgVideo, 0, 0, W, H);
+        const imgData = tmpCtx.getImageData(0, 0, W, H);
+        const src32 = new Uint32Array(imgData.data.buffer);
+        const bgPtr = Module._editor_get_bg_image_buffer();
+        if (!bgPtr) return;
+        const heap = Module.HEAPU32;
+        const off = bgPtr >> 2;
+        for (let i = 0; i < W * H; i++) {
+            const v = src32[i];
+            heap[off + i] = (v & 0xFF00FF00) | ((v >> 16) & 0xFF) | ((v & 0xFF) << 16);
+        }
+    }
+
+    /* --- Hair Color Controls --- */
+    document.getElementById('haircolor-color').oninput = function() {
+        const hex = this.value;
+        const r = parseInt(hex.slice(1,3), 16);
+        const g = parseInt(hex.slice(3,5), 16);
+        const b = parseInt(hex.slice(5,7), 16);
+        Module._editor_set_hair_color(r, g, b);
+        if (!playing && videoLoaded) renderFrame();
+    };
+    document.getElementById('haircolor-intensity').oninput = function() {
+        this.nextElementSibling.textContent = this.value + '%';
+        Module._editor_set_hair_intensity(parseInt(this.value) / 100);
+        if (!playing && videoLoaded) renderFrame();
+    };
+
+    /* --- Body Outline Controls --- */
+    document.getElementById('outline-color').oninput = function() {
+        const hex = this.value;
+        const r = parseInt(hex.slice(1,3), 16);
+        const g = parseInt(hex.slice(3,5), 16);
+        const b = parseInt(hex.slice(5,7), 16);
+        Module._editor_set_outline_color(r, g, b);
+        if (!playing && videoLoaded) renderFrame();
+    };
+    document.getElementById('outline-thickness').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        Module._editor_set_outline_thickness(parseInt(this.value));
+        if (!playing && videoLoaded) renderFrame();
+    };
+
+    /* --- Tilt-Shift Controls --- */
+    function applyTiltshiftParams() {
+        const focus = parseInt(document.getElementById('tiltshift-focus').value);
+        const range = parseInt(document.getElementById('tiltshift-range').value);
+        Module._editor_set_tiltshift(focus, range);
+        if (!playing && videoLoaded) renderFrame();
+    }
+    document.getElementById('tiltshift-focus').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyTiltshiftParams();
+    };
+    document.getElementById('tiltshift-range').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyTiltshiftParams();
+    };
+
+    /* --- PiP Controls --- */
+    document.getElementById('pip-opacity').oninput = function() {
+        this.nextElementSibling.textContent = this.value + '%';
+        Module._editor_set_pip_opacity(parseInt(this.value) / 100);
+        if (!playing && videoLoaded) renderFrame();
+    };
+    document.getElementById('pip-reset-pos').onclick = function() {
+        Module._editor_set_pip_position(-1, -1);
+        if (!playing && videoLoaded) renderFrame();
+    };
+
+    /* --- Pose Controls --- */
+    function applyPoseColors() {
+        const boneHex = document.getElementById('pose-bone-color').value;
+        const jointHex = document.getElementById('pose-joint-color').value;
+        const br = parseInt(boneHex.slice(1,3), 16), bg = parseInt(boneHex.slice(3,5), 16), bb = parseInt(boneHex.slice(5,7), 16);
+        const jr = parseInt(jointHex.slice(1,3), 16), jg = parseInt(jointHex.slice(3,5), 16), jb = parseInt(jointHex.slice(5,7), 16);
+        Module._editor_set_pose_colors(br, bg, bb, jr, jg, jb);
+        if (!playing && videoLoaded) renderFrame();
+    }
+    document.getElementById('pose-bone-color').oninput = applyPoseColors;
+    document.getElementById('pose-joint-color').oninput = applyPoseColors;
+
+    /* --- Face Filter Controls --- */
+    function applyFaceParams() {
+        const mode = parseInt(document.getElementById('face-mode').value);
+        const block = parseInt(document.getElementById('face-block').value);
+        Module._editor_set_face_params(mode, block);
+        if (!playing && videoLoaded) renderFrame();
+    }
+    document.getElementById('face-mode').onchange = applyFaceParams;
+    document.getElementById('face-block').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyFaceParams();
+    };
+
+    /* --- Depth Fog Controls --- */
+    function applyFogParams() {
+        const hex = document.getElementById('fog-color').value;
+        const r = parseInt(hex.slice(1,3), 16);
+        const g = parseInt(hex.slice(3,5), 16);
+        const b = parseInt(hex.slice(5,7), 16);
+        const val = parseInt(document.getElementById('fog-intensity').value) / 100;
+        Module._editor_set_fog(r, g, b, val);
+        if (!playing && videoLoaded) renderFrame();
+    }
+    document.getElementById('fog-color').oninput = applyFogParams;
+    document.getElementById('fog-intensity').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        applyFogParams();
+    };
+
+    /* --- Subtitle Controls --- */
+    document.getElementById('sub-font').onchange = async function() {
+        subtitleSettings.font = this.value;
+        await loadFont(this.value);
+    };
+    document.getElementById('sub-size').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        subtitleSettings.size = parseInt(this.value);
+    };
+    document.getElementById('sub-color').oninput = function() {
+        subtitleSettings.color = this.value;
+    };
+    document.getElementById('sub-outline').oninput = function() {
+        subtitleSettings.outlineColor = this.value;
+    };
+    document.getElementById('sub-outline-w').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        subtitleSettings.outlineWidth = parseInt(this.value);
+    };
+    document.getElementById('sub-shadow').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        subtitleSettings.shadow = parseInt(this.value);
+    };
+    document.getElementById('sub-pos').onchange = function() {
+        subtitleSettings.position = this.value;
+    };
+    document.getElementById('sub-style').onchange = function() {
+        subtitleSettings.style = this.value;
+    };
+    document.getElementById('sub-decay').oninput = function() {
+        this.nextElementSibling.textContent = this.value + 's';
+        subtitleSettings.decay = parseInt(this.value);
+    };
+    document.getElementById('sub-bg').onchange = function() {
+        subtitleSettings.bg = this.value;
+    };
+
+    /* --- Reset Buttons --- */
+    document.querySelectorAll('.reset-btn[data-reset]').forEach(btn => {
+        btn.onclick = function() {
+            const target = this.dataset.reset;
+            switch (target) {
+                case 'thermal':
+                    document.getElementById('thermal-palette').value = '0';
+                    Module._editor_set_thermal(0);
+                    break;
+                case 'edge':
+                    document.getElementById('edge-threshold').value = 128;
+                    document.getElementById('edge-threshold').nextElementSibling.textContent = '128';
+                    document.getElementById('edge-mono').checked = false;
+                    Module._editor_set_edge(128, 0);
+                    break;
+                case 'nightvision':
+                    document.getElementById('nv-gain').value = 15;
+                    document.getElementById('nv-gain').nextElementSibling.textContent = '1.5';
+                    document.getElementById('nv-noise').value = 8;
+                    document.getElementById('nv-noise').nextElementSibling.textContent = '8';
+                    Module._editor_set_nightvision(1.5, 8);
+                    break;
+                case 'vhs':
+                    document.getElementById('vhs-aber').value = 2;
+                    document.getElementById('vhs-aber').nextElementSibling.textContent = '2';
+                    document.getElementById('vhs-freq').value = 30;
+                    document.getElementById('vhs-freq').nextElementSibling.textContent = '30';
+                    Module._editor_set_vhs(2, 30);
+                    break;
+                case 'glitch':
+                    document.getElementById('glitch-intensity').value = 5;
+                    document.getElementById('glitch-intensity').nextElementSibling.textContent = '5';
+                    document.getElementById('glitch-block').value = 30;
+                    document.getElementById('glitch-block').nextElementSibling.textContent = '30';
+                    Module._editor_set_glitch(5, 30);
+                    break;
+                case 'pixelate':
+                    document.getElementById('pixelate-block').value = 6;
+                    document.getElementById('pixelate-block').nextElementSibling.textContent = '6';
+                    Module._editor_set_pixelate(6);
+                    break;
+                case 'chroma':
+                    document.getElementById('chroma-color').value = '#00ff00';
+                    document.getElementById('chroma-threshold').value = 60;
+                    document.getElementById('chroma-threshold').nextElementSibling.textContent = '60';
+                    document.getElementById('chroma-bg').value = '#000000';
+                    applyChromaParams();
+                    break;
+                case 'chansplit':
+                    document.getElementById('chansplit-offset').value = 10;
+                    document.getElementById('chansplit-offset').nextElementSibling.textContent = '10';
+                    document.getElementById('chansplit-mode').value = '0';
+                    Module._editor_set_channel_split(0, 10);
+                    break;
+                case 'oldfilm':
+                    document.getElementById('oldfilm-dust').value = 8;
+                    document.getElementById('oldfilm-dust').nextElementSibling.textContent = '8';
+                    document.getElementById('oldfilm-scratches').value = 4;
+                    document.getElementById('oldfilm-scratches').nextElementSibling.textContent = '4';
+                    document.getElementById('oldfilm-flicker').value = 10;
+                    document.getElementById('oldfilm-flicker').nextElementSibling.textContent = '10';
+                    Module._editor_set_old_film(8, 4, 0.1);
+                    break;
+                case 'fft':
+                    document.getElementById('fft-bass').value = 100;
+                    document.getElementById('fft-bass').nextElementSibling.textContent = '100';
+                    document.getElementById('fft-mid').value = 100;
+                    document.getElementById('fft-mid').nextElementSibling.textContent = '100';
+                    document.getElementById('fft-high').value = 100;
+                    document.getElementById('fft-high').nextElementSibling.textContent = '100';
+                    Module._editor_set_fft_gains(1.0, 1.0, 1.0);
+                    break;
+                case 'waveform':
+                    document.getElementById('waveform-color').value = '#00ff64';
+                    document.getElementById('waveform-pos').value = '0';
+                    Module._editor_set_waveform(0, 255, 100, 0);
+                    break;
+                case 'bgremoval':
+                    document.getElementById('bgremoval-color').value = '#000000';
+                    Module._editor_set_ml_bg_color(0, 0, 0);
+                    break;
+                case 'pose':
+                    document.getElementById('pose-bone-color').value = '#00ffc8';
+                    document.getElementById('pose-joint-color').value = '#ff6464';
+                    Module._editor_set_pose_colors(0, 255, 200, 255, 100, 100);
+                    break;
+                case 'face':
+                    document.getElementById('face-mode').value = '0';
+                    document.getElementById('face-block').value = 8;
+                    document.getElementById('face-block').nextElementSibling.textContent = '8';
+                    Module._editor_set_face_params(0, 8);
+                    break;
+                case 'fog':
+                    document.getElementById('fog-color').value = '#b4bed2';
+                    document.getElementById('fog-intensity').value = 80;
+                    document.getElementById('fog-intensity').nextElementSibling.textContent = '80';
+                    Module._editor_set_fog(180, 190, 210, 0.8);
+                    break;
+                case 'subtitle':
+                    document.getElementById('sub-font').value = 'default';
+                    document.getElementById('sub-size').value = 28;
+                    document.getElementById('sub-size').nextElementSibling.textContent = '28';
+                    document.getElementById('sub-color').value = '#ffffff';
+                    document.getElementById('sub-outline').value = '#000000';
+                    document.getElementById('sub-outline-w').value = 2;
+                    document.getElementById('sub-outline-w').nextElementSibling.textContent = '2';
+                    document.getElementById('sub-shadow').value = 4;
+                    document.getElementById('sub-shadow').nextElementSibling.textContent = '4';
+                    document.getElementById('sub-pos').value = 'bottom';
+                    document.getElementById('sub-style').value = 'static';
+                    document.getElementById('sub-decay').value = 3;
+                    document.getElementById('sub-decay').nextElementSibling.textContent = '3s';
+                    document.getElementById('sub-bg').value = 'bar';
+                    subtitleSettings = { font:'default',size:28,color:'#ffffff',outlineColor:'#000000',outlineWidth:2,shadow:4,position:'bottom',style:'static',decay:3,bg:'bar' };
+                    break;
+                case 'haircolor':
+                    document.getElementById('haircolor-color').value = '#8B00FF';
+                    Module._editor_set_hair_color(139, 0, 255);
+                    break;
+                case 'outline':
+                    document.getElementById('outline-color').value = '#00ff00';
+                    document.getElementById('outline-thickness').value = 2;
+                    document.getElementById('outline-thickness').nextElementSibling.textContent = '2';
+                    Module._editor_set_outline_color(0, 255, 0);
+                    Module._editor_set_outline_thickness(2);
+                    break;
+                case 'tiltshift':
+                    document.getElementById('tiltshift-focus').value = 50;
+                    document.getElementById('tiltshift-focus').nextElementSibling.textContent = '50';
+                    document.getElementById('tiltshift-range').value = 20;
+                    document.getElementById('tiltshift-range').nextElementSibling.textContent = '20';
+                    Module._editor_set_tiltshift(50, 20);
+                    break;
+                case 'pip':
+                    document.getElementById('pip-opacity').value = 100;
+                    document.getElementById('pip-opacity').nextElementSibling.textContent = '100%';
+                    Module._editor_set_pip_opacity(1.0);
+                    Module._editor_set_pip_position(-1, -1);
+                    break;
+            }
+            if (!playing && videoLoaded) renderFrame();
+        };
+    });
+
+    /* --- Audio-Reactive System --- */
+    let audioCtx, analyser, audioSource;
+    function initAudio() {
+        if (audioCtx) return;
+        audioCtx = new AudioContext();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        audioSource = audioCtx.createMediaElementSource(video);
+        audioSource.connect(analyser);
+        analyser.connect(audioCtx.destination);
+    }
+
+    function updateAudio() {
+        if (!analyser) return;
+        const freq = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(freq);
+        /* Band energies (normalized 0-1) */
+        let bass = 0, mid = 0, high = 0;
+        const binCount = freq.length;
+        for (let i = 0; i < binCount * 0.1; i++) bass += freq[i];
+        for (let i = Math.floor(binCount * 0.1); i < binCount * 0.5; i++) mid += freq[i];
+        for (let i = Math.floor(binCount * 0.5); i < binCount; i++) high += freq[i];
+        bass /= (binCount * 0.1 * 255);
+        mid /= (binCount * 0.4 * 255);
+        high /= (binCount * 0.5 * 255);
+        /* Beat detection: bass spike > 1.5x rolling average */
+        if (!window._bassAvg) window._bassAvg = bass;
+        window._bassAvg = window._bassAvg * 0.9 + bass * 0.1;
+        const beat = bass > window._bassAvg * 1.5 ? 1 : 0;
+        Module._editor_set_audio_data(bass, mid, high, beat);
+        /* Waveform for effect 14 */
+        if (currentEffect === 14) {
+            const timeData = new Float32Array(256);
+            analyser.getFloatTimeDomainData(timeData);
+            const wavePtr = Module._editor_get_waveform_buffer();
+            Module.HEAPF32.set(timeData, wavePtr >> 2);
+        }
+    }
+
+    /* --- ML Effects System (migrated to @mediapipe/tasks-vision) --- */
+    const mlModels = {};
+    let mlLoading = false;
+    let visionModule = null;
+    let visionFileset = null;
+
+    async function loadScript(url) {
+        return new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = url;
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+        });
+    }
+
+    async function getVisionFileset() {
+        if (!visionModule) {
+            visionModule = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs');
+        }
+        if (!visionFileset) {
+            visionFileset = await visionModule.FilesetResolver.forVisionTasks(
+                'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+            );
+        }
+        return { module: visionModule, fileset: visionFileset };
+    }
+
+    async function initMLEffect(id) {
+        try {
+            switch (id) {
+                case 15: /* BG Removal - ImageSegmenter (multi-class) */
+                case 27: /* Hair Color - shares segmenter */
+                case 28: /* Body Outline - shares segmenter */
+                    if (!mlModels.segmenter) {
+                        setStatus('Loading ImageSegmenter...', 'loading');
+                        const { module, fileset } = await getVisionFileset();
+                        mlModels.segmenter = await module.ImageSegmenter.createFromOptions(fileset, {
+                            baseOptions: {
+                                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite',
+                                delegate: 'GPU'
+                            },
+                            runningMode: 'VIDEO',
+                            outputCategoryMask: true,
+                            outputConfidenceMasks: false
+                        });
+                        setStatus('ImageSegmenter ready', 'ready');
+                    }
+                    break;
+                case 16: /* Object Detection - EfficientDet */
+                    if (!mlModels.detector) {
+                        setStatus('Loading ObjectDetector...', 'loading');
+                        const { module, fileset } = await getVisionFileset();
+                        mlModels.detector = await module.ObjectDetector.createFromOptions(fileset, {
+                            baseOptions: {
+                                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/int8/latest/efficientdet_lite0.tflite',
+                                delegate: 'GPU'
+                            },
+                            runningMode: 'VIDEO',
+                            maxResults: 20,
+                            scoreThreshold: 0.3
+                        });
+                        setStatus('ObjectDetector ready', 'ready');
+                    }
+                    break;
+                case 17: /* Pose - PoseLandmarker */
+                    if (!mlModels.poseLandmarker) {
+                        setStatus('Loading PoseLandmarker...', 'loading');
+                        const { module, fileset } = await getVisionFileset();
+                        mlModels.poseLandmarker = await module.PoseLandmarker.createFromOptions(fileset, {
+                            baseOptions: {
+                                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task',
+                                delegate: 'GPU'
+                            },
+                            runningMode: 'VIDEO',
+                            numPoses: 1
+                        });
+                        setStatus('PoseLandmarker ready', 'ready');
+                    }
+                    break;
+                case 18: /* Face Filter - FaceLandmarker (468 landmarks) */
+                    if (!mlModels.faceLandmarker) {
+                        setStatus('Loading FaceLandmarker...', 'loading');
+                        const { module, fileset } = await getVisionFileset();
+                        mlModels.faceLandmarker = await module.FaceLandmarker.createFromOptions(fileset, {
+                            baseOptions: {
+                                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task',
+                                delegate: 'GPU'
+                            },
+                            runningMode: 'VIDEO',
+                            numFaces: 1,
+                            outputFaceBlendshapes: false,
+                            outputFacialTransformationMatrixes: false
+                        });
+                        setStatus('FaceLandmarker ready', 'ready');
+                    }
+                    break;
+                case 19: /* Depth - keep MiDaS (TF.js) */
+                case 29: /* Tilt-Shift - shares depth model */
+                    if (!mlModels.depth) {
+                        setStatus('Loading depth model...', 'loading');
+                        if (!window.tf) await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs');
+                        mlModels.depth = await tf.loadGraphModel('https://tfhub.dev/intel/lite-model/midas/v2_1_small/1/default/1', {fromTFHub: true});
+                        setStatus('Depth model ready', 'ready');
+                    }
+                    break;
+                case 20: /* Auto Color (histogram EQ in C, no model needed) */
+                    mlModels.autoColor = true;
+                    setStatus('Auto Color ready', 'ready');
+                    break;
+                case 21: /* Hand Gesture - HandLandmarker */
+                    if (!mlModels.handLandmarker) {
+                        setStatus('Loading HandLandmarker...', 'loading');
+                        const { module, fileset } = await getVisionFileset();
+                        mlModels.handLandmarker = await module.HandLandmarker.createFromOptions(fileset, {
+                            baseOptions: {
+                                modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task',
+                                delegate: 'GPU'
+                            },
+                            runningMode: 'VIDEO',
+                            numHands: 2
+                        });
+                        setStatus('HandLandmarker ready', 'ready');
+                    }
+                    break;
+            }
+        } catch (e) {
+            setStatus('ML load error: ' + e.message, 'error');
+            console.error('ML init error:', e);
+        }
+    }
+
+    let mlFrameCount = 0;
+    let mlTimestamp = 0;
+    async function runMLInference() {
+        mlFrameCount++;
+        if (mlFrameCount % 3 !== 0) return;
+        mlTimestamp = performance.now();
+
+        try {
+            if ((currentEffect === 15 || currentEffect === 27 || currentEffect === 28) && mlModels.segmenter) {
+                const result = mlModels.segmenter.segmentForVideo(offCanvas, mlTimestamp);
+                if (result && result.categoryMask) {
+                    const maskData = result.categoryMask.getAsUint8Array();
+                    const maskPtr = Module._editor_get_mask_buffer();
+                    Module.HEAPU8.set(maskData.subarray(0, W * H), maskPtr);
+                    /* Temporal mask smoothing */
+                    if (prevMask && prevMask.length === maskData.length) {
+                        const smoothed = new Uint8Array(W * H);
+                        for (let i = 0; i < W * H; i++) {
+                            smoothed[i] = (prevMask[i] === maskData[i]) ? maskData[i] :
+                                (Math.random() < 0.7 ? maskData[i] : prevMask[i]);
+                        }
+                        Module.HEAPU8.set(smoothed, maskPtr);
+                    }
+                    prevMask = new Uint8Array(maskData.subarray(0, W * H));
+                    result.categoryMask.close();
+                }
+            }
+            if (currentEffect === 16 && mlModels.detector) {
+                const result = mlModels.detector.detectForVideo(offCanvas, mlTimestamp);
+                if (result && result.detections) {
+                    Module._editor_set_det_count(result.detections.length);
+                    for (let i = 0; i < result.detections.length && i < 20; i++) {
+                        const bb = result.detections[i].boundingBox;
+                        const cat = result.detections[i].categories[0];
+                        const label = cat.categoryName + ' ' + (cat.score * 100).toFixed(0) + '%';
+                        Module.ccall('editor_set_det_box', null,
+                            ['number','number','number','number','number','string'],
+                            [i, bb.originX, bb.originY, bb.width, bb.height, label]);
+                    }
+                }
+            }
+            if (currentEffect === 17 && mlModels.poseLandmarker) {
+                const result = mlModels.poseLandmarker.detectForVideo(offCanvas, mlTimestamp);
+                if (result && result.landmarks && result.landmarks.length > 0) {
+                    Module._editor_set_pose_valid(1);
+                    result.landmarks[0].forEach((lm, i) => {
+                        if (i < 33) Module._editor_set_pose(i, lm.x, lm.y);
+                    });
+                } else {
+                    Module._editor_set_pose_valid(0);
+                }
+            }
+            if (currentEffect === 18 && mlModels.faceLandmarker) {
+                const result = mlModels.faceLandmarker.detectForVideo(offCanvas, mlTimestamp);
+                if (result && result.faceLandmarks && result.faceLandmarks.length > 0) {
+                    const landmarks = result.faceLandmarks[0];
+                    Module._editor_set_face_landmark_count(landmarks.length);
+                    /* Set bounding box from landmarks */
+                    let minX = 1, minY = 1, maxX = 0, maxY = 0;
+                    for (let i = 0; i < landmarks.length; i++) {
+                        Module._editor_set_face_landmark(i, landmarks[i].x, landmarks[i].y);
+                        if (landmarks[i].x < minX) minX = landmarks[i].x;
+                        if (landmarks[i].y < minY) minY = landmarks[i].y;
+                        if (landmarks[i].x > maxX) maxX = landmarks[i].x;
+                        if (landmarks[i].y > maxY) maxY = landmarks[i].y;
+                    }
+                    Module._editor_set_face(
+                        Math.round(minX * W), Math.round(minY * H),
+                        Math.round((maxX - minX) * W), Math.round((maxY - minY) * H)
+                    );
+                    Module._editor_set_face_valid(1);
+                    lastFaceLandmarks = landmarks;
+                    /* Send face mask to C for production modes */
+                    const faceMode = parseInt(document.getElementById('face-mode').value);
+                    if (faceMode >= 17 && faceMode <= 21 && landmarks.length > 0) {
+                        const maskPtr = Module._editor_get_face_mask_buffer();
+                        if (maskPtr) {
+                            const mask = new Uint8Array(W * H);
+                            /* Fill face oval polygon */
+                            const points = FACE_OVAL.filter(i => i < landmarks.length).map(i => ({
+                                x: Math.round(landmarks[i].x * W),
+                                y: Math.round(landmarks[i].y * H)
+                            }));
+                            /* Simple scanline fill */
+                            if (points.length > 2) {
+                                let minY = H, maxY = 0;
+                                for (const p of points) { if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; }
+                                for (let y = Math.max(0, minY); y <= Math.min(H-1, maxY); y++) {
+                                    const intersections = [];
+                                    for (let i = 0; i < points.length; i++) {
+                                        const j = (i + 1) % points.length;
+                                        const yi = points[i].y, yj = points[j].y;
+                                        if ((yi <= y && yj > y) || (yj <= y && yi > y)) {
+                                            const x = points[i].x + (y - yi) / (yj - yi) * (points[j].x - points[i].x);
+                                            intersections.push(x);
+                                        }
+                                    }
+                                    intersections.sort((a,b) => a - b);
+                                    for (let k = 0; k < intersections.length - 1; k += 2) {
+                                        const x0 = Math.max(0, Math.floor(intersections[k]));
+                                        const x1 = Math.min(W-1, Math.ceil(intersections[k+1]));
+                                        for (let x = x0; x <= x1; x++) mask[y * W + x] = 1;
+                                    }
+                                }
+                            }
+                            Module.HEAPU8.set(mask, maskPtr);
+                        }
+                    }
+                } else {
+                    Module._editor_set_face_valid(0);
+                    lastFaceLandmarks = null;
+                }
+            }
+            if ((currentEffect === 19 || currentEffect === 29) && mlModels.depth) {
+                const input = tf.browser.fromPixels(offCanvas).resizeBilinear([256, 256]).expandDims(0).div(255.0);
+                const pred = mlModels.depth.predict(input);
+                const rawDepth = await pred.data();
+                input.dispose(); pred.dispose();
+                const depthPtr = Module._editor_get_depth_buffer();
+                /* Bilinear upscale from 256x256 to WxH */
+                const dw = 256, dh = 256;
+                let maxVal = 0;
+                for (let i = 0; i < rawDepth.length; i++) {
+                    if (rawDepth[i] > maxVal) maxVal = rawDepth[i];
+                }
+                if (maxVal <= 0) maxVal = 1;
+                for (let y = 0; y < H; y++) {
+                    const sy = y * (dh - 1) / H;
+                    const sy0 = Math.floor(sy), sy1 = Math.min(sy0 + 1, dh - 1);
+                    const fy = sy - sy0;
+                    for (let x = 0; x < W; x++) {
+                        const sx = x * (dw - 1) / W;
+                        const sx0 = Math.floor(sx), sx1 = Math.min(sx0 + 1, dw - 1);
+                        const fx = sx - sx0;
+                        const v00 = rawDepth[sy0 * dw + sx0];
+                        const v10 = rawDepth[sy0 * dw + sx1];
+                        const v01 = rawDepth[sy1 * dw + sx0];
+                        const v11 = rawDepth[sy1 * dw + sx1];
+                        const val = v00 * (1-fx) * (1-fy) + v10 * fx * (1-fy) + v01 * (1-fx) * fy + v11 * fx * fy;
+                        Module.HEAPU8[depthPtr + y * W + x] = Math.round((val / maxVal) * 255);
+                    }
+                }
+            }
+            if (currentEffect === 20 && mlModels.autoColor) {
+                /* Auto Color is handled entirely in C (histogram EQ) — no JS inference needed */
+            }
+            if (currentEffect === 21 && mlModels.handLandmarker) {
+                try {
+                    const result = mlModels.handLandmarker.detectForVideo(offCanvas, mlTimestamp);
+                    if (result && result.landmarks && result.landmarks.length > 0) {
+                        for (let h2 = 0; h2 < result.landmarks.length; h2++) {
+                            const landmarks = result.landmarks[h2];
+                            /* Expanded gesture detection: 8 gestures */
+                            const thumbUp = landmarks[4].y < landmarks[3].y;
+                            const thumbDown = landmarks[4].y > landmarks[3].y && landmarks[4].y > landmarks[2].y;
+                            const indexExt = landmarks[8].y < landmarks[6].y;
+                            const middleExt = landmarks[12].y < landmarks[10].y;
+                            const ringExt = landmarks[16].y < landmarks[14].y;
+                            const pinkyExt = landmarks[20].y < landmarks[18].y;
+                            const allExt = indexExt && middleExt && ringExt && pinkyExt;
+                            const fist = !indexExt && !middleExt && !ringExt && !pinkyExt;
+
+                            let gesture = 'Unknown';
+                            if (allExt && thumbUp) gesture = 'Open Palm';
+                            else if (fist && !thumbUp) gesture = 'Fist';
+                            else if (indexExt && !middleExt && !ringExt && !pinkyExt) gesture = 'Point';
+                            else if (indexExt && middleExt && !ringExt && !pinkyExt) gesture = 'Peace';
+                            else if (thumbUp && fist) gesture = 'Thumbs Up';
+                            else if (thumbDown && fist) gesture = 'Thumbs Down';
+                            else if (indexExt && pinkyExt && !middleExt && !ringExt) gesture = 'Rock';
+                            else if (thumbUp && indexExt && !middleExt && !ringExt && !pinkyExt) {
+                                /* Check if thumb and index form circle for OK */
+                                const dx = landmarks[4].x - landmarks[8].x;
+                                const dy = landmarks[4].y - landmarks[8].y;
+                                if (Math.sqrt(dx*dx + dy*dy) < 0.05) gesture = 'OK';
+                            }
+
+                            /* Draw gesture label */
+                            const cx = Math.round(landmarks[0].x * W);
+                            const cy = Math.round(landmarks[0].y * H) - 20;
+                            Module.ccall('editor_draw_text', null, ['number','number','string','number','number','number'],
+                                [cx, cy > 0 ? cy : 10, gesture, 0, 255, 200]);
+
+                            /* Draw hand skeleton */
+                            const connections = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
+                            for (const [a, b] of connections) {
+                                const x0 = Math.round(landmarks[a].x * W), y0 = Math.round(landmarks[a].y * H);
+                                const x1 = Math.round(landmarks[b].x * W), y1 = Math.round(landmarks[b].y * H);
+                                Module.ccall('editor_draw_rect', null, ['number','number','number','number','number','number','number'],
+                                    [Math.min(x0,x1), Math.min(y0,y1), Math.abs(x1-x0)||1, Math.abs(y1-y0)||1, 0, 200, 255]);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Hand detection error:', e);
+                }
+            }
+        } catch (e) {
+            console.error('ML inference error:', e);
+        }
+    }
+
+    /* --- PiP Compositing --- */
+    let pipVideo = null, pipActive = false;
+    const PIP_W = 160, PIP_H = 90;
+    /* Cached PiP canvas */
+    const pipTmpCanvas = document.createElement('canvas');
+    pipTmpCanvas.width = PIP_W;
+    pipTmpCanvas.height = PIP_H;
+    const pipTmpCtx = pipTmpCanvas.getContext('2d', { willReadFrequently: true });
+
+    document.getElementById('pip-input').onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        initPiP(URL.createObjectURL(file));
+    };
+
+    function initPiP(source) {
+        const pipPtr = Module._editor_get_pip_buffer(PIP_W, PIP_H);
+        if (!pipVideo) {
+            pipVideo = document.createElement('video');
+            pipVideo.muted = true;
+            pipVideo.playsInline = true;
+            pipVideo.loop = true;
+        }
+        if (source instanceof MediaStream) {
+            pipVideo.srcObject = source;
+        } else {
+            pipVideo.src = source;
+        }
+        pipVideo.play();
+        pipActive = true;
+    }
+
+    function updatePiP() {
+        if (!pipActive || !pipVideo || pipVideo.readyState < 2) return;
+        pipTmpCtx.drawImage(pipVideo, 0, 0, PIP_W, PIP_H);
+        const imgData = pipTmpCtx.getImageData(0, 0, PIP_W, PIP_H);
+        const src32 = new Uint32Array(imgData.data.buffer);
+        const pipPtr = Module._editor_get_pip_buffer(PIP_W, PIP_H);
+        const heap = Module.HEAPU32;
+        const off = pipPtr >> 2;
+        for (let i = 0; i < PIP_W * PIP_H; i++) {
+            const v = src32[i];
+            heap[off + i] = (v & 0xFF00FF00) | ((v >> 16) & 0xFF) | ((v & 0xFF) << 16);
+        }
+    }
+
+    /* --- Webcam+Screen (Effect 23) --- */
+    let screenStream = null;
+    async function initWebcamScreen() {
+        try {
+            if (!screenStream) {
+                setStatus('Requesting screen capture...', 'loading');
+                screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+                video.srcObject = screenStream;
+                video.muted = true;
+                video.play();
+                videoLoaded = true;
+                playing = true;
+                document.getElementById('no-video').style.display = 'none';
+                document.getElementById('btn-play').innerHTML = '&#9646;&#9646;';
+            }
+            /* Webcam as PiP overlay */
+            if (!pipActive) {
+                const camStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 320 }, height: { ideal: 180 } },
+                    audio: false
+                });
+                initPiP(camStream);
+            }
+            setStatus('Screen + Webcam PiP', 'ready');
+        } catch (e) {
+            setStatus('Screen capture error: ' + e.message, 'error');
+            console.error('Webcam+Screen error:', e);
+        }
+    }
+
+    /* --- VJ Tool (Effect 24) - Redesigned --- */
+    const vjEffectNames = {
+        1:'Thermal', 2:'Edge Detect', 3:'Night Vision', 4:'VHS', 5:'Glitch', 6:'Pixelate', 7:'Invert',
+        8:'Chroma Key', 9:'Channel Split', 10:'Old Film', 11:'Time Freeze',
+        12:'FFT Color Grade', 13:'Beat Glitch', 14:'Waveform Overlay',
+        15:'BG Removal', 16:'Object Detect', 17:'Pose Skeleton', 18:'Face Filter', 19:'Depth Fog', 20:'Colorization', 21:'Hand Gesture',
+        22:'PiP', 23:'Webcam+Screen', 25:'Annotator', 26:'Live Subtitles',
+        27:'Hair Color', 28:'Body Outline', 29:'Tilt-Shift'
+    };
+
+    const vjPresets = {
+        cyberpunk: [{fx:2,intensity:100},{fx:5,intensity:60},{fx:9,intensity:80}],
+        retrowave: [{fx:4,intensity:100},{fx:10,intensity:80},{fx:1,intensity:50}],
+        dream: [{fx:6,intensity:40},{fx:3,intensity:70},{fx:19,intensity:90}],
+        surveillance: [{fx:3,intensity:100},{fx:2,intensity:60},{fx:26,intensity:100}],
+        analog: [{fx:4,intensity:100},{fx:10,intensity:80},{fx:9,intensity:60}],
+        horror: [{fx:5,intensity:100},{fx:7,intensity:80},{fx:2,intensity:60}],
+        beauty: [{fx:18,intensity:80},{fx:15,intensity:60},{fx:20,intensity:100}],
+        matrix: [{fx:3,intensity:100},{fx:2,intensity:70},{fx:6,intensity:50}],
+        vaporwave: [{fx:9,intensity:100},{fx:6,intensity:60},{fx:12,intensity:80}]
+    };
+
+    function addVJChainItem(fxId, intensity) {
+        const list = document.getElementById('vj-chain-list');
+        const item = document.createElement('div');
+        item.className = 'vj-chain-item';
+        item.draggable = true;
+        item.dataset.fx = fxId;
+        item.innerHTML = '<span class="vj-drag-handle">=</span>' +
+            '<span class="vj-fx-name">' + (vjEffectNames[fxId] || 'Effect ' + fxId) + '</span>' +
+            '<select class="vj-blend-mode" style="font-size:10px;background:var(--bg3);color:var(--fg);border:1px solid #333;padding:1px 4px;">' +
+            '<option value="0">Normal</option><option value="1">Multiply</option><option value="2">Screen</option><option value="3">Overlay</option><option value="4">Soft Light</option>' +
+            '</select>' +
+            '<input type="range" min="0" max="100" value="' + intensity + '" class="vj-intensity">' +
+            '<span class="vj-intensity-val">' + intensity + '%</span>' +
+            '<button class="vj-settings-btn" title="Settings" style="background:none;border:1px solid #555;color:var(--fg2);width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;padding:0;">⚙</button>' +
+            '<button class="vj-remove">x</button>';
+
+        /* Settings expand/collapse */
+        const settingsBtn = item.querySelector('.vj-settings-btn');
+        if (settingsBtn) {
+            const settingsDiv = document.createElement('div');
+            settingsDiv.className = 'vj-layer-settings';
+            settingsDiv.style.cssText = 'display:none;width:100%;padding:4px 0;margin-top:4px;border-top:1px solid rgba(255,255,255,0.06);';
+            item.appendChild(settingsDiv);
+            settingsBtn.onclick = function() {
+                if (settingsDiv.style.display === 'none') {
+                    settingsDiv.style.display = 'block';
+                    /* Clone matching fx-controls content */
+                    const fxControlsMap = {1:'thermal',2:'edge',3:'nightvision',4:'vhs',5:'glitch',6:'pixelate',8:'chroma',9:'chansplit',10:'oldfilm',12:'fft',14:'waveform',15:'bgremoval',17:'pose',18:'face',19:'fog',27:'haircolor',28:'outline',29:'tiltshift'};
+                    const controlId = fxControlsMap[fxId];
+                    if (controlId) {
+                        const src = document.getElementById(controlId + '-controls');
+                        if (src) settingsDiv.innerHTML = src.innerHTML;
+                    } else {
+                        settingsDiv.innerHTML = '<span style="color:var(--fg2);font-size:10px;">No settings</span>';
+                    }
+                } else {
+                    settingsDiv.style.display = 'none';
+                }
+            };
+        }
+
+        /* Intensity slider */
+        item.querySelector('.vj-intensity').oninput = function() {
+            item.querySelector('.vj-intensity-val').textContent = this.value + '%';
+        };
+
+        /* Remove button */
+        item.querySelector('.vj-remove').onclick = function() {
+            item.remove();
+        };
+
+        /* Drag events */
+        item.addEventListener('dragstart', function(e) {
+            e.dataTransfer.setData('text/plain', '');
+            item.style.opacity = '0.5';
+            window._vjDragItem = item;
+        });
+        item.addEventListener('dragend', function() {
+            item.style.opacity = '1';
+            window._vjDragItem = null;
+            list.querySelectorAll('.vj-chain-item').forEach(i => i.classList.remove('drag-over'));
+        });
+        item.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            if (window._vjDragItem && window._vjDragItem !== item) {
+                item.classList.add('drag-over');
+            }
+        });
+        item.addEventListener('dragleave', function() {
+            item.classList.remove('drag-over');
+        });
+        item.addEventListener('drop', function(e) {
+            e.preventDefault();
+            item.classList.remove('drag-over');
+            if (window._vjDragItem && window._vjDragItem !== item) {
+                const items = Array.from(list.children);
+                const dragIdx = items.indexOf(window._vjDragItem);
+                const dropIdx = items.indexOf(item);
+                if (dragIdx < dropIdx) {
+                    list.insertBefore(window._vjDragItem, item.nextSibling);
+                } else {
+                    list.insertBefore(window._vjDragItem, item);
+                }
+            }
+        });
+
+        /* Touch reorder for mobile */
+        const handle = item.querySelector('.vj-drag-handle');
+        let touchStartY = 0, touchItem = null;
+        handle.addEventListener('touchstart', function(e) {
+            touchStartY = e.touches[0].clientY;
+            touchItem = item;
+            item.style.opacity = '0.5';
+            item.style.zIndex = '10';
+            e.preventDefault();
+        }, { passive: false });
+        handle.addEventListener('touchmove', function(e) {
+            if (!touchItem) return;
+            const dy = e.touches[0].clientY - touchStartY;
+            touchItem.style.transform = 'translateY(' + dy + 'px)';
+            /* Highlight drop target */
+            const siblings = Array.from(list.children);
+            siblings.forEach(s => s.classList.remove('drag-over'));
+            for (const s of siblings) {
+                if (s === touchItem) continue;
+                const rect = s.getBoundingClientRect();
+                if (e.touches[0].clientY > rect.top && e.touches[0].clientY < rect.bottom) {
+                    s.classList.add('drag-over');
+                    break;
+                }
+            }
+            e.preventDefault();
+        }, { passive: false });
+        handle.addEventListener('touchend', function(e) {
+            if (!touchItem) return;
+            touchItem.style.opacity = '1';
+            touchItem.style.transform = '';
+            touchItem.style.zIndex = '';
+            /* Find drop target and reinsert */
+            const siblings = Array.from(list.children);
+            for (const s of siblings) {
+                if (s.classList.contains('drag-over')) {
+                    const dragIdx = siblings.indexOf(touchItem);
+                    const dropIdx = siblings.indexOf(s);
+                    if (dragIdx < dropIdx) {
+                        list.insertBefore(touchItem, s.nextSibling);
+                    } else {
+                        list.insertBefore(touchItem, s);
+                    }
+                    s.classList.remove('drag-over');
+                    break;
+                }
+            }
+            touchItem = null;
+        });
+
+        list.appendChild(item);
+    }
+
+    document.getElementById('vj-add-btn').onclick = function() {
+        const sel = document.getElementById('vj-add-select');
+        addVJChainItem(parseInt(sel.value), 100);
+    };
+
+    document.getElementById('vj-preset-select').onchange = function() {
+        const preset = vjPresets[this.value];
+        if (!preset) return;
+        document.getElementById('vj-chain-list').innerHTML = '';
+        preset.forEach(p => addVJChainItem(p.fx, p.intensity));
+        this.value = '';
+    };
+
+    document.getElementById('vj-save-chain').onclick = function() {
+        const chain = getVJChain();
+        localStorage.setItem('rawcut_vj_chain', JSON.stringify(chain));
+        setStatus('VJ chain saved', 'ready');
+    };
+
+    document.getElementById('vj-load-chain').onclick = function() {
+        try {
+            const data = JSON.parse(localStorage.getItem('rawcut_vj_chain'));
+            if (data && Array.isArray(data)) {
+                document.getElementById('vj-chain-list').innerHTML = '';
+                data.forEach(item => addVJChainItem(item.fx, Math.round(item.intensity * 100)));
+                setStatus('VJ chain loaded', 'ready');
+            }
+        } catch (e) {
+            setStatus('No saved chain found', 'error');
+        }
+    };
+
+    function getVJChain() {
+        const chain = [];
+        document.querySelectorAll('#vj-chain-list .vj-chain-item').forEach(item => {
+            chain.push({
+                fx: parseInt(item.dataset.fx),
+                intensity: parseInt(item.querySelector('.vj-intensity').value) / 100,
+                blendMode: parseInt(item.querySelector('.vj-blend-mode')?.value || 0)
+            });
+        });
+        return chain;
+    }
+
+    /* --- Typography Engine --- */
+    const FONT_PRESETS = {
+        'default':     { family: 'Inter',             weight: '400;700', category: 'clean' },
+        'impact':      { family: 'Oswald',            weight: '700',     category: 'bold' },
+        'handwritten': { family: 'Caveat',            weight: '400;700', category: 'creative' },
+        'mono':        { family: 'JetBrains Mono',    weight: null,      category: 'tech' },
+        'elegant':     { family: 'Playfair Display',  weight: '400;700', category: 'serif' },
+        'heavy':       { family: 'Bebas Neue',        weight: null,      category: 'bold' },
+        'clean':       { family: 'Roboto',            weight: '400;700', category: 'clean' },
+        'cinematic':   { family: 'Cinzel',            weight: '400;700', category: 'serif' },
+        'display':     { family: 'Permanent Marker',  weight: null,      category: 'creative' },
+        'news':        { family: 'Source Serif Pro',   weight: '400;700', category: 'serif' },
+    };
+
+    async function loadFont(key) {
+        const p = FONT_PRESETS[key];
+        if (!p || !p.weight) return;
+        const url = 'https://fonts.googleapis.com/css2?family=' +
+            p.family.replace(/ /g, '+') + ':wght@' + p.weight + '&display=swap';
+        if (!document.querySelector('link[href="' + url + '"]')) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet'; link.href = url;
+            document.head.appendChild(link);
+        }
+        try { await document.fonts.load('16px "' + p.family + '"'); } catch(e) {}
+    }
+
+    /* Subtitle state */
+    let currentSubtitle = null; /* { text, startTime, duration } */
+    let subtitleSettings = {
+        font: 'default', size: 28, color: '#ffffff',
+        outlineColor: '#000000', outlineWidth: 2,
+        shadow: 4, position: 'bottom', style: 'static',
+        decay: 3, bg: 'bar'
+    };
+
+    function setSubtitle(text) {
+        const decay = subtitleSettings.decay * 1000;
+        const duration = Math.max(2000, text.length * 60) + decay;
+        currentSubtitle = { text, startTime: performance.now(), duration };
+    }
+
+    function renderSubtitle(ctx) {
+        if (!currentSubtitle) return;
+        const elapsed = performance.now() - currentSubtitle.startTime;
+        if (elapsed > currentSubtitle.duration) { currentSubtitle = null; return; }
+
+        const text = currentSubtitle.text;
+        const s = subtitleSettings;
+        const decayMs = s.decay * 1000;
+        const fadeStart = currentSubtitle.duration - decayMs;
+
+        /* Compute alpha for decay */
+        let alpha = 1.0;
+        if (elapsed > fadeStart) {
+            alpha = 1.0 - (elapsed - fadeStart) / decayMs;
+            if (alpha < 0) alpha = 0;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        /* Font */
+        const fontPreset = FONT_PRESETS[s.font] || FONT_PRESETS['default'];
+        ctx.font = s.size + 'px "' + fontPreset.family + '", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        /* Compute display text based on animation style */
+        let displayText = text;
+        if (s.style === 'typewriter') {
+            const chars = Math.floor(elapsed / 50);
+            displayText = text.substring(0, Math.min(chars, text.length));
+        }
+
+        /* Position */
+        let tx = W / 2;
+        let ty;
+        if (s.position === 'top') ty = s.size + 20;
+        else if (s.position === 'center') ty = H / 2;
+        else ty = H - s.size - 20;
+
+        /* Background */
+        if (s.bg !== 'none' && displayText.length > 0) {
+            const metrics = ctx.measureText(displayText);
+            const tw = metrics.width;
+            const pad = 12;
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            if (s.bg === 'pill') {
+                const rx = tx - tw/2 - pad;
+                const ry = ty - s.size/2 - pad/2;
+                const rw = tw + pad * 2;
+                const rh = s.size + pad;
+                const radius = rh / 2;
+                ctx.beginPath();
+                ctx.roundRect(rx, ry, rw, rh, radius);
+                ctx.fill();
+            } else {
+                ctx.fillRect(0, ty - s.size/2 - pad/2, W, s.size + pad);
+            }
+        }
+
+        /* Shadow */
+        if (s.shadow > 0) {
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = s.shadow;
+            ctx.shadowOffsetX = 1;
+            ctx.shadowOffsetY = 1;
+        }
+
+        /* Karaoke: clip reveal */
+        if (s.style === 'karaoke' && displayText.length > 0) {
+            const progress = Math.min(elapsed / (currentSubtitle.duration - decayMs), 1);
+            const metrics = ctx.measureText(displayText);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(tx - metrics.width/2, 0, metrics.width * progress, H);
+            ctx.clip();
+            /* Draw highlighted text */
+            ctx.strokeStyle = s.outlineColor;
+            ctx.lineWidth = s.outlineWidth;
+            if (s.outlineWidth > 0) ctx.strokeText(displayText, tx, ty);
+            ctx.fillStyle = '#ffdd00';
+            ctx.fillText(displayText, tx, ty);
+            ctx.restore();
+            /* Draw remaining text in normal color */
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(tx - metrics.width/2 + metrics.width * progress, 0, metrics.width * (1 - progress), H);
+            ctx.clip();
+            ctx.strokeStyle = s.outlineColor;
+            ctx.lineWidth = s.outlineWidth;
+            if (s.outlineWidth > 0) ctx.strokeText(displayText, tx, ty);
+            ctx.fillStyle = s.color;
+            ctx.fillText(displayText, tx, ty);
+            ctx.restore();
+        } else if (s.style === 'bounce' && displayText.length > 0) {
+            /* Bounce: scale each word */
+            const words = displayText.split(' ');
+            let xOff = 0;
+            const totalWidth = ctx.measureText(displayText).width;
+            let startX = tx - totalWidth / 2;
+            for (let i = 0; i < words.length; i++) {
+                const wordDelay = i * 100;
+                const wordElapsed = elapsed - wordDelay;
+                let scale = 1;
+                if (wordElapsed > 0 && wordElapsed < 300) {
+                    const t = wordElapsed / 300;
+                    scale = 1 + 0.3 * Math.sin(t * Math.PI);
+                }
+                ctx.save();
+                const wm = ctx.measureText(words[i] + ' ');
+                const wx = startX + xOff + wm.width / 2;
+                ctx.translate(wx, ty);
+                ctx.scale(scale, scale);
+                ctx.strokeStyle = s.outlineColor;
+                ctx.lineWidth = s.outlineWidth;
+                if (s.outlineWidth > 0) ctx.strokeText(words[i], 0, 0);
+                ctx.fillStyle = s.color;
+                ctx.fillText(words[i], 0, 0);
+                ctx.restore();
+                xOff += wm.width;
+            }
+        } else if (s.style === 'fade') {
+            const fadeAlpha = Math.min(elapsed / 500, 1);
+            ctx.globalAlpha = alpha * fadeAlpha;
+            ctx.strokeStyle = s.outlineColor;
+            ctx.lineWidth = s.outlineWidth;
+            if (s.outlineWidth > 0) ctx.strokeText(displayText, tx, ty);
+            ctx.fillStyle = s.color;
+            ctx.fillText(displayText, tx, ty);
+        } else {
+            /* Static or typewriter */
+            ctx.strokeStyle = s.outlineColor;
+            ctx.lineWidth = s.outlineWidth;
+            if (s.outlineWidth > 0) ctx.strokeText(displayText, tx, ty);
+            ctx.fillStyle = s.color;
+            ctx.fillText(displayText, tx, ty);
+        }
+
+        ctx.restore();
+    }
+
+    /* --- Face Filter Overlay System --- */
+    const FACE_OVAL = [10,338,297,332,284,251,389,356,454,323,361,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,21,54,103,67,109];
+    const LIPS_OUTER = [61,146,91,181,84,17,314,405,321,375,291,409,270,269,267,0,37,39,40,185];
+    const LIPS_INNER = [78,95,88,178,87,14,317,402,318,324,308,415,310,311,312,13,82,81,80,191];
+    const LEFT_EYE = [362,382,381,380,374,373,390,249,263,466,388,387,386,385,384,398];
+    const RIGHT_EYE = [33,7,163,144,145,153,154,155,133,173,157,158,159,160,161,246];
+    const LEFT_BROW = [336,296,334,293,300,276,283,282,295,285];
+    const RIGHT_BROW = [70,63,105,66,107,55,65,52,53,46];
+
+    let lastFaceLandmarks = null;
+
+    function drawContour(ctx, landmarks, indices, close) {
+        if (!landmarks || indices.length === 0) return;
+        ctx.beginPath();
+        let first = true;
+        for (const idx of indices) {
+            if (idx >= landmarks.length) continue;
+            const x = landmarks[idx].x * W, y = landmarks[idx].y * H;
+            if (first) { ctx.moveTo(x, y); first = false; }
+            else ctx.lineTo(x, y);
+        }
+        if (close) ctx.closePath();
+    }
+
+    function renderFaceOverlay(faceMode, landmarks) {
+        const faceCanvas = document.getElementById('face-overlay');
+        const ctx = faceCanvas.getContext('2d');
+        ctx.clearRect(0, 0, W, H);
+
+        if (!landmarks || faceMode < 4 || faceMode > 16) return;
+
+        switch (faceMode) {
+            case 11: renderNeonContour(ctx, landmarks); break;
+            case 12: renderConstellation(ctx, landmarks); break;
+            case 13: renderVoronoi(ctx, landmarks); break;
+            case 14: renderFlowField(ctx, landmarks); break;
+            case 15: renderGeometricMesh(ctx, landmarks); break;
+            case 16: renderTribalPaint(ctx, landmarks); break;
+            default: break; /* modes 4-10 texture masks - placeholder */
+        }
+    }
+
+    function renderNeonContour(ctx, lm) {
+        ctx.lineWidth = 2;
+        /* Face oval - cyan */
+        ctx.shadowBlur = 15; ctx.shadowColor = '#00ffff';
+        ctx.strokeStyle = '#00ffff';
+        drawContour(ctx, lm, FACE_OVAL, true); ctx.stroke();
+        /* Eyes - magenta */
+        ctx.shadowColor = '#ff00ff'; ctx.strokeStyle = '#ff00ff';
+        drawContour(ctx, lm, LEFT_EYE, true); ctx.stroke();
+        drawContour(ctx, lm, RIGHT_EYE, true); ctx.stroke();
+        /* Lips - pink */
+        ctx.shadowColor = '#ff69b4'; ctx.strokeStyle = '#ff69b4';
+        drawContour(ctx, lm, LIPS_OUTER, true); ctx.stroke();
+        drawContour(ctx, lm, LIPS_INNER, true); ctx.stroke();
+        /* Brows - cyan */
+        ctx.shadowColor = '#00ffff'; ctx.strokeStyle = '#00ffff';
+        drawContour(ctx, lm, LEFT_BROW, false); ctx.stroke();
+        drawContour(ctx, lm, RIGHT_BROW, false); ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+
+    function renderConstellation(ctx, lm) {
+        /* Draw landmarks as twinkling stars */
+        for (let i = 0; i < lm.length; i += 3) {
+            const x = lm[i].x * W, y = lm[i].y * H;
+            const z = lm[i].z || 0;
+            const brightness = 0.3 + Math.random() * 0.7;
+            const size = 1 + (0.5 - Math.abs(z)) * 3;
+            ctx.fillStyle = 'rgba(255,255,255,' + brightness + ')';
+            ctx.shadowBlur = 8; ctx.shadowColor = 'rgba(200,220,255,0.8)';
+            ctx.beginPath();
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        /* Connect nearby landmarks */
+        ctx.strokeStyle = 'rgba(150,180,255,0.15)';
+        ctx.lineWidth = 0.5;
+        ctx.shadowBlur = 0;
+        for (let i = 0; i < lm.length; i += 5) {
+            for (let j = i + 1; j < lm.length && j < i + 10; j += 3) {
+                const dx = (lm[i].x - lm[j].x) * W;
+                const dy = (lm[i].y - lm[j].y) * H;
+                if (Math.sqrt(dx*dx + dy*dy) < 30) {
+                    ctx.beginPath();
+                    ctx.moveTo(lm[i].x * W, lm[i].y * H);
+                    ctx.lineTo(lm[j].x * W, lm[j].y * H);
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+
+    function renderVoronoi(ctx, lm) {
+        /* Simplified: draw colored circles at key landmarks */
+        const keyPoints = [...FACE_OVAL, ...LEFT_EYE, ...RIGHT_EYE, ...LIPS_OUTER, ...LEFT_BROW, ...RIGHT_BROW];
+        for (const idx of keyPoints) {
+            if (idx >= lm.length) continue;
+            const x = lm[idx].x * W, y = lm[idx].y * H;
+            /* Get underlying pixel color from offscreen canvas */
+            const hue = (idx * 7.3) % 360;
+            ctx.fillStyle = 'hsla(' + hue + ',70%,50%,0.3)';
+            ctx.strokeStyle = 'hsla(' + hue + ',70%,60%,0.6)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(x, y, 8 + Math.random() * 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
+
+    let flowParticles = [];
+    function renderFlowField(ctx, lm) {
+        /* Particle system following face contours */
+        if (flowParticles.length < 200) {
+            for (let i = flowParticles.length; i < 200; i++) {
+                const idx = FACE_OVAL[Math.floor(Math.random() * FACE_OVAL.length)];
+                if (idx < lm.length) {
+                    flowParticles.push({
+                        x: lm[idx].x * W, y: lm[idx].y * H,
+                        vx: (Math.random() - 0.5) * 2, vy: Math.random() * 2 + 0.5,
+                        life: Math.random() * 60, maxLife: 60,
+                        hue: Math.random() * 60 + 180
+                    });
+                }
+            }
+        }
+        for (let i = flowParticles.length - 1; i >= 0; i--) {
+            const p = flowParticles[i];
+            p.x += p.vx; p.y += p.vy; p.life--;
+            if (p.life <= 0 || p.x < 0 || p.x > W || p.y < 0 || p.y > H) {
+                const idx = FACE_OVAL[Math.floor(Math.random() * FACE_OVAL.length)];
+                if (idx < lm.length) {
+                    p.x = lm[idx].x * W; p.y = lm[idx].y * H;
+                    p.vx = (Math.random() - 0.5) * 2; p.vy = Math.random() * 2 + 0.5;
+                    p.life = p.maxLife;
+                }
+                continue;
+            }
+            const alpha = p.life / p.maxLife;
+            ctx.fillStyle = 'hsla(' + p.hue + ',80%,60%,' + (alpha * 0.6) + ')';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    function renderGeometricMesh(ctx, lm) {
+        /* Draw mesh triangles with colored fills */
+        ctx.lineWidth = 0.5;
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        /* Use face mesh tessellation edges to draw triangles */
+        const edges = [
+            [10,338,297],[332,284,251],[389,356,454],[323,361,288],
+            [397,365,379],[378,400,377],[152,148,176],[149,150,136],
+            [172,58,132],[93,234,127],[162,21,54],[103,67,109],
+            [33,7,163],[144,145,153],[154,155,133],[263,249,390],
+            [373,374,380],[381,382,362],[78,191,80],[81,82,13],
+            [312,311,310],[61,146,91],[181,84,17],[314,405,321]
+        ];
+        for (const tri of edges) {
+            if (tri[0] >= lm.length || tri[1] >= lm.length || tri[2] >= lm.length) continue;
+            const x0 = lm[tri[0]].x * W, y0 = lm[tri[0]].y * H;
+            const x1 = lm[tri[1]].x * W, y1 = lm[tri[1]].y * H;
+            const x2 = lm[tri[2]].x * W, y2 = lm[tri[2]].y * H;
+            const hue = ((tri[0] + tri[1] + tri[2]) * 3) % 360;
+            ctx.fillStyle = 'hsla(' + hue + ',60%,40%,0.4)';
+            ctx.beginPath();
+            ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.lineTo(x2, y2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
+
+    function renderTribalPaint(ctx, lm) {
+        if (lm.length < 455) return;
+        ctx.lineWidth = 4;
+        /* Cheek stripes */
+        ctx.strokeStyle = '#cc0000';
+        for (let i = 0; i < 3; i++) {
+            const y_off = i * 12;
+            ctx.beginPath();
+            ctx.moveTo(lm[234].x * W - 30, lm[234].y * H + y_off);
+            ctx.lineTo(lm[234].x * W + 10, lm[234].y * H + y_off + 5);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(lm[454].x * W + 30, lm[454].y * H + y_off);
+            ctx.lineTo(lm[454].x * W - 10, lm[454].y * H + y_off + 5);
+            ctx.stroke();
+        }
+        /* Forehead dots */
+        ctx.fillStyle = '#ffffff';
+        const fhx = lm[10].x * W, fhy = lm[10].y * H;
+        for (let dx = -20; dx <= 20; dx += 8) {
+            for (let dy = -5; dy <= 5; dy += 8) {
+                ctx.beginPath();
+                ctx.arc(fhx + dx, fhy + dy, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        /* Chin line */
+        ctx.strokeStyle = '#0066cc'; ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(lm[152].x * W - 15, lm[152].y * H);
+        ctx.lineTo(lm[152].x * W + 15, lm[152].y * H);
+        ctx.stroke();
+    }
+
+    /* --- Annotator (Effect 25) — Fabric.js overlay --- */
+    let fabricCanvas = null;
+    let annotTool = 'freehand';
+    let annotUndoStack = [];
+    let annotRedoStack = [];
+    let annotDrawing = false;
+    let annotStartX = 0, annotStartY = 0;
+    let annotTempObj = null;
+
+    function initFabricCanvas() {
+        if (fabricCanvas) return;
+        const annotEl = document.getElementById('annot-canvas');
+        annotEl.width = W;
+        annotEl.height = H;
+        fabricCanvas = new fabric.Canvas('annot-canvas', {
+            isDrawingMode: false,
+            selection: false,
+            width: W,
+            height: H
+        });
+        fabricCanvas.freeDrawingBrush.color = '#ff0000';
+        fabricCanvas.freeDrawingBrush.width = 4;
+
+        fabricCanvas.on('object:added', function() {
+            annotUndoStack.push(fabricCanvas.toJSON());
+            if (annotUndoStack.length > 50) annotUndoStack.shift();
+            annotRedoStack = [];
+        });
+    }
+
+    function setAnnotTool(tool) {
+        annotTool = tool;
+        if (!fabricCanvas) return;
+        if (tool === 'freehand') {
+            fabricCanvas.isDrawingMode = true;
+            fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
+            fabricCanvas.freeDrawingBrush.color = document.getElementById('annot-color').value;
+            fabricCanvas.freeDrawingBrush.width = parseInt(document.getElementById('annot-brush').value);
+        } else if (tool === 'eraser') {
+            fabricCanvas.isDrawingMode = true;
+            if (fabric.EraserBrush) {
+                fabricCanvas.freeDrawingBrush = new fabric.EraserBrush(fabricCanvas);
+                fabricCanvas.freeDrawingBrush.width = parseInt(document.getElementById('annot-brush').value) * 3;
+            }
+        } else {
+            fabricCanvas.isDrawingMode = false;
+        }
+    }
+
+    document.getElementById('annot-tool').onchange = function() {
+        setAnnotTool(this.value);
+    };
+
+    document.getElementById('annot-color').oninput = function() {
+        if (!fabricCanvas) return;
+        fabricCanvas.freeDrawingBrush.color = this.value;
+    };
+
+    document.getElementById('annot-brush').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        if (!fabricCanvas) return;
+        fabricCanvas.freeDrawingBrush.width = parseInt(this.value);
+    };
+
+    document.getElementById('annot-opacity').oninput = function() {
+        this.nextElementSibling.textContent = this.value + '%';
+    };
+
+    document.getElementById('annot-undo').onclick = function() {
+        if (!fabricCanvas || annotUndoStack.length <= 1) return;
+        annotRedoStack.push(annotUndoStack.pop());
+        const state = annotUndoStack[annotUndoStack.length - 1];
+        if (state) {
+            fabricCanvas.loadFromJSON(state, function() { fabricCanvas.renderAll(); });
+        } else {
+            fabricCanvas.clear();
+        }
+    };
+
+    document.getElementById('annot-redo').onclick = function() {
+        if (!fabricCanvas || annotRedoStack.length === 0) return;
+        const state = annotRedoStack.pop();
+        annotUndoStack.push(state);
+        fabricCanvas.loadFromJSON(state, function() { fabricCanvas.renderAll(); });
+    };
+
+    document.getElementById('annot-clear').onclick = function() {
+        if (fabricCanvas) {
+            fabricCanvas.clear();
+            annotUndoStack = [];
+            annotRedoStack = [];
+        }
+        Module._editor_annotation_clear();
+        if (!playing && videoLoaded) renderFrame();
+    };
+
+    /* Shape drawing with Fabric.js mouse events */
+    function setupFabricShapeHandlers() {
+        if (!fabricCanvas) return;
+        fabricCanvas.on('mouse:down', function(opt) {
+            if (fabricCanvas.isDrawingMode) return;
+            if (annotTool === 'text') {
+                const pointer = fabricCanvas.getPointer(opt.e);
+                const text = new fabric.IText('Text', {
+                    left: pointer.x, top: pointer.y,
+                    fill: document.getElementById('annot-color').value,
+                    fontSize: parseInt(document.getElementById('annot-brush').value) * 5 + 10,
+                    fontFamily: 'monospace'
+                });
+                fabricCanvas.add(text);
+                fabricCanvas.setActiveObject(text);
+                text.enterEditing();
+                return;
+            }
+            annotDrawing = true;
+            const pointer = fabricCanvas.getPointer(opt.e);
+            annotStartX = pointer.x;
+            annotStartY = pointer.y;
+            const color = document.getElementById('annot-color').value;
+            const width = parseInt(document.getElementById('annot-brush').value);
+
+            if (annotTool === 'rect') {
+                annotTempObj = new fabric.Rect({
+                    left: annotStartX, top: annotStartY, width: 0, height: 0,
+                    fill: 'transparent', stroke: color, strokeWidth: width
+                });
+            } else if (annotTool === 'circle') {
+                annotTempObj = new fabric.Circle({
+                    left: annotStartX, top: annotStartY, radius: 0,
+                    fill: 'transparent', stroke: color, strokeWidth: width
+                });
+            } else if (annotTool === 'line') {
+                annotTempObj = new fabric.Line([annotStartX, annotStartY, annotStartX, annotStartY], {
+                    stroke: color, strokeWidth: width
+                });
+            } else if (annotTool === 'arrow') {
+                annotTempObj = new fabric.Line([annotStartX, annotStartY, annotStartX, annotStartY], {
+                    stroke: color, strokeWidth: width
+                });
+            }
+            if (annotTempObj) fabricCanvas.add(annotTempObj);
+        });
+
+        fabricCanvas.on('mouse:move', function(opt) {
+            if (!annotDrawing || !annotTempObj) return;
+            const pointer = fabricCanvas.getPointer(opt.e);
+            if (annotTool === 'rect') {
+                annotTempObj.set({
+                    width: Math.abs(pointer.x - annotStartX),
+                    height: Math.abs(pointer.y - annotStartY),
+                    left: Math.min(annotStartX, pointer.x),
+                    top: Math.min(annotStartY, pointer.y)
+                });
+            } else if (annotTool === 'circle') {
+                const dx = pointer.x - annotStartX, dy = pointer.y - annotStartY;
+                annotTempObj.set({ radius: Math.sqrt(dx*dx + dy*dy) / 2 });
+            } else if (annotTool === 'line' || annotTool === 'arrow') {
+                annotTempObj.set({ x2: pointer.x, y2: pointer.y });
+            }
+            fabricCanvas.renderAll();
+        });
+
+        fabricCanvas.on('mouse:up', function(opt) {
+            if (!annotDrawing) return;
+            annotDrawing = false;
+            if (annotTool === 'arrow' && annotTempObj) {
+                /* Add arrowhead */
+                const x1 = annotTempObj.x1, y1 = annotTempObj.y1;
+                const x2 = annotTempObj.x2, y2 = annotTempObj.y2;
+                const angle = Math.atan2(y2 - y1, x2 - x1);
+                const headLen = 12;
+                const color = document.getElementById('annot-color').value;
+                const width = parseInt(document.getElementById('annot-brush').value);
+                const head = new fabric.Path(
+                    'M ' + (x2 - headLen * Math.cos(angle - Math.PI/6)) + ' ' + (y2 - headLen * Math.sin(angle - Math.PI/6)) +
+                    ' L ' + x2 + ' ' + y2 +
+                    ' L ' + (x2 - headLen * Math.cos(angle + Math.PI/6)) + ' ' + (y2 - headLen * Math.sin(angle + Math.PI/6)),
+                    { stroke: color, strokeWidth: width, fill: 'transparent' }
+                );
+                fabricCanvas.add(head);
+            }
+            annotTempObj = null;
+        });
+    }
+
+    /* Keyboard shortcuts for annotator undo/redo */
+    document.addEventListener('keydown', function(e) {
+        if (currentEffect !== 25) return;
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+            e.preventDefault();
+            document.getElementById('annot-undo').click();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+            e.preventDefault();
+            document.getElementById('annot-redo').click();
+        }
+    });
+
+    /* PiP drag state */
+    let pipDragging = false, pipDragOffX = 0, pipDragOffY = 0;
+
+    canvas.addEventListener('mousedown', (e) => {
+        if (currentEffect !== 25) {
+            /* PiP dragging */
+            if (currentEffect === 22 || currentEffect === 23) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = W / rect.width, scaleY = H / rect.height;
+                const mx = Math.round((e.clientX - rect.left) * scaleX);
+                const my = Math.round((e.clientY - rect.top) * scaleY);
+                /* Check if click is within PiP bounds */
+                const pipX = Module._editor_width() - 170; /* approximate default */
+                const pipY = Module._editor_height() - 100;
+                if (mx >= pipX - 10 && mx <= pipX + 170 && my >= pipY - 10 && my <= pipY + 100) {
+                    pipDragging = true;
+                    pipDragOffX = mx - pipX;
+                    pipDragOffY = my - pipY;
+                    e.preventDefault();
+                    return;
+                }
+            }
+            /* Zoom panning */
+            if (zoomLevel > 1) {
+                isPanning = true;
+                panStartX = e.clientX - panX;
+                panStartY = e.clientY - panY;
+                e.preventDefault();
+            }
+            return;
+        }
+    });
+    canvas.addEventListener('mousemove', (e) => {
+        if (pipDragging) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = W / rect.width, scaleY = H / rect.height;
+            const mx = Math.round((e.clientX - rect.left) * scaleX);
+            const my = Math.round((e.clientY - rect.top) * scaleY);
+            Module._editor_set_pip_position(mx - pipDragOffX, my - pipDragOffY);
+            if (!playing) renderFrame();
+            return;
+        }
+        if (isPanning) {
+            panX = e.clientX - panStartX;
+            panY = e.clientY - panStartY;
+            updateCanvasTransform();
+            return;
+        }
+    });
+    canvas.addEventListener('mouseup', () => { isPanning = false; pipDragging = false; });
+
+    /* --- Zoom on canvas --- */
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        zoomLevel = Math.max(0.5, Math.min(5, zoomLevel + delta));
+        if (zoomLevel <= 1) { panX = 0; panY = 0; }
+        updateCanvasTransform();
+        document.getElementById('tool-zoom-level').textContent = Math.round(zoomLevel * 100) + '%';
+    }, { passive: false });
+
+    canvas.addEventListener('dblclick', () => {
+        zoomLevel = 1; panX = 0; panY = 0;
+        updateCanvasTransform();
+        document.getElementById('tool-zoom-level').textContent = '100%';
+    });
+
+    function updateCanvasTransform() {
+        let transform = 'scale(' + zoomLevel + ')';
+        if (panX !== 0 || panY !== 0) transform += ' translate(' + panX + 'px,' + panY + 'px)';
+        if (webcamMirrored) transform += ' scaleX(-1)';
+        canvas.style.transform = transform;
+    }
+
+    /* --- Touch Events (mobile) --- */
+    function getTouchPos(e, cvs) {
+        const t = e.touches[0];
+        const rect = cvs.getBoundingClientRect();
+        return {
+            x: Math.round((t.clientX - rect.left) * (W / rect.width)),
+            y: Math.round((t.clientY - rect.top) * (H / rect.height)),
+            clientX: t.clientX, clientY: t.clientY
+        };
+    }
+
+    let pinchStartDist = 0, pinchStartZoom = 1;
+
+    canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            /* Pinch-to-zoom start */
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            pinchStartDist = Math.hypot(dx, dy);
+            pinchStartZoom = zoomLevel;
+            e.preventDefault();
+            return;
+        }
+        if (e.touches.length !== 1) return;
+        if (currentEffect === 25) return; /* annotator handles its own touch */
+        const pos = getTouchPos(e, canvas);
+        /* PiP drag */
+        if (currentEffect === 22 || currentEffect === 23) {
+            const pipX = Module._editor_width() - 170;
+            const pipY = Module._editor_height() - 100;
+            if (pos.x >= pipX - 10 && pos.x <= pipX + 170 && pos.y >= pipY - 10 && pos.y <= pipY + 100) {
+                pipDragging = true;
+                pipDragOffX = pos.x - pipX;
+                pipDragOffY = pos.y - pipY;
+                e.preventDefault();
+                return;
+            }
+        }
+        /* Zoom panning */
+        if (zoomLevel > 1) {
+            isPanning = true;
+            panStartX = pos.clientX - panX;
+            panStartY = pos.clientY - panY;
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2) {
+            /* Pinch-to-zoom */
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const dist = Math.hypot(dx, dy);
+            if (pinchStartDist > 0) {
+                zoomLevel = Math.max(0.5, Math.min(5, pinchStartZoom * (dist / pinchStartDist)));
+                if (zoomLevel <= 1) { panX = 0; panY = 0; }
+                updateCanvasTransform();
+                document.getElementById('tool-zoom-level').textContent = Math.round(zoomLevel * 100) + '%';
+            }
+            e.preventDefault();
+            return;
+        }
+        if (e.touches.length !== 1) return;
+        if (pipDragging) {
+            const pos = getTouchPos(e, canvas);
+            Module._editor_set_pip_position(pos.x - pipDragOffX, pos.y - pipDragOffY);
+            if (!playing) renderFrame();
+            e.preventDefault();
+            return;
+        }
+        if (isPanning) {
+            const t = e.touches[0];
+            panX = t.clientX - panStartX;
+            panY = t.clientY - panStartY;
+            updateCanvasTransform();
+            e.preventDefault();
+            return;
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+        isPanning = false;
+        pipDragging = false;
+        pinchStartDist = 0;
+    });
+
+    /* Timeline toggle (mobile) */
+    document.getElementById('timeline-toggle')?.addEventListener('click', function() {
+        document.querySelector('.timeline').classList.toggle('expanded');
+        this.innerHTML = document.querySelector('.timeline').classList.contains('expanded')
+            ? 'Timeline &#9650;' : 'Timeline &#9660;';
+    });
+
+    /* --- Live Subtitles (Effect 26) --- */
+    let recognition = null;
+    function initSpeechRecognition() {
+        if (recognition) return;
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+            /* Fallback for iOS: show manual input (iOS keyboard has built-in dictation) */
+            document.getElementById('subtitle-input-controls').style.display = 'flex';
+            setStatus('Type subtitles (use \uD83C\uDFA4 on keyboard to dictate)', 'ready');
+            return;
+        }
+        recognition = new SR();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.onresult = (e) => {
+            let transcript = '';
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+                transcript += e.results[i][0].transcript;
+            }
+            if (transcript.length > 80) transcript = transcript.slice(-80);
+            setSubtitle(transcript);
+        };
+        recognition.onerror = (e) => { console.error('Speech error:', e.error); };
+        recognition.onend = () => { if (currentEffect === 26) recognition.start(); };
+        recognition.start();
+        setStatus('Speech recognition active', 'ready');
+    }
+
+    /* Manual subtitle input (fallback for iOS / no Speech API) */
+    document.getElementById('sub-manual-send').onclick = function() {
+        const input = document.getElementById('sub-manual-input');
+        if (input.value.trim()) {
+            setSubtitle(input.value.trim());
+            input.value = '';
+        }
+    };
+    document.getElementById('sub-manual-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') document.getElementById('sub-manual-send').click();
+    });
+
+    /* --- Tools Panel --- */
+    /* Adjustment sliders */
+    document.getElementById('tool-brightness').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        Module._editor_set_brightness(parseInt(this.value));
+        if (!playing && videoLoaded) renderFrame();
+    };
+    document.getElementById('tool-contrast').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        Module._editor_set_contrast(parseInt(this.value));
+        if (!playing && videoLoaded) renderFrame();
+    };
+    document.getElementById('tool-saturation').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        Module._editor_set_saturation(parseInt(this.value));
+        if (!playing && videoLoaded) renderFrame();
+    };
+    document.getElementById('tool-hue').oninput = function() {
+        this.nextElementSibling.textContent = this.value;
+        Module._editor_set_hue(parseInt(this.value));
+        if (!playing && videoLoaded) renderFrame();
+    };
+
+    /* Flip buttons */
+    document.getElementById('tool-flip-h').onclick = function() {
+        this.classList.toggle('active');
+        Module._editor_flip_h();
+        if (!playing && videoLoaded) renderFrame();
+    };
+    document.getElementById('tool-flip-v').onclick = function() {
+        this.classList.toggle('active');
+        Module._editor_flip_v();
+        if (!playing && videoLoaded) renderFrame();
+    };
+
+    /* Reset adjustments */
+    document.getElementById('tool-reset-adj').onclick = function() {
+        document.getElementById('tool-brightness').value = 0;
+        document.getElementById('tool-brightness').nextElementSibling.textContent = '0';
+        document.getElementById('tool-contrast').value = 0;
+        document.getElementById('tool-contrast').nextElementSibling.textContent = '0';
+        document.getElementById('tool-saturation').value = 0;
+        document.getElementById('tool-saturation').nextElementSibling.textContent = '0';
+        document.getElementById('tool-hue').value = 0;
+        document.getElementById('tool-hue').nextElementSibling.textContent = '0';
+        Module._editor_set_brightness(0);
+        Module._editor_set_contrast(0);
+        Module._editor_set_saturation(0);
+        Module._editor_set_hue(0);
+        document.getElementById('tool-flip-h').classList.remove('active');
+        document.getElementById('tool-flip-v').classList.remove('active');
+        if (!playing && videoLoaded) renderFrame();
+    };
+
+    /* Speed */
+    document.getElementById('tool-speed').oninput = function() {
+        const rate = parseInt(this.value) / 100;
+        this.nextElementSibling.textContent = rate.toFixed(1) + 'x';
+        video.playbackRate = rate;
+    };
+
+    /* Snapshot */
+    function flattenCanvases() {
+        const tmp = document.createElement('canvas');
+        tmp.width = W; tmp.height = H;
+        const ctx = tmp.getContext('2d');
+        ctx.drawImage(document.getElementById('rawbuf'), 0, 0);
+        const faceOverlay = document.getElementById('face-overlay');
+        if (faceOverlay) ctx.drawImage(faceOverlay, 0, 0);
+        if (fabricCanvas) {
+            ctx.drawImage(fabricCanvas.getElement(), 0, 0);
+        }
+        return tmp;
+    }
+
+    function takeSnapshot() {
+        const flat = flattenCanvases();
+        flat.toBlob(function(blob) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'rawcut-snapshot.png';
+            a.click();
+        });
+    }
+    document.getElementById('tool-snapshot').onclick = takeSnapshot;
+
+    /* Zoom reset */
+    document.getElementById('tool-zoom-reset').onclick = function() {
+        zoomLevel = 1; panX = 0; panY = 0;
+        updateCanvasTransform();
+        document.getElementById('tool-zoom-level').textContent = '100%';
+    };
+
+    /* --- Export --- */
     document.getElementById('btn-export').onclick = () => {
         if (!videoLoaded) return;
         const dur = markOut - markIn;
-        const eff = effectNames[currentEffect];
+        const eff = effectNames[currentEffect] || 'none';
         let filter = '';
         if (eff === 'invert') filter = ' -vf "negate"';
         else if (eff === 'edge') filter = ' -vf "edgedetect=mode=colormix"';
@@ -341,37 +3530,117 @@ document.getElementById('btn-webcam').onclick = async () => {
         document.getElementById('export-modal').classList.add('show');
     };
 
-    /* ─── Render Loop ─── */
+    /* --- Render Loop --- */
     let lastTime = performance.now();
     let frameCount = 0;
     let fpsDisplay = document.getElementById('fps-display');
+    let timeFrozen = false;
 
-    function renderFrame() {
+    async function renderFrame() {
         if (!videoLoaded) return;
 
-        /* Draw video frame to offscreen canvas */
-        offCtx.drawImage(video, 0, 0, W, H);
-        const imgData = offCtx.getImageData(0, 0, W, H);
+        /* For Time Freeze (effect 11): skip video frame copy after first freeze frame */
+        if (currentEffect === 11) {
+            if (!timeFrozen) {
+                /* Capture one frame then freeze */
+                offCtx.drawImage(video, 0, 0, W, H);
+                const imgData = offCtx.getImageData(0, 0, W, H);
+                const curPtr = Module._editor_get_buffer();
+                const src = new Uint32Array(imgData.data.buffer);
+                const heap = Module.HEAPU32;
+                const off = curPtr >> 2;
+                for (let i = 0; i < pixelCount; i++) {
+                    const v = src[i];
+                    heap[off + i] = (v & 0xFF00FF00) | ((v >> 16) & 0xFF) | ((v & 0xFF) << 16);
+                }
+                timeFrozen = true;
+            }
+            /* Apply effect on frozen buffer */
+            Module._editor_apply_effect(currentEffect);
+        } else {
+            timeFrozen = false;
 
-        /* Copy to WASM buffer with R↔B swizzle (Canvas RGBA → rawbuf ARGB) */
-        /* Write pixels to WASM heap with R↔B swizzle */
-        const curPtr = Module._editor_get_buffer();
-        const src = new Uint32Array(imgData.data.buffer);
-        const heap = Module.HEAPU32;
-        const off = curPtr >> 2;
-        for (let i = 0; i < pixelCount; i++) {
-            const v = src[i];
-            heap[off + i] = (v & 0xFF00FF00) | ((v >> 16) & 0xFF) | ((v & 0xFF) << 16);
+            /* Draw video frame to offscreen canvas */
+            offCtx.drawImage(video, 0, 0, W, H);
+            const imgData = offCtx.getImageData(0, 0, W, H);
+
+            /* Copy to WASM buffer with R<->B swizzle (Canvas RGBA -> rawbuf ARGB) */
+            const curPtr = Module._editor_get_buffer();
+            const src = new Uint32Array(imgData.data.buffer);
+            const heap = Module.HEAPU32;
+            const off = curPtr >> 2;
+            for (let i = 0; i < pixelCount; i++) {
+                const v = src[i];
+                heap[off + i] = (v & 0xFF00FF00) | ((v >> 16) & 0xFF) | ((v & 0xFF) << 16);
+            }
+
+            /* Audio-reactive updates */
+            if (currentEffect >= 12 && currentEffect <= 14) {
+                updateAudio();
+            }
+
+            /* ML inference */
+            if ((currentEffect >= 15 && currentEffect <= 21) || currentEffect >= 27) {
+                await runMLInference();
+            }
+
+            /* PiP / Compose updates */
+            if (currentEffect === 22 || currentEffect === 23) {
+                updatePiP();
+            }
+
+            /* Update BG video frames */
+            if ((currentEffect === 15 || currentEffect === 27 || currentEffect === 28) && bgVideo) {
+                updateBGVideo();
+            }
+
+            /* VJ Tool: apply multiple effects in sequence with intensity blending */
+            if (currentEffect === 24) {
+                const chain = getVJChain();
+                if (chain.length > 0) {
+                    for (const item of chain) {
+                        Module._editor_save_buffer();
+                        Module._editor_set_blend_mode(item.blendMode || 0);
+                        Module._editor_apply_effect(item.fx);
+                        Module._editor_blend_buffer(item.intensity);
+                    }
+                    Module._editor_set_blend_mode(0); /* reset */
+                } else {
+                    Module._editor_apply_effect(0); /* none */
+                }
+            } else {
+                /* Apply single effect in WASM */
+                Module._editor_apply_effect(currentEffect);
+            }
         }
 
-        /* Apply effect in WASM */
-        Module._editor_apply_effect(currentEffect);
+        /* Apply adjustments after effects */
+        Module._editor_apply_adjustments();
 
         /* Present to visible canvas */
         Module._editor_present();
 
+        /* Render face overlay */
+        if (currentEffect === 18 && lastFaceLandmarks) {
+            const fm = parseInt(document.getElementById('face-mode').value);
+            renderFaceOverlay(fm, lastFaceLandmarks);
+        } else {
+            const faceCanvas = document.getElementById('face-overlay');
+            if (faceCanvas) {
+                const fctx = faceCanvas.getContext('2d');
+                fctx.clearRect(0, 0, W, H);
+            }
+        }
+
+        /* Render subtitles on face overlay canvas */
+        if (currentSubtitle) {
+            const faceCanvas = document.getElementById('face-overlay');
+            const fctx = faceCanvas.getContext('2d');
+            renderSubtitle(fctx);
+        }
+
         /* Update UI */
-        if (webcamActive) {
+        if (webcamActive || (screenStream && currentEffect === 23)) {
             document.getElementById('timecode').textContent = 'LIVE';
         } else {
             if (!seeking && video.duration > 0) {
@@ -381,11 +3650,40 @@ document.getElementById('btn-webcam').onclick = async () => {
             document.getElementById('timecode').textContent = fmtTime(video.currentTime) + ' / ' + fmtTime(video.duration);
         }
 
+        /* VU meter */
+        if (analyser) {
+            const vuData = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(vuData);
+            let sum = 0;
+            for (let i = 0; i < vuData.length; i++) sum += vuData[i];
+            drawVU(sum / (vuData.length * 255));
+        } else if (webcamAnalyser) {
+            /* Mic VU using shared analyser node */
+            const vuData = new Uint8Array(webcamAnalyser.frequencyBinCount);
+            webcamAnalyser.getByteFrequencyData(vuData);
+            let sum = 0;
+            for (let i = 0; i < vuData.length; i++) sum += vuData[i];
+            drawVU(sum / (vuData.length * 255));
+        } else {
+            drawVU(0);
+        }
+
         /* FPS */
         frameCount++;
         const now = performance.now();
         if (now - lastTime >= 1000) {
-            fpsDisplay.textContent = frameCount + ' FPS';
+            const fps = frameCount;
+            fpsDisplay.textContent = fps + ' FPS';
+            if (fps >= 30) {
+                fpsDisplay.className = 'fps-green';
+            } else if (fps >= 15) {
+                fpsDisplay.className = 'fps-yellow';
+            } else {
+                fpsDisplay.className = 'fps-red';
+                if (webcamActive && W > 640) {
+                    fpsDisplay.textContent = fps + ' FPS \u2014 try lower res';
+                }
+            }
             frameCount = 0;
             lastTime = now;
         }
@@ -402,21 +3700,29 @@ document.getElementById('btn-webcam').onclick = async () => {
 
     requestAnimationFrame(loop);
 
-    /* Keyboard shortcuts */
+    /* --- Keyboard Shortcuts --- */
     document.addEventListener('keydown', (e) => {
+        /* Skip shortcuts if focused on an input */
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
         if (e.key === ' ') { e.preventDefault(); btnPlay.click(); }
         else if (e.key === 'ArrowLeft') { e.preventDefault(); document.getElementById('btn-step-back').click(); }
         else if (e.key === 'ArrowRight') { e.preventDefault(); document.getElementById('btn-step-fwd').click(); }
         else if (e.key === 'i' || e.key === '[') document.getElementById('btn-mark-in').click();
         else if (e.key === 'o' || e.key === ']') document.getElementById('btn-mark-out').click();
-        else if (e.key >= '1' && e.key <= '8') {
-            const fx = parseInt(e.key) - 1;
-            const btn = document.querySelector('[data-fx="' + fx + '"]');
-            if (btn) btn.click();
+        else if (e.key === 's' || e.key === 'S') takeSnapshot();
+        else if (e.key >= '1' && e.key <= '9') {
+            /* Select Nth effect within active tab */
+            const idx = parseInt(e.key) - 1;
+            const activeGroup = document.querySelector('.effects-group.active');
+            if (activeGroup) {
+                const buttons = activeGroup.querySelectorAll('button[data-fx]');
+                if (idx < buttons.length) buttons[idx].click();
+            }
         }
     });
 
-    /* Utility */
+    /* --- Utility --- */
     function fmtTime(s) {
         if (!s || isNaN(s)) return '00:00.0';
         const m = Math.floor(s / 60);
