@@ -76,6 +76,7 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
 <div class="toolbar">
     <span class="brand">rawcut</span>
     <label for="file-input" style="background:var(--bg3);color:var(--fg);border:1px solid #333;padding:4px 12px;border-radius:3px;cursor:pointer;font-family:inherit;font-size:12px;display:inline-block">Open Video</label>
+    <button id="btn-webcam">Webcam</button>
     <button id="btn-export">Export</button>
     <div class="spacer"></div>
     <span class="status" id="status">No video loaded</span>
@@ -166,13 +167,51 @@ const fileInput = document.getElementById('file-input');
 /* label[for=file-input] handles the click natively — no JS needed */
 
 let fileName = '';
+let webcamActive = false;
+let webcamStream = null;
+
 fileInput.onchange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    stopWebcam();
     fileName = file.name;
     const url = URL.createObjectURL(file);
     video.src = url;
     video.load();
+};
+
+function stopWebcam() {
+    if (webcamStream) {
+        webcamStream.getTracks().forEach(t => t.stop());
+        webcamStream = null;
+    }
+    webcamActive = false;
+    document.getElementById('btn-webcam').textContent = 'Webcam';
+}
+
+document.getElementById('btn-webcam').onclick = async () => {
+    if (webcamActive) {
+        stopWebcam();
+        video.pause();
+        video.srcObject = null;
+        return;
+    }
+    try {
+        webcamStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 360 } },
+            audio: false
+        });
+        video.srcObject = webcamStream;
+        video.muted = true;
+        video.play();
+        webcamActive = true;
+        fileName = 'webcam';
+        document.getElementById('btn-webcam').textContent = 'Stop Cam';
+        document.getElementById('no-video').style.display = 'none';
+        document.getElementById('status').textContent = 'Webcam (live)';
+    } catch (err) {
+        alert('Webcam error: ' + err.message);
+    }
 };
 
 (async function() {
@@ -200,6 +239,7 @@ fileInput.onchange = (e) => {
     let markOut = 0;
 
     video.onloadedmetadata = () => {
+        if (!isFinite(video.duration)) return; /* webcam has no duration */
         markIn = 0;
         markOut = video.duration;
         document.getElementById('no-video').style.display = 'none';
@@ -213,6 +253,10 @@ fileInput.onchange = (e) => {
     video.onloadeddata = () => {
         videoLoaded = true;
         renderFrame();
+    };
+
+    video.onplay = () => {
+        if (webcamActive) { videoLoaded = true; playing = true; }
     };
 
     /* ─── Transport ─── */
@@ -327,11 +371,15 @@ fileInput.onchange = (e) => {
         Module._editor_present();
 
         /* Update UI */
-        if (!seeking && video.duration > 0) {
-            seekBar.value = Math.floor(video.currentTime * 100);
-            document.getElementById('track-playhead').style.left = (video.currentTime / video.duration * 100) + '%';
+        if (webcamActive) {
+            document.getElementById('timecode').textContent = 'LIVE';
+        } else {
+            if (!seeking && video.duration > 0) {
+                seekBar.value = Math.floor(video.currentTime * 100);
+                document.getElementById('track-playhead').style.left = (video.currentTime / video.duration * 100) + '%';
+            }
+            document.getElementById('timecode').textContent = fmtTime(video.currentTime) + ' / ' + fmtTime(video.duration);
         }
-        document.getElementById('timecode').textContent = fmtTime(video.currentTime) + ' / ' + fmtTime(video.duration);
 
         /* FPS */
         frameCount++;
@@ -344,7 +392,7 @@ fileInput.onchange = (e) => {
     }
 
     function loop() {
-        if (playing) renderFrame();
+        if (playing || webcamActive) renderFrame();
         requestAnimationFrame(loop);
     }
 
