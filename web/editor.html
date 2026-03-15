@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>rawcut — video editor</title>
+<style>
+:root {
+    --bg: #1a1a2e; --bg2: #16213e; --bg3: #0f3460;
+    --fg: #e0e0e0; --fg2: #888; --accent: #e94560; --accent2: #0ea5e9;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 13px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Toolbar */
+.toolbar { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid #222; }
+.toolbar .brand { font-weight: bold; font-size: 15px; color: var(--accent); margin-right: 12px; }
+.toolbar button { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 4px 12px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 12px; }
+.toolbar button:hover { background: #1a4a7a; }
+.toolbar .spacer { flex: 1; }
+.toolbar .status { color: var(--fg2); font-size: 11px; }
+
+/* Main area */
+.main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+/* Preview */
+.preview { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; min-height: 0; position: relative; }
+.preview canvas { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+.preview .no-video { color: #444; font-size: 18px; position: absolute; }
+
+/* Transport */
+.transport { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg2); border-top: 1px solid #222; }
+.transport button { background: none; border: 1px solid #444; color: var(--fg); width: 32px; height: 28px; border-radius: 3px; cursor: pointer; font-size: 14px; }
+.transport button:hover { background: var(--bg3); }
+.transport button.active { background: var(--accent); border-color: var(--accent); }
+.transport .time { font-size: 13px; font-variant-numeric: tabular-nums; min-width: 120px; }
+.transport .spacer { flex: 1; }
+
+/* Seek bar */
+.seek-bar { padding: 0 12px 6px; background: var(--bg2); }
+.seek-bar input[type="range"] { width: 100%; height: 6px; -webkit-appearance: none; background: #333; border-radius: 3px; outline: none; }
+.seek-bar input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--accent2); border-radius: 50%; cursor: pointer; }
+.seek-bar .markers { display: flex; justify-content: space-between; font-size: 10px; color: var(--fg2); margin-top: 2px; }
+
+/* Effects panel */
+.effects { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--bg2); border-top: 1px solid #222; overflow-x: auto; }
+.effects .label { color: var(--fg2); font-size: 11px; margin-right: 4px; white-space: nowrap; }
+.effects button { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 11px; white-space: nowrap; }
+.effects button:hover { border-color: var(--accent2); }
+.effects button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Timeline */
+.timeline { height: 80px; background: var(--bg2); border-top: 1px solid #222; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
+.timeline .track { display: flex; align-items: center; gap: 8px; }
+.timeline .track-label { width: 24px; font-size: 11px; color: var(--fg2); }
+.timeline .track-bar { flex: 1; height: 20px; background: #222; border-radius: 3px; position: relative; overflow: hidden; }
+.timeline .track-fill { height: 100%; border-radius: 3px; position: absolute; left: 0; }
+.timeline .track-fill.video { background: linear-gradient(90deg, var(--accent2), #0369a1); }
+.timeline .track-fill.audio { background: linear-gradient(90deg, var(--accent), #b91c1c); }
+.timeline .trim-handle { position: absolute; top: 0; width: 4px; height: 100%; background: #fff; cursor: ew-resize; z-index: 2; }
+.timeline .trim-handle:hover { background: var(--accent); }
+.timeline .playhead { position: absolute; top: 0; width: 2px; height: 100%; background: var(--accent); z-index: 3; pointer-events: none; }
+.timeline .ruler { display: flex; justify-content: space-between; font-size: 9px; color: #555; }
+
+/* Export modal */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.show { display: flex; }
+.modal { background: var(--bg2); border: 1px solid #444; border-radius: 8px; padding: 20px; max-width: 600px; width: 90%; }
+.modal h3 { margin-bottom: 12px; color: var(--accent); }
+.modal pre { background: #111; padding: 12px; border-radius: 4px; font-size: 12px; overflow-x: auto; margin: 8px 0; color: #0ea5e9; }
+.modal button { margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div class="toolbar">
+    <span class="brand">rawcut</span>
+    <button id="btn-open">Open Video</button>
+    <button id="btn-export">Export</button>
+    <div class="spacer"></div>
+    <span class="status" id="status">No video loaded</span>
+</div>
+
+<!-- Preview -->
+<div class="preview">
+    <canvas id="rawbuf" width="640" height="360"></canvas>
+    <span class="no-video" id="no-video">Open a video to begin</span>
+</div>
+
+<!-- Effects -->
+<div class="effects">
+    <span class="label">FX:</span>
+    <button class="active" data-fx="0">None</button>
+    <button data-fx="1">Thermal</button>
+    <button data-fx="2">Edge Detect</button>
+    <button data-fx="3">Night Vision</button>
+    <button data-fx="4">VHS</button>
+    <button data-fx="5">Glitch</button>
+    <button data-fx="6">Pixelate</button>
+    <button data-fx="7">Invert</button>
+</div>
+
+<!-- Transport -->
+<div class="transport">
+    <button id="btn-step-back" title="Step back">&#9198;</button>
+    <button id="btn-play" title="Play/Pause">&#9654;</button>
+    <button id="btn-step-fwd" title="Step forward">&#9197;</button>
+    <button id="btn-mark-in" title="Set In point">[</button>
+    <button id="btn-mark-out" title="Set Out point">]</button>
+    <span class="time" id="timecode">00:00.0 / 00:00.0</span>
+    <div class="spacer"></div>
+    <span class="status" id="fps-display">-- FPS</span>
+</div>
+
+<!-- Seek bar -->
+<div class="seek-bar">
+    <input type="range" id="seek" min="0" max="1000" value="0">
+    <div class="markers">
+        <span id="mark-in-label">IN: --</span>
+        <span id="mark-out-label">OUT: --</span>
+    </div>
+</div>
+
+<!-- Timeline -->
+<div class="timeline">
+    <div class="track">
+        <span class="track-label">V</span>
+        <div class="track-bar" id="video-track">
+            <div class="track-fill video" id="video-fill" style="width:100%"></div>
+            <div class="trim-handle" id="trim-in" style="left:0"></div>
+            <div class="trim-handle" id="trim-out" style="right:0"></div>
+            <div class="playhead" id="track-playhead" style="left:0"></div>
+        </div>
+    </div>
+    <div class="track">
+        <span class="track-label">A</span>
+        <div class="track-bar">
+            <div class="track-fill audio" id="audio-fill" style="width:100%"></div>
+        </div>
+    </div>
+    <div class="ruler">
+        <span>0:00</span><span id="ruler-mid"></span><span id="ruler-end"></span>
+    </div>
+</div>
+
+<!-- Export modal -->
+<div class="modal-overlay" id="export-modal">
+    <div class="modal">
+        <h3>Export Command</h3>
+        <p style="color:#888;font-size:12px">Run this in your terminal to export the trimmed video with the selected effect:</p>
+        <pre id="export-cmd">ffmpeg ...</pre>
+        <button onclick="navigator.clipboard.writeText(document.getElementById('export-cmd').textContent)">Copy</button>
+        <button onclick="document.getElementById('export-modal').classList.remove('show')">Close</button>
+    </div>
+</div>
+
+<input type="file" id="file-input" accept="video/*" style="display:none">
+
+<script src="editor.js"></script>
+<script>
+(async function() {
+    /* ─── WASM Init ─── */
+    const Module = await RawBuf();
+
+    const canvas = document.getElementById('rawbuf');
+    const W = canvas.width;
+    const H = canvas.height;
+    const bufPtr = Module._editor_init(W, H);
+    const pixelCount = W * H;
+
+    /* Offscreen canvas for video frame extraction */
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = W;
+    offCanvas.height = H;
+    const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
+
+    /* Video element */
+    const video = document.createElement('video');
+    video.muted = false;
+    video.playsInline = true;
+    let videoLoaded = false;
+    let playing = false;
+    let currentEffect = 0;
+    let markIn = 0;
+    let markOut = 0;
+    let fileName = '';
+
+    /* ─── File Open ─── */
+    const fileInput = document.getElementById('file-input');
+    document.getElementById('btn-open').onclick = () => fileInput.click();
+
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        fileName = file.name;
+        const url = URL.createObjectURL(file);
+        video.src = url;
+        video.load();
+    };
+
+    video.onloadedmetadata = () => {
+        videoLoaded = true;
+        markIn = 0;
+        markOut = video.duration;
+        document.getElementById('no-video').style.display = 'none';
+        document.getElementById('status').textContent = fileName + ' (' + W + 'x' + H + ')';
+        document.getElementById('seek').max = Math.floor(video.duration * 100);
+        document.getElementById('ruler-mid').textContent = fmtTime(video.duration / 2);
+        document.getElementById('ruler-end').textContent = fmtTime(video.duration);
+        updateMarkers();
+        renderFrame();
+    };
+
+    /* ─── Transport ─── */
+    const btnPlay = document.getElementById('btn-play');
+    btnPlay.onclick = () => {
+        if (!videoLoaded) return;
+        if (playing) { video.pause(); playing = false; btnPlay.innerHTML = '&#9654;'; }
+        else { video.play(); playing = true; btnPlay.innerHTML = '&#9646;&#9646;'; }
+    };
+
+    document.getElementById('btn-step-back').onclick = () => {
+        if (!videoLoaded) return;
+        video.currentTime = Math.max(0, video.currentTime - 1/30);
+    };
+    document.getElementById('btn-step-fwd').onclick = () => {
+        if (!videoLoaded) return;
+        video.currentTime = Math.min(video.duration, video.currentTime + 1/30);
+    };
+
+    /* ─── Seek ─── */
+    const seekBar = document.getElementById('seek');
+    let seeking = false;
+    seekBar.oninput = () => {
+        if (!videoLoaded) return;
+        seeking = true;
+        video.currentTime = parseFloat(seekBar.value) / 100;
+    };
+    seekBar.onchange = () => { seeking = false; };
+
+    /* ─── In/Out Markers ─── */
+    document.getElementById('btn-mark-in').onclick = () => {
+        if (!videoLoaded) return;
+        markIn = video.currentTime;
+        updateMarkers();
+    };
+    document.getElementById('btn-mark-out').onclick = () => {
+        if (!videoLoaded) return;
+        markOut = video.currentTime;
+        updateMarkers();
+    };
+
+    function updateMarkers() {
+        document.getElementById('mark-in-label').textContent = 'IN: ' + fmtTime(markIn);
+        document.getElementById('mark-out-label').textContent = 'OUT: ' + fmtTime(markOut);
+        /* Update trim handles */
+        if (video.duration > 0) {
+            document.getElementById('trim-in').style.left = (markIn / video.duration * 100) + '%';
+            document.getElementById('trim-out').style.left = (markOut / video.duration * 100) + '%';
+            const fill = document.getElementById('video-fill');
+            fill.style.left = (markIn / video.duration * 100) + '%';
+            fill.style.width = ((markOut - markIn) / video.duration * 100) + '%';
+            const afill = document.getElementById('audio-fill');
+            afill.style.left = fill.style.left;
+            afill.style.width = fill.style.width;
+        }
+    }
+
+    /* ─── Effects ─── */
+    const effectNames = ['none', 'thermal', 'edge', 'nightvision', 'vhs', 'glitch', 'pixelate', 'invert'];
+    document.querySelectorAll('.effects button[data-fx]').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.effects button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentEffect = parseInt(btn.dataset.fx);
+            if (!playing && videoLoaded) renderFrame();
+        };
+    });
+
+    /* ─── Export ─── */
+    document.getElementById('btn-export').onclick = () => {
+        if (!videoLoaded) return;
+        const dur = markOut - markIn;
+        const eff = effectNames[currentEffect];
+        let filter = '';
+        if (eff === 'invert') filter = ' -vf "negate"';
+        else if (eff === 'edge') filter = ' -vf "edgedetect=mode=colormix"';
+        else if (eff === 'pixelate') filter = ' -vf "scale=iw/6:ih/6,scale=iw*6:ih*6:flags=neighbor"';
+        else if (eff !== 'none') filter = ' -vf "eq=contrast=1.2"  # apply ' + eff + ' externally';
+
+        const cmd = 'ffmpeg -ss ' + markIn.toFixed(2) + ' -i "' + fileName + '" -t ' + dur.toFixed(2) + filter + ' -c:a copy output.' + fileName.split('.').pop();
+        document.getElementById('export-cmd').textContent = cmd;
+        document.getElementById('export-modal').classList.add('show');
+    };
+
+    /* ─── Render Loop ─── */
+    let lastTime = performance.now();
+    let frameCount = 0;
+    let fpsDisplay = document.getElementById('fps-display');
+
+    function renderFrame() {
+        if (!videoLoaded) return;
+
+        /* Draw video frame to offscreen canvas */
+        offCtx.drawImage(video, 0, 0, W, H);
+        const imgData = offCtx.getImageData(0, 0, W, H);
+
+        /* Copy to WASM buffer with R↔B swizzle (Canvas RGBA → rawbuf ARGB) */
+        const src = new Uint32Array(imgData.data.buffer);
+        const dst = new Uint32Array(Module.HEAPU8.buffer, bufPtr, pixelCount);
+        for (let i = 0; i < pixelCount; i++) {
+            const v = src[i];
+            dst[i] = (v & 0xFF00FF00) | ((v >> 16) & 0xFF) | ((v & 0xFF) << 16);
+        }
+
+        /* Apply effect in WASM */
+        Module._editor_apply_effect(currentEffect);
+
+        /* Present to visible canvas */
+        Module._editor_present();
+
+        /* Update UI */
+        if (!seeking && video.duration > 0) {
+            seekBar.value = Math.floor(video.currentTime * 100);
+            document.getElementById('track-playhead').style.left = (video.currentTime / video.duration * 100) + '%';
+        }
+        document.getElementById('timecode').textContent = fmtTime(video.currentTime) + ' / ' + fmtTime(video.duration);
+
+        /* FPS */
+        frameCount++;
+        const now = performance.now();
+        if (now - lastTime >= 1000) {
+            fpsDisplay.textContent = frameCount + ' FPS';
+            frameCount = 0;
+            lastTime = now;
+        }
+    }
+
+    function loop() {
+        if (playing) renderFrame();
+        requestAnimationFrame(loop);
+    }
+
+    /* Also render on seek/timeupdate when paused */
+    video.ontimeupdate = () => { if (!playing) renderFrame(); };
+    video.onseeked = () => { if (!playing) renderFrame(); };
+
+    requestAnimationFrame(loop);
+
+    /* Keyboard shortcuts */
+    document.addEventListener('keydown', (e) => {
+        if (e.key === ' ') { e.preventDefault(); btnPlay.click(); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); document.getElementById('btn-step-back').click(); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); document.getElementById('btn-step-fwd').click(); }
+        else if (e.key === 'i' || e.key === '[') document.getElementById('btn-mark-in').click();
+        else if (e.key === 'o' || e.key === ']') document.getElementById('btn-mark-out').click();
+        else if (e.key >= '1' && e.key <= '8') {
+            const fx = parseInt(e.key) - 1;
+            const btn = document.querySelector('[data-fx="' + fx + '"]');
+            if (btn) btn.click();
+        }
+    });
+
+    /* Utility */
+    function fmtTime(s) {
+        if (!s || isNaN(s)) return '00:00.0';
+        const m = Math.floor(s / 60);
+        const sec = (s % 60).toFixed(1);
+        return (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+    }
+})();
+</script>
+</body>
+</html>
