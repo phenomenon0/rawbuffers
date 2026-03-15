@@ -75,7 +75,7 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
 <!-- Toolbar -->
 <div class="toolbar">
     <span class="brand">rawcut</span>
-    <button id="btn-open">Open Video</button>
+    <label for="file-input" style="background:var(--bg3);color:var(--fg);border:1px solid #333;padding:4px 12px;border-radius:3px;cursor:pointer;font-family:inherit;font-size:12px;display:inline-block">Open Video</label>
     <button id="btn-export">Export</button>
     <div class="spacer"></div>
     <span class="status" id="status">No video loaded</span>
@@ -163,7 +163,7 @@ const video = document.createElement('video');
 video.muted = false;
 video.playsInline = true;
 const fileInput = document.getElementById('file-input');
-document.getElementById('btn-open').onclick = () => fileInput.click();
+/* label[for=file-input] handles the click natively — no JS needed */
 
 let fileName = '';
 fileInput.onchange = (e) => {
