@@ -158,9 +158,28 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
 
 <script src="editor.js"></script>
 <script>
+/* Wire up file open IMMEDIATELY — before WASM loads */
+const video = document.createElement('video');
+video.muted = false;
+video.playsInline = true;
+const fileInput = document.getElementById('file-input');
+document.getElementById('btn-open').onclick = () => fileInput.click();
+
+let fileName = '';
+fileInput.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    fileName = file.name;
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.load();
+};
+
 (async function() {
     /* ─── WASM Init ─── */
+    document.getElementById('status').textContent = 'Loading WASM...';
     const Module = await RawBuf();
+    document.getElementById('status').textContent = 'Ready — open a video';
 
     const canvas = document.getElementById('rawbuf');
     const W = canvas.width;
@@ -174,29 +193,11 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
     offCanvas.height = H;
     const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
 
-    /* Video element */
-    const video = document.createElement('video');
-    video.muted = false;
-    video.playsInline = true;
     let videoLoaded = false;
     let playing = false;
     let currentEffect = 0;
     let markIn = 0;
     let markOut = 0;
-    let fileName = '';
-
-    /* ─── File Open ─── */
-    const fileInput = document.getElementById('file-input');
-    document.getElementById('btn-open').onclick = () => fileInput.click();
-
-    fileInput.onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        fileName = file.name;
-        const url = URL.createObjectURL(file);
-        video.src = url;
-        video.load();
-    };
 
     video.onloadedmetadata = () => {
         markIn = 0;
