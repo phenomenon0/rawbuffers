@@ -199,7 +199,6 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
     };
 
     video.onloadedmetadata = () => {
-        videoLoaded = true;
         markIn = 0;
         markOut = video.duration;
         document.getElementById('no-video').style.display = 'none';
@@ -208,6 +207,10 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
         document.getElementById('ruler-mid').textContent = fmtTime(video.duration / 2);
         document.getElementById('ruler-end').textContent = fmtTime(video.duration);
         updateMarkers();
+    };
+
+    video.onloadeddata = () => {
+        videoLoaded = true;
         renderFrame();
     };
 
@@ -306,11 +309,14 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
         const imgData = offCtx.getImageData(0, 0, W, H);
 
         /* Copy to WASM buffer with R↔B swizzle (Canvas RGBA → rawbuf ARGB) */
+        /* Write pixels to WASM heap with R↔B swizzle */
+        const curPtr = Module._editor_get_buffer();
         const src = new Uint32Array(imgData.data.buffer);
-        const dst = new Uint32Array(Module.HEAPU8.buffer, bufPtr, pixelCount);
+        const heap = Module.HEAPU32;
+        const off = curPtr >> 2;
         for (let i = 0; i < pixelCount; i++) {
             const v = src[i];
-            dst[i] = (v & 0xFF00FF00) | ((v >> 16) & 0xFF) | ((v & 0xFF) << 16);
+            heap[off + i] = (v & 0xFF00FF00) | ((v >> 16) & 0xFF) | ((v & 0xFF) << 16);
         }
 
         /* Apply effect in WASM */

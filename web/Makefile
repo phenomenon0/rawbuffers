@@ -5,7 +5,7 @@ EXPORTS = -s EXPORTED_FUNCTIONS='["_main","_rb__web_audio_fill"]' \
           -s EXPORTED_RUNTIME_METHODS='["ccall"]'
 
 EDITOR_EXPORTS = -s EXPORTED_FUNCTIONS='["_main","_malloc","_free","_editor_init","_editor_get_buffer","_editor_apply_effect","_editor_present","_editor_width","_editor_height","_editor_draw_text","_editor_draw_rect"]' \
-                 -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","stringToUTF8"]' \
+                 -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap","stringToUTF8","HEAPU8","HEAPU32"]' \
                  -s MODULARIZE=1 -s EXPORT_NAME='RawBuf' -s ALLOW_MEMORY_GROWTH=1
 
 all: plasma.html piano.html editor.js
