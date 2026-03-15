@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>rawbuf</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #111;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: monospace;
+    color: #888;
+}
+canvas#rawbuf {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    width: min(95vw, 160vh);
+    height: auto;
+    border: 1px solid #333;
+    cursor: crosshair;
+}
+#info { margin-top: 8px; font-size: 12px; }
+</style>
+</head>
+<body>
+<canvas id="rawbuf" width="320" height="160"></canvas>
+<div id="info">click canvas to start audio | arrow keys + mouse</div>
+<script>
+/* Resume AudioContext on first user interaction */
+document.addEventListener('click', function() {
+    if (Module._rb_audio_ctx && Module._rb_audio_ctx.state === 'suspended')
+        Module._rb_audio_ctx.resume();
+}, { once: false });
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

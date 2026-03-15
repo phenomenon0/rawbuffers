@@ -4,7 +4,7 @@ LDFLAGS = -lm -lpthread
 
 DEMOS = plasma bounce life raymarch_sdf audio_visual ringtest piano visualizer sprite player clickgame
 
-all: $(DEMOS)
+all: $(DEMOS) geometry
 
 plasma: demos/plasma.c rawbuf.h
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
@@ -39,7 +39,11 @@ player: demos/player.c rawbuf.h
 clickgame: demos/clickgame.c rawbuf.h
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
+geometry:
+	$(MAKE) -C geometry
+
 clean:
 	rm -f $(DEMOS)
+	$(MAKE) -C geometry clean
 
 .PHONY: all clean

@@ -17,3 +17,8 @@ clickgame
 *.swp
 *~
 .vscode/
+# Web build output
+web/*.js
+web/*.wasm
+web/plasma.html
+web/piano.html

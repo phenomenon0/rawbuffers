@@ -55,6 +55,7 @@
 /* --- Flags --- */
 #define RB_FB_TERM    0x02   /* terminal backend (default) */
 #define RB_FB_RAW     0x01   /* /dev/fb0 backend (future) */
+#define RB_FB_CANVAS  0x04   /* browser canvas backend (emscripten) */
 #define RB_INPUT_TERM 0x10   /* terminal raw mode input (default) */
 
 /* --- Key codes (Linux input-event-codes subset + terminal specials) --- */
@@ -273,6 +274,13 @@ static inline void rb_sprite_draw(rb_surface_t *dst, int dx, int dy,
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+#include <errno.h>
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <emscripten/html5.h>
+#else
 #include <unistd.h>
 #include <termios.h>
 #include <sys/ioctl.h>
@@ -280,13 +288,28 @@ static inline void rb_sprite_draw(rb_surface_t *dst, int dx, int dy,
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <sys/syscall.h>
-#include <math.h>
 #include <signal.h>
 #include <fcntl.h>
-#include <errno.h>
 #include <pthread.h>
+#endif
 
 /* ─── Timing ─── */
+
+#ifdef __EMSCRIPTEN__
+
+static double rb__start_time_ms;
+
+static void rb__init_time(void) {
+    rb__start_time_ms = emscripten_get_now();
+}
+
+double rb_time(void) {
+    return (emscripten_get_now() - rb__start_time_ms) / 1000.0;
+}
+
+static void rb__sleep_us(int64_t us) { (void)us; /* browser handles frame pacing */ }
+
+#else
 
 static struct timeval rb__start_time;
 
@@ -305,7 +328,17 @@ static void rb__sleep_us(int64_t us) {
     if (us > 0) usleep((useconds_t)us);
 }
 
-/* ─── Terminal State ─── */
+#endif
+
+/* ─── Platform State ─── */
+
+#ifdef __EMSCRIPTEN__
+
+/* Web: no terminal state needed */
+static void rb__term_raw_enter(void) {}
+static void rb__term_raw_exit(void) {}
+
+#else
 
 static struct termios rb__orig_termios;
 static bool rb__termios_saved = false;
@@ -348,6 +381,8 @@ static void rb__term_raw_exit(void) {
         rb__termios_saved = false;
     }
 }
+
+#endif
 
 /* ─── Terminal Surface ─── */
 
@@ -397,6 +432,7 @@ static void rb__surface_destroy(rb_surface_t *s) {
  * and   \033[48;2;R;G;Bm for background (bottom pixel)
  * then print ▀ (upper half block).
  */
+#ifndef __EMSCRIPTEN__
 static void rb__surface_present_term(rb_surface_t *s) {
     /* Build output in a buffer to minimize write() syscalls */
     int cells_w = s->width;
@@ -486,8 +522,89 @@ static void rb__surface_present_term(rb_surface_t *s) {
 
     free(buf);
 }
+#endif /* !__EMSCRIPTEN__ */
 
-/* ─── Input (terminal raw mode) ─── */
+/* ─── Input ─── */
+
+#ifdef __EMSCRIPTEN__
+
+static rb_input_t *rb__web_input_ptr; /* for callbacks */
+
+static EM_BOOL rb__web_keydown(int type, const EmscriptenKeyboardEvent *e, void *ud) {
+    (void)type;
+    rb_input_t *inp = (rb_input_t *)ud;
+    int key = 0;
+    if (strcmp(e->key, "ArrowUp") == 0) key = RB_KEY_UP;
+    else if (strcmp(e->key, "ArrowDown") == 0) key = RB_KEY_DOWN;
+    else if (strcmp(e->key, "ArrowLeft") == 0) key = RB_KEY_LEFT;
+    else if (strcmp(e->key, "ArrowRight") == 0) key = RB_KEY_RIGHT;
+    else if (strcmp(e->key, "Escape") == 0) key = RB_KEY_ESC;
+    else if (strcmp(e->key, "Enter") == 0) key = RB_KEY_ENTER;
+    else if (strcmp(e->key, "Backspace") == 0) key = RB_KEY_BACKSPACE;
+    else if (strcmp(e->key, " ") == 0) key = RB_KEY_SPACE;
+    else if (e->key[0] && !e->key[1]) key = (unsigned char)e->key[0];
+    if (key > 0 && key < 512) { inp->keys[key] = 1; inp->held[key] = RB_HOLD_FRAMES; }
+    return (key == RB_KEY_SPACE || key == RB_KEY_UP || key == RB_KEY_DOWN ||
+            key == RB_KEY_LEFT || key == RB_KEY_RIGHT) ? EM_TRUE : EM_FALSE;
+}
+
+static EM_BOOL rb__web_keyup(int type, const EmscriptenKeyboardEvent *e, void *ud) {
+    (void)type; (void)e; (void)ud;
+    return EM_FALSE;
+}
+
+static int rb__web_canvas_w, rb__web_canvas_h;
+
+static EM_BOOL rb__web_mousedown(int type, const EmscriptenMouseEvent *e, void *ud) {
+    (void)type;
+    rb_input_t *inp = (rb_input_t *)ud;
+    if (e->button == 0) inp->mouse_btn |= RB_MOUSE_LEFT;
+    else if (e->button == 1) inp->mouse_btn |= RB_MOUSE_MIDDLE;
+    else if (e->button == 2) inp->mouse_btn |= RB_MOUSE_RIGHT;
+    return EM_TRUE;
+}
+
+static EM_BOOL rb__web_mouseup(int type, const EmscriptenMouseEvent *e, void *ud) {
+    (void)type;
+    rb_input_t *inp = (rb_input_t *)ud;
+    if (e->button == 0) inp->mouse_btn &= ~RB_MOUSE_LEFT;
+    else if (e->button == 1) inp->mouse_btn &= ~RB_MOUSE_MIDDLE;
+    else if (e->button == 2) inp->mouse_btn &= ~RB_MOUSE_RIGHT;
+    return EM_TRUE;
+}
+
+static EM_BOOL rb__web_mousemove(int type, const EmscriptenMouseEvent *e, void *ud) {
+    (void)type;
+    rb_input_t *inp = (rb_input_t *)ud;
+    int old_mx = inp->mouse_x, old_my = inp->mouse_y;
+    /* Scale from CSS coordinates to canvas pixel coordinates */
+    double css_w, css_h;
+    emscripten_get_element_css_size("#rawbuf", &css_w, &css_h);
+    if (css_w > 0 && css_h > 0) {
+        inp->mouse_x = (int)(e->targetX * rb__web_canvas_w / css_w);
+        inp->mouse_y = (int)(e->targetY * rb__web_canvas_h / css_h);
+    }
+    inp->mouse_dx = inp->mouse_x - old_mx;
+    inp->mouse_dy = inp->mouse_y - old_my;
+    return EM_TRUE;
+}
+
+static void rb__input_init_term(rb_input_t *inp) {
+    memset(inp, 0, sizeof(*inp));
+    inp->mode = RB_INPUT_TERM;
+    rb__web_input_ptr = inp;
+    emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, inp, 1, rb__web_keydown);
+    emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, inp, 1, rb__web_keyup);
+    emscripten_set_mousedown_callback("#rawbuf", inp, 1, rb__web_mousedown);
+    emscripten_set_mouseup_callback("#rawbuf", inp, 1, rb__web_mouseup);
+    emscripten_set_mousemove_callback("#rawbuf", inp, 1, rb__web_mousemove);
+}
+
+static void rb__input_poll_term(rb_input_t *inp) {
+    (void)inp; /* Web input is event-driven, no polling needed */
+}
+
+#else /* !__EMSCRIPTEN__ */
 
 static void rb__input_init_term(rb_input_t *inp) {
     memset(inp, 0, sizeof(*inp));
@@ -612,6 +729,8 @@ static void rb__input_poll_term(rb_input_t *inp) {
     }
 }
 
+#endif /* !__EMSCRIPTEN__ */
+
 /* Clear impulse keys and decay held state */
 static void rb__input_clear_frame(rb_input_t *inp) {
     /* Save current impulse keys as previous (for edge detection) */
@@ -635,10 +754,36 @@ void rb_clear(rb_surface_t *s, uint32_t color) {
 }
 
 void rb_present(rb_surface_t *s) {
+#ifdef __EMSCRIPTEN__
+    /* Copy pixel buffer to canvas, swizzling R↔B for Canvas RGBA byte order */
+    {
+        int w = s->width;
+        int h = s->height;
+        uint32_t *buf = s->back;
+        /* Swizzle R↔B in a temp buffer */
+        int total = w * h;
+        uint32_t *tmp = (uint32_t *)malloc((size_t)total * 4);
+        for (int i = 0; i < total; i++) {
+            uint32_t v = buf[i];
+            tmp[i] = (v & 0xFF00FF00) | ((v >> 16) & 0xFF) | ((v & 0xFF) << 16);
+        }
+        EM_ASM({
+            var canvas = document.getElementById('rawbuf');
+            if (!canvas) return;
+            var c2d = canvas.getContext('2d');
+            var img = c2d.createImageData($0, $1);
+            img.data.set(new Uint8ClampedArray(Module.HEAPU8.buffer, $2, $0 * $1 * 4));
+            c2d.putImageData(img, 0, 0);
+        }, w, h, (int)tmp);
+        free(tmp);
+    }
+    memcpy(s->front, s->back, s->size);
+#else
     if (s->mode == RB_FB_TERM) {
         rb__surface_present_term(s);
     }
     /* RB_FB_RAW: future */
+#endif
 }
 
 void rb_line(rb_surface_t *s, int x0, int y0, int x1, int y1, uint32_t c) {
@@ -950,9 +1095,11 @@ rb_ring_t rb_ring_create(size_t capacity) {
     size_t sz = 1;
     while (sz < capacity) sz <<= 1;
 
+#ifndef __EMSCRIPTEN__
     /* Page-align for mmap (minimum one page) */
     long page = sysconf(_SC_PAGESIZE);
     if ((long)sz < page) sz = (size_t)page;
+#endif
 
     r.capacity = sz;
     atomic_init(&r.write_pos, 0);
@@ -992,10 +1139,14 @@ rb_ring_t rb_ring_create(size_t capacity) {
 
 void rb_ring_destroy(rb_ring_t *r) {
     if (!r->buf) return;
-    if (r->mmap_backed)
+#ifndef __EMSCRIPTEN__
+    if (r->mmap_backed) {
         munmap(r->buf, r->capacity * 2);
-    else
-        free(r->buf);
+        r->buf = NULL;
+        return;
+    }
+#endif
+    free(r->buf);
     r->buf = NULL;
 }
 
@@ -1052,7 +1203,72 @@ size_t rb_ring_read(rb_ring_t *r, void *out, size_t len) {
     return len;
 }
 
-/* ─── Audio (aplay pipe + synthesis thread) ─── */
+/* ─── Audio ─── */
+
+#ifdef __EMSCRIPTEN__
+
+/* Web Audio via ScriptProcessorNode */
+static rb_audio_fn rb__web_audio_cb;
+static void *rb__web_audio_ud;
+static float *rb__web_audio_buf;
+static int rb__web_audio_bufsize;
+
+EMSCRIPTEN_KEEPALIVE
+float *rb__web_audio_fill(int nframes, int channels) {
+    if (!rb__web_audio_cb) return NULL;
+    int ns = nframes * channels;
+    if (ns > rb__web_audio_bufsize) {
+        free(rb__web_audio_buf);
+        rb__web_audio_buf = (float *)malloc((size_t)ns * sizeof(float));
+        rb__web_audio_bufsize = ns;
+    }
+    memset(rb__web_audio_buf, 0, (size_t)ns * sizeof(float));
+    rb__web_audio_cb(rb__web_audio_buf, nframes, channels, rb__web_audio_ud);
+    return rb__web_audio_buf;
+}
+
+struct rb_audio { int dummy; }; /* opaque — unused on web */
+
+void rb_audio_start(rb_ctx_t *ctx, rb_audio_fn callback, void *userdata) {
+    rb__web_audio_cb = callback;
+    rb__web_audio_ud = userdata;
+    ctx->audio = (struct rb_audio *)calloc(1, sizeof(struct rb_audio));
+    EM_ASM({
+        if (Module._rb_audio_ctx) return;
+        var ac = new (window.AudioContext || window.webkitAudioContext)();
+        var sp = ac.createScriptProcessor(1024, 0, 2);
+        sp.onaudioprocess = function(e) {
+            var nf = e.outputBuffer.length;
+            var ptr = Module._rb__web_audio_fill(nf, 2);
+            if (!ptr) return;
+            var floats = new Float32Array(Module.HEAPU8.buffer, ptr, nf * 2);
+            var L = e.outputBuffer.getChannelData(0);
+            var R = e.outputBuffer.getChannelData(1);
+            for (var i = 0; i < nf; i++) { L[i] = floats[i*2]; R[i] = floats[i*2+1]; }
+        };
+        sp.connect(ac.destination);
+        Module._rb_audio_ctx = ac;
+        Module._rb_audio_node = sp;
+    });
+}
+
+void rb_audio_stop(rb_ctx_t *ctx) {
+    if (!ctx->audio) return;
+    rb__web_audio_cb = NULL;
+    EM_ASM({
+        if (Module._rb_audio_node) { Module._rb_audio_node.disconnect(); Module._rb_audio_node = null; }
+        if (Module._rb_audio_ctx) { Module._rb_audio_ctx.close(); Module._rb_audio_ctx = null; }
+    });
+    free(ctx->audio);
+    ctx->audio = NULL;
+}
+
+void rb_audio_start_ring(rb_ctx_t *ctx, rb_ring_t *source) {
+    (void)ctx; (void)source;
+    fprintf(stderr, "rawbuf: rb_audio_start_ring not supported on web\n");
+}
+
+#else /* !__EMSCRIPTEN__ */
 
 /*
  * Audio output via pipe to aplay. The pipe buffer IS the ring buffer —
@@ -1209,7 +1425,21 @@ void rb_audio_start_ring(rb_ctx_t *ctx, rb_ring_t *source) {
     ctx->audio = a;
 }
 
+#endif /* !__EMSCRIPTEN__ */
+
 /* ─── Pipe Spawn (process stdout → ring buffer) ─── */
+
+#ifdef __EMSCRIPTEN__
+
+rb_pipe_t *rb_pipe_spawn(const char *cmd, size_t ring_capacity) {
+    (void)cmd; (void)ring_capacity;
+    fprintf(stderr, "rawbuf: rb_pipe_spawn not supported on web\n");
+    return NULL;
+}
+
+void rb_pipe_stop(rb_pipe_t *p) { (void)p; }
+
+#else
 
 static void *rb__pipe_reader_thread(void *arg) {
     rb_pipe_t *p = (rb_pipe_t *)arg;
@@ -1266,6 +1496,8 @@ void rb_pipe_stop(rb_pipe_t *p) {
     free(p);
 }
 
+#endif /* !__EMSCRIPTEN__ */
+
 /* ─── FFT (radix-2 Cooley-Tukey) ─── */
 
 void rb_fft(float *re, float *im, int n) {
@@ -1308,6 +1540,21 @@ rb_ctx_t rb_init(int width, int height, int flags) {
 
     rb__init_time();
 
+#ifdef __EMSCRIPTEN__
+    (void)flags;
+    /* Default canvas size or read from canvas element */
+    if (width <= 0 || height <= 0) {
+        width = EM_ASM_INT({ return document.getElementById('rawbuf').width || 320; });
+        height = EM_ASM_INT({ return document.getElementById('rawbuf').height || 160; });
+    }
+    /* Set canvas size to match */
+    EM_ASM({ document.getElementById('rawbuf').width = $0; }, width);
+    EM_ASM({ document.getElementById('rawbuf').height = $0; }, height);
+    rb__web_canvas_w = width;
+    rb__web_canvas_h = height;
+    rb__surface_init_term(&ctx.surface, width, height);
+    ctx.surface.mode = RB_FB_CANVAS;
+#else
     /* If no backend specified, default to terminal */
     if (!(flags & (RB_FB_TERM | RB_FB_RAW)))
         flags |= RB_FB_TERM;
@@ -1328,6 +1575,7 @@ rb_ctx_t rb_init(int width, int height, int flags) {
         rb__surface_init_term(&ctx.surface, width, height);
         rb__term_raw_enter();
     }
+#endif
 
     rb__input_init_term(&ctx.input);
 
@@ -1335,9 +1583,11 @@ rb_ctx_t rb_init(int width, int height, int flags) {
     ctx.target_fps = 60;
     ctx.time = rb_time();
 
+#ifndef __EMSCRIPTEN__
     /* Install signal handlers */
     signal(SIGINT, rb__sigint_handler);
     signal(SIGWINCH, rb__sigwinch_handler);
+#endif
 
     return ctx;
 }
@@ -1347,14 +1597,60 @@ void rb_destroy(rb_ctx_t *ctx) {
     if (ctx->audio)
         rb_audio_stop(ctx);
 
+#ifndef __EMSCRIPTEN__
     if (ctx->surface.mode == RB_FB_TERM)
         rb__term_raw_exit();
-    rb__surface_destroy(&ctx->surface);
     signal(SIGINT, SIG_DFL);
     signal(SIGWINCH, SIG_DFL);
+#endif
+    rb__surface_destroy(&ctx->surface);
 }
 
 /* ─── Main Loop ─── */
+
+#ifdef __EMSCRIPTEN__
+
+static rb_ctx_t *rb__em_ctx;
+static rb_callbacks_t rb__em_cb;
+static double rb__em_last_time;
+static double rb__em_fps_timer;
+static int rb__em_fps_frames;
+
+static void rb__em_frame(void) {
+    rb_ctx_t *ctx = rb__em_ctx;
+    double now = rb_time();
+    ctx->dt = now - rb__em_last_time;
+    ctx->time = now;
+    rb__em_last_time = now;
+    double frame_dt = 1.0 / ctx->target_fps;
+
+    rb__input_poll_term(&ctx->input);
+
+    if (rb__em_cb.tick) rb__em_cb.tick(ctx, (float)frame_dt);
+    if (rb__em_cb.draw) rb__em_cb.draw(ctx);
+
+    rb_present(&ctx->surface);
+    rb__input_clear_frame(&ctx->input);
+
+    rb__em_fps_frames++;
+    if (now - rb__em_fps_timer >= 1.0) {
+        ctx->fps = rb__em_fps_frames;
+        rb__em_fps_frames = 0;
+        rb__em_fps_timer = now;
+    }
+    ctx->frame++;
+}
+
+void rb_run(rb_ctx_t *ctx, rb_callbacks_t cb) {
+    rb__em_ctx = ctx;
+    rb__em_cb = cb;
+    rb__em_last_time = rb_time();
+    rb__em_fps_timer = rb__em_last_time;
+    rb__em_fps_frames = 0;
+    emscripten_set_main_loop(rb__em_frame, 0, 1);
+}
+
+#else
 
 void rb_run(rb_ctx_t *ctx, rb_callbacks_t cb) {
     double last_time = rb_time();
@@ -1416,5 +1712,7 @@ void rb_run(rb_ctx_t *ctx, rb_callbacks_t cb) {
             rb__sleep_us((int64_t)(sleep_s * 1e6));
     }
 }
+
+#endif
 
 #endif /* RAWBUF_IMPLEMENTATION */
