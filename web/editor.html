@@ -6,27 +6,84 @@
 <title>rawcut — video editor</title>
 <style>
 :root {
-    --bg: #1a1a2e; --bg2: #16213e; --bg3: #0f3460;
-    --fg: #e0e0e0; --fg2: #888; --accent: #e94560; --accent2: #0ea5e9;
+    --bg: #0d0d12; --bg2: #16161e; --bg3: #1e1e2a;
+    --fg: #e8e8ef; --fg2: #6b6b80; --accent: #ff6b9d; --accent2: #a78bfa;
+    --accent-info: #4ecdc4; --accent-warn: #fbbf24;
+    --accent-glow: rgba(167,139,250,0.25); --glass: rgba(255,255,255,0.03);
+    --border: rgba(255,255,255,0.06); --border-hover: rgba(255,255,255,0.12);
     --touch-min: 44px;
     --mobile-font: 14px;
     --mobile-font-sm: 13px;
     --mobile-font-xs: 12px;
+    --radius: 8px; --radius-sm: 6px; --radius-pill: 20px;
+    --sheet-h: 45vh; --bar-h: 56px;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 13px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+body { background: var(--bg); color: var(--fg); font-family: Inter, -apple-system, system-ui, sans-serif; font-size: 13px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* Screen routing */
+.screen { display: none; flex-direction: column; height: 100vh; overflow: hidden; }
+.screen.active { display: flex; }
+
+/* Landing page */
+.landing { align-items: center; justify-content: center; gap: 32px; background: var(--bg); }
+.landing-title { font-size: 32px; font-weight: 700; color: var(--fg); letter-spacing: -1px; user-select: none; }
+.landing-title::before { content: ''; display: inline-block; width: 10px; height: 10px; background: var(--accent); border-radius: 3px; margin-right: 8px; vertical-align: middle; }
+.landing-cards { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.landing-card { width: 120px; height: 140px; background: var(--bg3); border: 1px solid var(--border); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--fg); transition: all 0.2s ease; }
+.landing-card .card-icon { font-size: 32px; }
+.landing-card:hover { border-color: var(--accent2); box-shadow: 0 0 20px var(--accent-glow); transform: translateY(-2px); }
+
+/* Edit mode bottom toolbar (InShot-style) */
+.edit-bar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 2px; padding: 4px 8px; overflow-x: auto; scrollbar-width: none; background: var(--bg2); height: var(--bar-h); border-top: 1px solid var(--border); z-index: 30; flex-shrink: 0; }
+.edit-bar::-webkit-scrollbar { display: none; }
+.edit-bar .tool-btn { background: none; border: 1px solid transparent; color: var(--fg2); width: 48px; height: 48px; border-radius: 10px; cursor: pointer; font-size: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: all 0.2s ease; flex-shrink: 0; }
+.edit-bar .tool-btn:hover { color: var(--fg); border-color: var(--border-hover); }
+.edit-bar .tool-btn.active { background: linear-gradient(135deg, rgba(255,107,157,0.2), rgba(167,139,250,0.2)); border-color: var(--accent2); color: #fff; box-shadow: 0 0 8px var(--accent-glow); }
+.edit-bar .tool-btn .btn-label { font-size: 10px; line-height: 1; }
+.edit-bar .tool-btn:active { transform: scale(0.92); }
+.edit-bar-sep { width: 1px; height: 24px; background: var(--border); flex-shrink: 0; margin: 0 4px; }
+.edit-bar .tool-btn-sm { background: none; border: 1px solid var(--border); color: var(--fg2); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+.edit-bar .tool-btn-sm:hover { border-color: var(--border-hover); color: var(--fg); }
+.edit-bar .tool-btn-sm.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Bottom sheet (slide-up panels) */
+.bottom-sheet { position: fixed; bottom: var(--bar-h); left: 0; right: 0; max-height: var(--sheet-h); transform: translateY(100%); transition: transform 0.25s ease; background: var(--bg2); border-top: 1px solid var(--border); z-index: 29; overflow-y: auto; padding: 12px; }
+.bottom-sheet.stream-sheet { bottom: 60px; } /* above stream mini-bar */
+.bottom-sheet.open { transform: translateY(0); }
+.bottom-sheet .drag-handle { width: 32px; height: 4px; background: var(--fg2); border-radius: 2px; margin: 0 auto 8px; }
+
+/* Play overlay */
+.play-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; z-index: 8; transition: opacity 0.2s ease; }
+.play-overlay.hidden { opacity: 0; pointer-events: none; }
+
+/* Stream mini-bar */
+.stream-mini-bar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; padding: 8px 16px; background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 28px; z-index: 30; }
+.stream-mini-bar button { background: none; border: 1px solid var(--border); color: var(--fg); width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 14px; font-weight: 600; font-family: inherit; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+.stream-mini-bar button:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+.stream-mini-bar button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Back button */
+.back-btn { background: none !important; border: none !important; color: var(--fg2) !important; font-size: 18px !important; cursor: pointer; padding: 4px 8px !important; min-width: auto !important; }
+.back-btn:hover { color: var(--fg) !important; }
+
+/* Viewport slot */
+.viewport-slot { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+#viewport { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
 /* Toolbar */
-.toolbar { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--bg2); border-bottom: 1px solid #222; }
-.toolbar .brand { font-weight: bold; font-size: 15px; color: var(--accent); margin-right: 12px; }
-.toolbar button { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 4px 12px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 12px; }
-.toolbar button:hover { background: #1a4a7a; }
+.toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--bg2); border-bottom: 1px solid var(--border); }
+.toolbar .brand { font-weight: 700; font-size: 16px; color: var(--fg); margin-right: 12px; letter-spacing: -0.5px; user-select: none; }
+.toolbar .brand::before { content: ''; display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.toolbar button { background: var(--glass); color: var(--fg); border: 1px solid var(--border); padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 500; transition: all 0.15s ease; backdrop-filter: blur(8px); }
+.toolbar button:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
 .toolbar .spacer { flex: 1; }
 .toolbar .status { color: var(--fg2); font-size: 11px; display: flex; align-items: center; gap: 4px; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
-.status-dot.ready { background: #22c55e; }
-.status-dot.loading { background: #eab308; }
-.status-dot.error { background: #ef4444; }
+.status-dot.ready { background: #34d399; box-shadow: 0 0 6px rgba(52,211,153,0.5); }
+.status-dot.loading { background: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,0.5); animation: pulse-dot 1.5s ease infinite; }
+.status-dot.error { background: #f87171; box-shadow: 0 0 6px rgba(248,113,113,0.5); }
+@keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 /* Main area */
 .main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -41,8 +98,8 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
 
 /* Transport */
 .transport { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg2); border-top: 1px solid rgba(255,255,255,0.05); }
-.transport button { background: none; border: 1px solid #444; color: var(--fg); width: 32px; height: 28px; border-radius: 3px; cursor: pointer; font-size: 14px; }
-.transport button:hover { background: var(--bg3); }
+.transport button { background: var(--glass); border: 1px solid var(--border); color: var(--fg); width: 32px; height: 28px; border-radius: var(--radius-pill); cursor: pointer; font-size: 14px; backdrop-filter: blur(8px); transition: all 0.15s; }
+.transport button:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
 .transport button.active { background: var(--accent); border-color: var(--accent); }
 .transport .time { font-size: 13px; font-variant-numeric: tabular-nums; min-width: 120px; }
 .transport .spacer { flex: 1; }
@@ -54,75 +111,123 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
 
 /* Seek bar */
 .seek-bar { padding: 0 12px 6px; background: var(--bg2); border-top: 1px solid rgba(255,255,255,0.05); }
-.seek-bar input[type="range"] { width: 100%; height: 6px; -webkit-appearance: none; background: #333; border-radius: 3px; outline: none; }
-.seek-bar input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--accent2); border-radius: 50%; cursor: pointer; }
+.seek-bar input[type="range"] { width: 100%; height: 3px; -webkit-appearance: none; background: rgba(255,255,255,0.1); border-radius: 2px; outline: none; }
+.seek-bar input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--accent2); border-radius: 50%; cursor: pointer; box-shadow: 0 0 6px var(--accent-glow); }
+.seek-bar input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; background: var(--accent2); border-radius: 50%; cursor: pointer; border: none; }
 .seek-bar .markers { display: flex; justify-content: space-between; font-size: 10px; color: var(--fg2); margin-top: 2px; }
 
-/* Effects tabs */
-.effects-tabs { display: flex; gap: 2px; padding: 4px 12px 0; background: var(--bg2); border-top: 1px solid rgba(255,255,255,0.05); }
-.effects-tabs button { background: none; border: none; border-bottom: 2px solid transparent; color: var(--fg2); padding: 4px 10px; cursor: pointer; font-family: inherit; font-size: 11px; transition: all 0.2s ease; position: relative; }
-.effects-tabs button:hover { color: var(--fg); }
-.effects-tabs button.active { background: var(--accent2); color: #fff; border-radius: 12px; padding: 4px 14px; border-bottom-color: transparent; box-shadow: 0 0 8px rgba(14,165,233,0.4); }
-.tab-badge { font-size: 9px; background: rgba(255,255,255,0.15); color: var(--fg2); border-radius: 8px; padding: 0 5px; margin-left: 4px; display: inline-block; min-width: 16px; text-align: center; line-height: 16px; }
+/* Effects tabs — DEPRECATED, hidden by screen router */
+.effects-tabs { display: none; }
+.tab-badge { display: none; }
+
+/* Edit tool strip (VSCO horizontal icons) */
+.edit-tools { display: flex; align-items: center; gap: 2px; padding: 4px 8px; overflow-x: auto; scrollbar-width: none; width: 100%; }
+.edit-tools::-webkit-scrollbar { display: none; }
+.edit-tool { background: none; border: 1px solid transparent; color: var(--fg2); width: 44px; height: 44px; border-radius: 10px; cursor: pointer; font-size: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; transition: all 0.2s ease; flex-shrink: 0; position: relative; }
+.edit-tool:hover { color: var(--fg); border-color: var(--border-hover); }
+.edit-tool.active { background: linear-gradient(135deg, rgba(255,107,157,0.2), rgba(167,139,250,0.2)); border-color: var(--accent2); color: #fff; box-shadow: 0 0 8px var(--accent-glow); }
+.edit-tool .tool-icon { font-size: 18px; line-height: 1; }
+.edit-tool .tool-label { font-size: 8px; line-height: 1; opacity: 0; transition: opacity 0.15s; }
+.edit-tool.active .tool-label { opacity: 1; color: var(--accent-info); }
+.edit-tools-sep { width: 1px; height: 24px; background: var(--border); flex-shrink: 0; margin: 0 4px; }
+.edit-tool-sm { background: none; border: 1px solid var(--border); color: var(--fg2); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+.edit-tool-sm:hover { border-color: var(--border-hover); color: var(--fg); }
+.edit-tool-sm.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Edit tool control (solo slider below strip) */
+.edit-tool-control { display: flex; align-items: center; gap: 10px; padding: 8px 16px; margin: 2px 8px 4px; background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; animation: slideIn 0.2s ease-out; }
+.edit-tool-control label { color: var(--fg2); font-size: 11px; white-space: nowrap; min-width: 60px; }
+.edit-tool-control input[type="range"] { flex: 1; height: 3px; -webkit-appearance: none; background: rgba(255,255,255,0.1); border-radius: 2px; outline: none; }
+.edit-tool-control input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--accent2); border-radius: 50%; cursor: pointer; box-shadow: 0 0 6px var(--accent-glow); transition: box-shadow 0.15s; }
+.edit-tool-control input[type="range"]::-webkit-slider-thumb:hover { box-shadow: 0 0 12px var(--accent-glow); }
+.edit-tool-control input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; background: var(--accent2); border-radius: 50%; cursor: pointer; border: none; }
+.edit-tool-control .range-val { color: var(--accent-info); font-size: 11px; min-width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
+.edit-tool-control .reset-btn { background: none; border: 1px solid var(--border); color: var(--fg2); padding: 3px 8px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 10px; transition: all 0.15s; }
+.edit-tool-control .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+.edit-tool-control select { background: var(--bg3); color: var(--fg); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; font-family: inherit; font-size: 11px; }
+.edit-tool-control button { background: var(--bg3); color: var(--fg); border: 1px solid var(--border); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 11px; transition: all 0.15s; }
+.edit-tool-control button:hover { border-color: var(--accent2); }
+.edit-tool-control .toggle-pill { padding: 4px 12px; border-radius: var(--radius-pill); font-size: 11px; }
+.edit-tool-control .toggle-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* Stream sub-filter pills */
+.stream-filters { display: flex; gap: 4px; padding: 4px 8px; }
+.filter-pill { background: none; border: 1px solid var(--border); color: var(--fg2); padding: 3px 12px; border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.15s; }
+.filter-pill:hover { border-color: var(--border-hover); color: var(--fg); }
+.filter-pill.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+
+/* Stream effects grid */
+.stream-effects { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 8px; }
+
+@keyframes slideIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Effects panel */
-.effects { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; background: var(--bg2); overflow-x: auto; min-height: 44px; border-bottom: 1px solid rgba(255,255,255,0.05); position: relative; }
+.effects { display: flex; flex-direction: column; padding: 0; background: var(--bg2); overflow: visible; min-height: 0; border-bottom: 1px solid rgba(255,255,255,0.05); position: relative; }
 .effects .label { color: var(--fg2); font-size: 11px; margin-right: 4px; white-space: nowrap; }
-.effects button { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 11px; white-space: nowrap; position: relative; transition: all 0.15s ease; }
-.effects button:hover { border-color: var(--accent2); }
-.effects button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-.effects button.active::after { content: ''; position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-.effects-group { display: none; }
-.effects-group.active { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-#current-fx-name { font-size: 10px; color: var(--accent2); margin-left: auto; white-space: nowrap; }
+.effects button[data-fx] { background: var(--bg3); color: var(--fg); border: 1px solid var(--border); padding: 5px 12px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 11px; white-space: nowrap; position: relative; transition: all 0.15s ease; }
+.effects button[data-fx]:hover { border-color: var(--border-hover); transform: scale(1.02); }
+.effects button[data-fx].active { background: linear-gradient(135deg, rgba(255,107,157,0.3), rgba(167,139,250,0.3)); border-color: var(--accent2); color: #fff; }
+.effects button[data-fx].active::after { content: ''; position: absolute; bottom: -3px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.effects-group { display: none; flex-direction: column; width: 100%; }
+.effects-group.active { display: flex; }
+#current-fx-name { font-size: 10px; color: var(--accent-info); padding: 2px 12px 4px; white-space: nowrap; }
+#current-fx-name:empty { display: none; }
 
 /* Effect controls inline - styled as dark cards */
-.fx-controls { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(15,52,96,0.6); font-size: 11px; border-radius: 8px; margin: 4px 12px; border: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap; }
-.fx-controls label { color: var(--fg2); }
-.fx-controls input[type="color"] { width: 28px; height: 22px; border: 1px solid #333; background: none; cursor: pointer; }
-.fx-controls input[type="range"] { width: 100px; height: 4px; }
-.fx-controls select { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 2px 6px; font-family: inherit; font-size: 11px; }
+.fx-controls { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg2); font-size: 11px; border-radius: 10px; margin: 4px 12px; border: 1px solid var(--border-hover); flex-wrap: wrap; }
+.fx-controls label { color: var(--fg2); font-size: 11px; }
+.fx-controls input[type="color"] { width: 28px; height: 22px; border: 1px solid var(--border-hover); background: none; cursor: pointer; border-radius: 4px; }
+.fx-controls input[type="range"] { width: 100px; height: 3px; -webkit-appearance: none; background: rgba(255,255,255,0.1); border-radius: 2px; }
+.fx-controls input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: var(--accent2); border-radius: 50%; cursor: pointer; }
+.fx-controls input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; background: var(--accent2); border-radius: 50%; cursor: pointer; border: none; }
+.fx-controls select { background: var(--bg3); color: var(--fg); border: 1px solid var(--border-hover); padding: 4px 8px; font-family: inherit; font-size: 11px; border-radius: 6px; }
 .fx-controls input[type="checkbox"] { accent-color: var(--accent2); }
-.fx-controls .reset-btn { background: var(--bg3); color: var(--accent); border: 1px solid var(--accent); padding: 2px 8px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 10px; margin-left: auto; }
+.fx-controls button { background: var(--bg3); color: var(--fg); border: 1px solid var(--border-hover); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 11px; transition: all 0.15s; }
+.fx-controls button:hover { border-color: var(--accent2); }
+.fx-controls .reset-btn { background: var(--bg3); color: var(--accent); border: 1px solid var(--accent); padding: 3px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 10px; margin-left: auto; }
 .fx-controls .reset-btn:hover { background: var(--accent); color: #fff; }
-.range-val { color: var(--accent2); font-size: 10px; min-width: 28px; display: inline-block; text-align: right; }
+.range-val { color: var(--accent-info); font-size: 10px; min-width: 28px; display: inline-block; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* VJ chain redesigned */
 .vj-chain-list { display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow-y: auto; padding: 4px 0; }
 .vj-header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 4px; }
 .vj-header span { color: var(--fg2); font-size: 11px; font-weight: bold; }
 .vj-header select, .vj-header button { font-family: inherit; font-size: 10px; }
-.vj-header select { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 2px 6px; border-radius: 3px; }
-.vj-header button { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 2px 8px; border-radius: 3px; cursor: pointer; }
+.vj-header select { background: var(--bg3); color: var(--fg); border: 1px solid var(--border-hover); padding: 4px 8px; border-radius: 6px; }
+.vj-header button { background: var(--bg3); color: var(--fg); border: 1px solid var(--border-hover); padding: 4px 10px; border-radius: 6px; cursor: pointer; }
 .vj-header button:hover { border-color: var(--accent2); }
-.vj-chain-item { display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: rgba(15,52,96,0.4); border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; cursor: grab; transition: background 0.15s ease; }
-.vj-chain-item:hover { background: rgba(15,52,96,0.7); }
-.vj-chain-item.drag-over { border-color: var(--accent2); background: rgba(14,165,233,0.1); }
+.vj-chain-item { display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: var(--bg3); border: 1px solid var(--border-hover); border-radius: 8px; cursor: grab; transition: background 0.15s ease; }
+.vj-chain-item:hover { background: rgba(40,40,55,1); }
+.vj-chain-item.drag-over { border-color: var(--accent2); background: rgba(167,139,250,0.1); }
 .vj-drag-handle { color: var(--fg2); cursor: grab; font-size: 14px; user-select: none; }
 .vj-fx-name { color: var(--fg); font-size: 11px; flex: 1; }
 .vj-intensity { width: 60px; height: 4px; }
 .vj-intensity-val { font-size: 10px; color: var(--accent2); min-width: 30px; }
-.vj-remove { background: none; border: 1px solid #555; color: var(--accent); width: 18px; height: 18px; border-radius: 50%; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center; padding: 0; }
+.vj-remove { background: none; border: 1px solid var(--border-hover); color: var(--accent); width: 18px; height: 18px; border-radius: 50%; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center; padding: 0; }
 .vj-remove:hover { background: var(--accent); color: #fff; }
 
 /* Annotator controls */
-.annot-controls { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(15,52,96,0.6); font-size: 11px; border-radius: 8px; margin: 4px 12px; border: 1px solid rgba(255,255,255,0.06); }
-.annot-controls button { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 2px 8px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 11px; }
+.annot-controls { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg2); font-size: 11px; border-radius: 10px; margin: 4px 12px; border: 1px solid var(--border-hover); }
+.annot-controls button { background: var(--bg3); color: var(--fg); border: 1px solid var(--border-hover); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 11px; }
 
 /* Tools panel */
 .tools-panel { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-.tools-section { background: rgba(15,52,96,0.6); border-radius: 8px; padding: 8px 16px; border: 1px solid rgba(255,255,255,0.06); }
+.tools-section { background: var(--bg3); border-radius: 10px; padding: 10px 16px; border: 1px solid var(--border-hover); }
 .tools-section h4 { font-size: 10px; color: var(--accent2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
 .tool-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 11px; }
 .tool-row label { color: var(--fg2); min-width: 70px; }
 .tool-row input[type="range"] { width: 120px; height: 4px; }
-.tool-row button { background: var(--bg3); color: var(--fg); border: 1px solid #333; padding: 3px 10px; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: 11px; }
+.tool-row button { background: var(--bg3); color: var(--fg); border: 1px solid var(--border-hover); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 11px; }
 .tool-row button:hover { border-color: var(--accent2); }
 .tool-row button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 /* Webcam controls */
-#webcam-controls { flex-wrap: wrap; }
+#webcam-controls { flex-wrap: wrap; gap: 8px; }
+#webcam-controls button { background: var(--bg3); color: var(--fg); border: 1px solid var(--border-hover); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 11px; }
+#webcam-controls button:hover { border-color: var(--accent2); }
 #webcam-controls button.active { background: #dc2626; border-color: #dc2626; color: #fff; }
+#webcam-controls select { background: var(--bg3); color: var(--fg); border: 1px solid var(--border-hover); padding: 4px 8px; border-radius: 6px; font-family: inherit; font-size: 11px; }
+#webcam-controls label { color: var(--fg2); font-size: 11px; }
 
 /* Timeline */
 .timeline { height: 80px; background: var(--bg2); border-top: 1px solid rgba(255,255,255,0.05); padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; }
@@ -140,9 +245,9 @@ body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono', '
 /* Export modal */
 .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
 .modal-overlay.show { display: flex; }
-.modal { background: var(--bg2); border: 1px solid #444; border-radius: 8px; padding: 20px; max-width: 600px; width: 90%; }
+.modal { background: var(--bg2); border: 1px solid var(--border-hover); border-radius: 12px; padding: 20px; max-width: 600px; width: 90%; }
 .modal h3 { margin-bottom: 12px; color: var(--accent); }
-.modal pre { background: #111; padding: 12px; border-radius: 4px; font-size: 12px; overflow-x: auto; margin: 8px 0; color: #0ea5e9; }
+.modal pre { background: #111; padding: 12px; border-radius: 4px; font-size: 12px; overflow-x: auto; margin: 8px 0; color: var(--accent-info); }
 .modal button { margin-top: 8px; }
 
 /* Timeline toggle — hidden on desktop */
@@ -153,85 +258,127 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
 
 /* ===== MOBILE (max-width: 600px) ===== */
 @media (max-width: 600px) {
-    body { font-size: var(--mobile-font); overflow-y: auto; overflow-x: hidden; height: auto; }
+    body { font-size: var(--mobile-font); overflow: hidden; height: 100vh; height: 100dvh; }
 
-    /* Toolbar: icon-only */
-    .toolbar { flex-wrap: wrap; gap: 4px; padding: 4px 8px; }
+    /* Toolbar: compact icon bar */
+    .toolbar { flex-wrap: nowrap; gap: 4px; padding: 4px 8px; flex-shrink: 0; }
     .toolbar .brand { font-size: 14px; margin-right: 6px; }
-    .toolbar label[for="file-input"] { font-size: 0; min-width: var(--touch-min); min-height: var(--touch-min); display: inline-flex; align-items: center; justify-content: center; padding: 0 8px; }
+    .toolbar label[for="file-input"] { font-size: 0; min-width: 36px; min-height: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
     .toolbar label[for="file-input"]::before { content: '📂'; font-size: 18px; }
-    .toolbar button { font-size: 0; min-width: var(--touch-min); min-height: var(--touch-min); display: inline-flex; align-items: center; justify-content: center; }
+    .toolbar button { font-size: 0; min-width: 36px; min-height: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
     #btn-webcam::before { content: '📷'; font-size: 18px; }
-    #btn-export::before { content: '⬇'; font-size: 18px; }
-    .toolbar .status { font-size: 10px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #btn-export::before { content: '📤'; font-size: 18px; }
+    .toolbar .status { font-size: 10px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* Preview: fixed 55vh */
-    .preview { flex: none; height: 55vh; min-height: 200px; }
+    /* Preview: fills available space */
+    .preview { flex: 1; min-height: 0; }
 
-    /* Effects tabs: horizontal scroll */
-    .effects-tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 4px 8px 0; gap: 4px; }
-    .effects-tabs::-webkit-scrollbar { display: none; }
-    .effects-tabs button { flex-shrink: 0; min-height: var(--touch-min); font-size: var(--mobile-font-xs); padding: 6px 12px; }
+    /* Transport: slim inline bar */
+    .transport { flex-wrap: nowrap; gap: 4px; padding: 4px 8px; flex-shrink: 0; }
+    .transport button { width: 32px; height: 32px; border-radius: 50%; font-size: 14px; flex-shrink: 0; }
+    .transport .time { font-size: 11px; min-width: 0; white-space: nowrap; }
+    .transport .spacer { flex: 1; }
 
-    /* Effects buttons: horizontal scroll carousel */
-    .effects { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 8px; gap: 6px; }
-    .effects::-webkit-scrollbar { display: none; }
-    .effects-group.active { flex-wrap: nowrap; }
-    .effects button { flex-shrink: 0; min-height: var(--touch-min); font-size: var(--mobile-font-sm); padding: 6px 12px; }
+    /* Seek bar: slim */
+    .seek-bar { padding: 0 8px 4px; flex-shrink: 0; }
+    .seek-bar input[type="range"] { height: 8px; touch-action: none; }
+    .seek-bar input[type="range"]::-webkit-slider-thumb { width: 20px; height: 20px; }
+    .seek-bar input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; }
+    .seek-bar .markers { display: none; }
 
-    /* FX controls: stacked full-width */
-    .fx-controls { flex-direction: column; align-items: stretch; padding: 8px; margin: 4px 8px; gap: 8px; }
-    .fx-controls input[type="range"] { width: 100%; }
-    .fx-controls select { width: 100%; min-height: var(--touch-min); font-size: var(--mobile-font-sm); }
-    .fx-controls input[type="color"] { width: var(--touch-min); height: 36px; }
+    /* Landing cards wrap on small screens */
+    .landing-cards { flex-wrap: wrap; gap: 12px; }
+    .landing-card { width: 100px; height: 120px; }
 
-    /* Transport: wrapped, centered */
-    .transport { flex-wrap: wrap; justify-content: center; gap: 6px; padding: 8px; }
-    .transport button { width: var(--touch-min); height: var(--touch-min); border-radius: 50%; font-size: 16px; }
-    .transport .time { order: 10; flex-basis: 100%; text-align: center; font-size: 12px; }
-    .transport .spacer { display: none; }
+    /* Edit bar touch-friendly */
+    .edit-bar { height: var(--bar-h); }
+    .edit-bar .tool-btn { width: 44px; height: 44px; font-size: 18px; }
 
-    /* Seek bar: fat thumb */
-    .seek-bar { padding: 0 8px 8px; }
-    .seek-bar input[type="range"] { height: 10px; touch-action: none; }
-    .seek-bar input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; }
-    .seek-bar input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; }
+    /* Bottom sheet: full width, adjusted for bar */
+    .bottom-sheet { bottom: var(--bar-h); }
+    .bottom-sheet.open.stream-sheet { bottom: 0; }
 
-    /* Timeline: collapsible */
-    .timeline-toggle { display: block; width: 100%; background: var(--bg2); color: var(--fg2); border: none; border-top: 1px solid rgba(255,255,255,0.05); padding: 8px; font-family: inherit; font-size: var(--mobile-font-xs); cursor: pointer; }
-    .timeline { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; padding: 0 12px; }
-    .timeline.expanded { max-height: 120px; padding: 8px 12px; }
+    /* Stream mini-bar */
+    .stream-mini-bar { bottom: 12px; }
 
-    /* Trim handles: wider */
+    /* Effects: column layout */
+    .effects { padding: 0; min-height: 0; flex-shrink: 0; }
+    .stream-effects { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .stream-effects::-webkit-scrollbar { display: none; }
+    .effects button[data-fx] { flex-shrink: 0; min-height: 34px; font-size: 12px; padding: 5px 10px; }
+    .edit-tools { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .edit-tool { width: 40px; height: 40px; }
+    .edit-tool-control { margin: 2px 4px 4px; }
+    #current-fx-name { display: none; }
+
+    /* Bottom sheet for FX controls */
+    .fx-controls, .annot-controls, #webcam-controls {
+        position: fixed; bottom: 0; left: 0; right: 0;
+        max-height: 40vh; overflow-y: auto;
+        flex-direction: column; align-items: stretch;
+        padding: 12px; margin: 0; gap: 10px;
+        background: var(--bg2); border-top: 2px solid var(--accent2);
+        border-radius: 12px 12px 0 0;
+        z-index: 50;
+        transform: translateY(0);
+        transition: transform 0.25s ease;
+        -webkit-overflow-scrolling: touch;
+    }
+    .fx-controls::before, .annot-controls::before, #webcam-controls::before {
+        content: ''; display: block; width: 32px; height: 4px;
+        background: #555; border-radius: 2px; margin: 0 auto 8px;
+        flex-shrink: 0;
+    }
+    .fx-controls[style*="display:none"]::before,
+    .fx-controls[style*="display: none"]::before { display: none; }
+    .fx-controls input[type="range"] { width: 100%; height: 6px; }
+    .fx-controls select { width: 100%; min-height: 36px; font-size: var(--mobile-font-sm); }
+    .fx-controls input[type="color"] { width: 40px; height: 32px; }
+    .fx-controls label { font-size: 12px; }
+    .fx-controls .reset-btn { min-height: 34px; font-size: 12px; }
+
+    /* Webcam controls bottom sheet */
+    #webcam-controls { flex-wrap: wrap; gap: 8px; }
+    #webcam-controls select { width: auto; flex: 1; min-width: 100px; }
+    #webcam-controls button { min-height: 36px; font-size: 12px; }
+    #webcam-controls label { font-size: 12px; }
+
+    /* Annotator bottom sheet */
+    .annot-controls { flex-wrap: wrap; gap: 8px; }
+    .annot-controls button, .annot-controls select { min-height: 36px; font-size: 12px; }
+
+    /* Timeline: hidden by default, expandable */
+    .timeline-toggle { display: block; width: 100%; background: var(--bg2); color: var(--fg2); border: none; border-top: 1px solid rgba(255,255,255,0.05); padding: 6px; font-family: inherit; font-size: 11px; cursor: pointer; flex-shrink: 0; }
+    .timeline { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; padding: 0 12px; flex-shrink: 0; }
+    .timeline.expanded { max-height: 100px; padding: 6px 12px; }
     .timeline .trim-handle { width: 16px; margin-left: -8px; }
 
     /* VJ controls */
-    .vj-remove { width: 32px; height: 32px; font-size: 14px; }
-    .vj-intensity { width: 100px; }
-    .vj-chain-item { padding: 8px; }
+    .vj-remove { width: 28px; height: 28px; font-size: 12px; }
+    .vj-intensity { width: 80px; }
+    .vj-chain-item { padding: 6px; }
     .vj-header { flex-wrap: wrap; gap: 6px; }
-    .vj-header select, .vj-header button { min-height: var(--touch-min); font-size: var(--mobile-font-xs); }
+    .vj-header select, .vj-header button { min-height: 36px; font-size: 12px; }
 
-    /* Tools panel */
+    /* Tools panel in bottom sheet */
+    .tools-panel { max-height: 40vh; overflow-y: auto; }
     .tool-row { flex-wrap: wrap; }
     .tool-row input[type="range"] { width: 100%; flex: 1; }
-    .tool-row button { min-height: var(--touch-min); }
-
-    /* Annotator controls */
-    .annot-controls { flex-wrap: wrap; gap: 6px; padding: 8px; }
-    .annot-controls button, .annot-controls select { min-height: var(--touch-min); }
+    .tool-row button { min-height: 36px; }
 
     /* Modal */
     .modal { padding: 16px; }
     .modal pre { word-break: break-all; white-space: pre-wrap; }
     .modal button { min-height: var(--touch-min); }
+
+    /* Swipe-to-dismiss on bottom sheets */
+    .mobile-sheet-collapsed { transform: translateY(100%) !important; pointer-events: none; }
 }
 
 /* ===== TABLET (601-900px) ===== */
 @media (min-width: 601px) and (max-width: 900px) {
     .fx-controls input[type="range"] { width: 150px; }
     .transport button { width: 38px; height: 36px; }
-    .effects-tabs button { padding: 6px 12px; font-size: 12px; }
 }
 
 /* ===== TOUCH DEVICE POLISH ===== */
@@ -240,117 +387,224 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
     .effects button:active, .transport button:active { background: var(--bg3); transform: scale(0.95); }
 }
 
+/* Preset cards */
+.preset-cards { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; width: 100%; flex-shrink: 0; }
+.preset-cards::-webkit-scrollbar { display: none; }
+.preset-card { flex-shrink: 0; padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(167,139,250,0.3); background: linear-gradient(135deg, rgba(167,139,250,0.1), rgba(255,107,157,0.08)); color: var(--fg); font-family: inherit; font-size: 11px; cursor: pointer; white-space: nowrap; transition: all 0.15s ease; }
+.preset-card:hover { border-color: var(--accent2); background: linear-gradient(135deg, rgba(167,139,250,0.2), rgba(255,107,157,0.15)); }
+.preset-card.active { background: linear-gradient(135deg, var(--accent), var(--accent2)); border-color: var(--accent2); color: #fff; box-shadow: 0 2px 8px rgba(167,139,250,0.3); }
+
+/* Desktop inspector panel */
+@media (min-width: 601px) {
+    .fx-controls, .annot-controls {
+        position: fixed;
+        right: 0; top: 50%;
+        transform: translateY(-50%);
+        width: 280px;
+        max-height: 60vh;
+        overflow-y: auto;
+        flex-direction: column;
+        border-radius: 12px 0 0 12px;
+        z-index: 20;
+        background: var(--bg2);
+        border: 1px solid var(--border-hover);
+        border-right: none;
+        box-shadow: -4px 0 20px rgba(0,0,0,0.4);
+        backdrop-filter: blur(16px);
+        margin: 0;
+        padding: 14px 16px;
+        gap: 10px;
+    }
+    /* Webcam controls get highest z-index when active */
+    #webcam-controls { z-index: 25; }
+}
+
 /* Prevent text selection on controls */
-.transport, .effects-tabs, .effects, .fx-controls, .timeline { user-select: none; -webkit-user-select: none; }
+.transport, .effects, .fx-controls, .timeline, .edit-bar, .stream-mini-bar, .landing { user-select: none; -webkit-user-select: none; }
 </style>
 </head>
 <body>
 
-<!-- Toolbar -->
-<div class="toolbar">
-    <span class="brand">rawcut</span>
-    <label for="file-input" style="background:var(--bg3);color:var(--fg);border:1px solid #333;padding:4px 12px;border-radius:3px;cursor:pointer;font-family:inherit;font-size:12px;display:inline-block">Open Video</label>
-    <button id="btn-webcam">Webcam</button>
-    <button id="btn-export">Export</button>
-    <div class="spacer"></div>
-    <span class="status" id="status"><span class="status-dot ready" id="status-dot"></span> No video loaded</span>
+<!-- Screen: Landing -->
+<div class="screen landing active" id="screen-landing">
+    <div class="landing-title">rawcut</div>
+    <div class="landing-cards">
+        <button class="landing-card" data-mode="edit"><span class="card-icon">&#127916;</span>Edit Video</button>
+        <button class="landing-card" data-mode="webcam"><span class="card-icon">&#128247;</span>Webcam</button>
+        <button class="landing-card" data-mode="stream"><span class="card-icon">&#9889;</span>Stream</button>
+    </div>
 </div>
 
-<!-- Preview -->
-<div class="preview">
-    <canvas id="rawbuf" width="640" height="360"></canvas>
-    <canvas id="annot-canvas" width="640" height="360"></canvas>
-    <canvas id="face-overlay" width="640" height="360"></canvas>
-    <span class="no-video" id="no-video">Open a video to begin</span>
-</div>
-
-<!-- Effects Tabs -->
-<div class="effects-tabs" id="effects-tabs">
-    <button class="active" data-tab="basic">Basic <span class="tab-badge">8</span></button>
-    <button data-tab="color">Color <span class="tab-badge">2</span></button>
-    <button data-tab="retro">Retro <span class="tab-badge">1</span></button>
-    <button data-tab="audio">Audio <span class="tab-badge">3</span></button>
-    <button data-tab="ml">ML <span class="tab-badge">10</span></button>
-    <button data-tab="compose">Compose <span class="tab-badge">2</span></button>
-    <button data-tab="creative">Creative <span class="tab-badge">3</span></button>
-    <button data-tab="tools">Tools</button>
-</div>
-
-<!-- Effects Groups -->
-<div class="effects" id="effects-panel">
-    <div class="effects-group active" data-group="basic">
-        <button class="active" data-fx="0">None</button>
-        <button data-fx="1">Thermal</button>
-        <button data-fx="2">Edge Detect</button>
-        <button data-fx="3">Night Vision</button>
-        <button data-fx="4">VHS</button>
-        <button data-fx="5">Glitch</button>
-        <button data-fx="6">Pixelate</button>
-        <button data-fx="7">Invert</button>
-        <button data-fx="11">Time Freeze</button>
-    </div>
-    <div class="effects-group" data-group="color">
-        <button data-fx="8">Chroma Key</button>
-        <button data-fx="9">Channel Split</button>
-    </div>
-    <div class="effects-group" data-group="retro">
-        <button data-fx="10">Old Film</button>
-    </div>
-    <div class="effects-group" data-group="audio">
-        <button data-fx="12">FFT Color Grade</button>
-        <button data-fx="13">Beat Glitch</button>
-        <button data-fx="14">Waveform Overlay</button>
-    </div>
-    <div class="effects-group" data-group="ml">
-        <button data-fx="15">BG Removal</button>
-        <button data-fx="16">Object Detect</button>
-        <button data-fx="17">Pose Skeleton</button>
-        <button data-fx="18">Face Filter</button>
-        <button data-fx="19">Depth Fog</button>
-        <button data-fx="20">Auto Color</button>
-        <button data-fx="21">Hand Gesture</button>
-        <button data-fx="27">Hair Color</button>
-        <button data-fx="28">Body Outline</button>
-        <button data-fx="29">Tilt-Shift</button>
-    </div>
-    <div class="effects-group" data-group="compose">
-        <button data-fx="22">PiP</button>
-        <button data-fx="23">Webcam+Screen</button>
-    </div>
-    <div class="effects-group" data-group="creative">
-        <button data-fx="24">VJ Tool</button>
-        <button data-fx="25">Annotator</button>
-        <button data-fx="26">Live Subtitles</button>
-    </div>
-    <div class="effects-group" data-group="tools">
-        <div class="tools-panel">
-            <div class="tools-section">
-                <h4>Adjustments</h4>
-                <div class="tool-row"><label>Brightness</label><input type="range" id="tool-brightness" min="-100" max="100" value="0"><span class="range-val">0</span></div>
-                <div class="tool-row"><label>Contrast</label><input type="range" id="tool-contrast" min="-100" max="100" value="0"><span class="range-val">0</span></div>
-                <div class="tool-row"><label>Saturation</label><input type="range" id="tool-saturation" min="-100" max="100" value="0"><span class="range-val">0</span></div>
-                <div class="tool-row"><label>Hue Rotate</label><input type="range" id="tool-hue" min="0" max="360" value="0"><span class="range-val">0</span></div>
-                <div class="tool-row">
-                    <button id="tool-flip-h">Flip H</button>
-                    <button id="tool-flip-v">Flip V</button>
-                    <button id="tool-reset-adj">Reset</button>
-                </div>
-            </div>
-            <div class="tools-section">
-                <h4>Playback</h4>
-                <div class="tool-row"><label>Speed</label><input type="range" id="tool-speed" min="25" max="400" value="100" step="25"><span class="range-val">1.0x</span></div>
-            </div>
-            <div class="tools-section">
-                <div class="tool-row">
-                    <button id="tool-snapshot">Snapshot (S)</button>
-                    <button id="tool-zoom-reset">Reset Zoom</button>
-                    <span id="tool-zoom-level">100%</span>
-                </div>
-            </div>
+<!-- Shared viewport (moved between screens) -->
+<div id="viewport" style="display:none">
+    <div class="preview">
+        <canvas id="rawbuf" width="640" height="360"></canvas>
+        <canvas id="annot-canvas" width="640" height="360"></canvas>
+        <canvas id="face-overlay" width="640" height="360"></canvas>
+        <span class="no-video" id="no-video">Import a video to begin</span>
+        <div class="play-overlay hidden" id="play-overlay">
+            <svg width="64" height="64" viewBox="0 0 64 64">
+                <circle cx="32" cy="32" r="30" fill="rgba(0,0,0,0.5)"/>
+                <polygon points="24,16 52,32 24,48" fill="white"/>
+            </svg>
         </div>
     </div>
-    <span id="current-fx-name"></span>
 </div>
+
+<!-- Screen: Edit -->
+<div class="screen screen-edit" id="screen-edit">
+    <div class="toolbar">
+        <button class="back-btn" id="edit-back">&#8592;</button>
+        <span class="brand">rawcut</span>
+        <label for="file-input" style="background:var(--glass);color:var(--fg);border:1px solid var(--border);padding:6px 14px;border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;font-size:12px;font-weight:500;display:inline-block;backdrop-filter:blur(8px)">Import</label>
+        <button id="btn-export">Share</button>
+        <div class="spacer"></div>
+        <span class="status" id="status"><span class="status-dot ready" id="status-dot"></span> No video loaded</span>
+    </div>
+    <div class="viewport-slot" id="edit-viewport-slot"></div>
+    <!-- Transport -->
+    <div class="transport">
+        <button id="btn-step-back" title="Step back">&#9198;</button>
+        <button id="btn-play" title="Play/Pause">&#9654;</button>
+        <button id="btn-step-fwd" title="Step forward">&#9197;</button>
+        <button id="btn-mark-in" title="Set In point">[</button>
+        <button id="btn-mark-out" title="Set Out point">]</button>
+        <span class="time" id="timecode">00:00.0 / 00:00.0</span>
+        <div class="spacer"></div>
+        <span id="fps-display" class="fps-green">-- FPS</span>
+        <span id="vu-meter" title="Audio level" style="display:inline-flex;align-items:center;gap:2px;margin-left:6px;">
+            <span style="font-size:10px;color:var(--fg2);">&#128266;</span>
+            <canvas id="vu-canvas" width="48" height="12" style="border-radius:2px;background:#111;"></canvas>
+        </span>
+    </div>
+    <!-- Seek bar -->
+    <div class="seek-bar">
+        <input type="range" id="seek" min="0" max="1000" value="0">
+        <div class="markers">
+            <span id="mark-in-label">IN: --</span>
+            <span id="mark-out-label">OUT: --</span>
+        </div>
+    </div>
+    <!-- Timeline toggle (mobile) -->
+    <button class="timeline-toggle" id="timeline-toggle">Timeline &#9660;</button>
+    <!-- Timeline -->
+    <div class="timeline">
+        <div class="track">
+            <span class="track-label">V</span>
+            <div class="track-bar" id="video-track">
+                <div class="track-fill video" id="video-fill" style="width:100%"></div>
+                <div class="trim-handle" id="trim-in" style="left:0"></div>
+                <div class="trim-handle" id="trim-out" style="right:0"></div>
+                <div class="playhead" id="track-playhead" style="left:0"></div>
+            </div>
+        </div>
+        <div class="track">
+            <span class="track-label">A</span>
+            <div class="track-bar">
+                <div class="track-fill audio" id="audio-fill" style="width:100%"></div>
+            </div>
+        </div>
+        <div class="ruler">
+            <span>0:00</span><span id="ruler-mid"></span><span id="ruler-end"></span>
+        </div>
+    </div>
+    <!-- Edit bar (InShot-style bottom toolbar) -->
+    <div class="edit-bar" id="edit-bar">
+        <button class="tool-btn" data-tool="brightness" title="Brightness"><span>&#9728;</span><span class="btn-label">Bright</span></button>
+        <button class="tool-btn" data-tool="contrast" title="Contrast"><span>&#128306;</span><span class="btn-label">Contr</span></button>
+        <button class="tool-btn" data-tool="saturation" title="Saturation"><span>&#127912;</span><span class="btn-label">Sat</span></button>
+        <button class="tool-btn" data-tool="hue" title="Hue"><span>&#8596;</span><span class="btn-label">Hue</span></button>
+        <button class="tool-btn" data-tool="speed" title="Speed"><span>&#9193;</span><span class="btn-label">Speed</span></button>
+        <button class="tool-btn" data-tool="transitions" title="Transitions"><span>&#9986;</span><span class="btn-label">Trans</span></button>
+        <button class="tool-btn" data-tool="export" title="Export"><span>&#128228;</span><span class="btn-label">Share</span></button>
+        <span class="edit-bar-sep"></span>
+        <button class="tool-btn-sm" id="tool-flip-h" title="Flip H">&#8597;</button>
+        <button class="tool-btn-sm" id="tool-flip-v" title="Flip V">&#8596;</button>
+        <button class="tool-btn-sm" id="tool-snapshot" title="Snapshot">&#128247;</button>
+        <button class="tool-btn-sm" id="tool-zoom-reset" title="Reset Zoom">&#8857;</button>
+        <span id="tool-zoom-level" style="font-size:10px;color:var(--fg2);">100%</span>
+    </div>
+    <!-- Bottom sheet for edit tool controls -->
+    <div class="bottom-sheet" id="edit-sheet">
+        <div class="drag-handle"></div>
+        <div class="edit-tool-control" id="edit-tool-control"></div>
+    </div>
+</div>
+
+<!-- Screen: Stream -->
+<div class="screen screen-stream" id="screen-stream">
+    <div class="toolbar">
+        <button class="back-btn" id="stream-back">&#8592;</button>
+        <span class="brand">rawcut</span>
+        <button id="btn-webcam">Record</button>
+        <div class="spacer"></div>
+        <span class="status" id="stream-status"><span class="status-dot ready" id="stream-status-dot"></span> Ready</span>
+    </div>
+    <div class="viewport-slot" id="stream-viewport-slot"></div>
+    <!-- Stream effects (hidden, opened via mini-bar) -->
+    <div class="effects" id="effects-panel" style="display:none">
+        <div class="effects-group active" data-group="stream">
+            <div class="preset-cards" id="preset-cards"></div>
+            <div class="stream-filters">
+                <button class="filter-pill active" data-filter="look">Look</button>
+                <button class="filter-pill" data-filter="ai">AI</button>
+                <button class="filter-pill" data-filter="layers">Layers</button>
+            </div>
+            <div class="stream-effects" id="stream-effects">
+                <button class="active" data-fx="0" data-category="look">None</button>
+                <button data-fx="1" data-category="look">Thermal</button>
+                <button data-fx="2" data-category="look">Edge Detect</button>
+                <button data-fx="3" data-category="look">Night Vision</button>
+                <button data-fx="4" data-category="look">VHS</button>
+                <button data-fx="5" data-category="look">Glitch</button>
+                <button data-fx="6" data-category="look">Pixelate</button>
+                <button data-fx="7" data-category="look">Invert</button>
+                <button data-fx="11" data-category="look">Freeze Frame</button>
+                <button data-fx="8" data-category="look">Chroma Key</button>
+                <button data-fx="9" data-category="look">Channel Split</button>
+                <button data-fx="10" data-category="look">Old Film</button>
+                <button data-fx="12" data-category="look">Audio Glow</button>
+                <button data-fx="13" data-category="look">Beat Cut</button>
+                <button data-fx="14" data-category="look">Waveform</button>
+                <button data-fx="15" data-category="ai">Background</button>
+                <button data-fx="16" data-category="ai">Detect</button>
+                <button data-fx="17" data-category="ai">Pose</button>
+                <button data-fx="18" data-category="ai">Face FX</button>
+                <button data-fx="19" data-category="ai">Depth Fog</button>
+                <button data-fx="20" data-category="ai">Auto Tone</button>
+                <button data-fx="21" data-category="ai">Hands</button>
+                <button data-fx="27" data-category="ai">Hair Color</button>
+                <button data-fx="28" data-category="ai">Silhouette</button>
+                <button data-fx="29" data-category="ai">Tilt-Shift</button>
+                <button data-fx="22" data-category="layers">PiP</button>
+                <button data-fx="23" data-category="layers">Webcam+Screen</button>
+                <button data-fx="25" data-category="layers">Annotator</button>
+                <button data-fx="26" data-category="layers">Captions</button>
+                <button data-fx="24" data-category="layers">VJ Tool</button>
+            </div>
+        </div>
+        <span id="current-fx-name"></span>
+    </div>
+    <!-- Stream mini-bar -->
+    <div class="stream-mini-bar" id="stream-mini-bar">
+        <button data-stream-action="subs" title="Subtitles">CC</button>
+        <button data-stream-action="fx" title="Effects">FX</button>
+        <button data-stream-action="vj" title="VJ">VJ</button>
+        <button data-stream-action="settings" title="Settings">&#9881;</button>
+    </div>
+    <!-- Bottom sheet for stream controls -->
+    <div class="bottom-sheet stream-sheet" id="stream-sheet">
+        <div class="drag-handle"></div>
+        <div id="stream-sheet-content"></div>
+    </div>
+</div>
+
+<!-- Effects Tabs (hidden, kept for JS compat) -->
+<div class="effects-tabs" id="effects-tabs" style="display:none">
+    <button class="active" data-tab="edit">Edit</button>
+    <button data-tab="stream">Stream</button>
+</div>
+
 
 <!-- Thermal Controls -->
 <div class="fx-controls" id="thermal-controls" style="display:none;">
@@ -573,7 +827,7 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
                 <option value="5">Glitch</option>
                 <option value="6">Pixelate</option>
                 <option value="7">Invert</option>
-                <option value="11">Time Freeze</option>
+                <option value="11">Freeze Frame</option>
             </optgroup>
             <optgroup label="Color">
                 <option value="8">Chroma Key</option>
@@ -583,27 +837,27 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
                 <option value="10">Old Film</option>
             </optgroup>
             <optgroup label="Audio">
-                <option value="12">FFT Color Grade</option>
-                <option value="13">Beat Glitch</option>
+                <option value="12">Audio Glow</option>
+                <option value="13">Beat Cut</option>
                 <option value="14">Waveform</option>
             </optgroup>
-            <optgroup label="ML">
-                <option value="15">BG Removal</option>
-                <option value="16">Object Detect</option>
+            <optgroup label="AI">
+                <option value="15">Background</option>
+                <option value="16">Detect</option>
                 <option value="17">Pose</option>
-                <option value="18">Face</option>
+                <option value="18">Face FX</option>
                 <option value="19">Depth Fog</option>
-                <option value="20">Auto Color</option>
+                <option value="20">Auto Tone</option>
                 <option value="21">Hands</option>
                 <option value="27">Hair Color</option>
-                <option value="28">Body Outline</option>
+                <option value="28">Silhouette</option>
                 <option value="29">Tilt-Shift</option>
             </optgroup>
-            <optgroup label="Overlay">
+            <optgroup label="Layers">
                 <option value="22">PiP</option>
                 <option value="23">Webcam+Screen</option>
                 <option value="25">Annotator</option>
-                <option value="26">Subtitles</option>
+                <option value="26">Captions</option>
             </optgroup>
         </select>
         <button id="vj-add-btn">+ Add</button>
@@ -626,7 +880,7 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
     </div>
 </div>
 
-<!-- Annotator Controls (Fabric.js) -->
+<!-- Annotator Controls -->
 <div class="annot-controls" id="annot-controls" style="display:none;">
     <label>Tool:</label>
     <select id="annot-tool">
@@ -635,7 +889,6 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
         <option value="circle">Circle</option>
         <option value="line">Line</option>
         <option value="arrow">Arrow</option>
-        <option value="text">Text</option>
         <option value="eraser">Eraser</option>
     </select>
     <label>Color:</label>
@@ -706,7 +959,7 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
 </div>
 <div class="fx-controls" id="subtitle-input-controls" style="display:none;">
     <input type="text" id="sub-manual-input" placeholder="Type or dictate subtitle..."
-           style="flex:1;min-height:var(--touch-min);background:var(--bg3);color:var(--fg);border:1px solid #333;padding:4px 8px;font-family:inherit;font-size:14px;border-radius:4px;">
+           style="flex:1;min-height:var(--touch-min);background:var(--bg3);color:var(--fg);border:1px solid var(--border);padding:4px 8px;font-family:inherit;font-size:14px;border-radius:4px;">
     <button id="sub-manual-send">Add</button>
 </div>
 
@@ -755,9 +1008,8 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
     <button id="webcam-mirror">Mirror</button>
     <label>Resolution:</label>
     <select id="webcam-res">
-        <option value="auto" selected>Auto (Native)</option>
         <option value="320x240">320x240</option>
-        <option value="640x360">640x360</option>
+        <option value="640x360" selected>640x360</option>
         <option value="1280x720">1280x720</option>
         <option value="1920x1080">1920x1080</option>
     </select>
@@ -777,57 +1029,7 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
 <!-- PiP file input (hidden) -->
 <input type="file" id="pip-input" accept="video/*" style="display:none">
 
-<!-- Transport -->
-<div class="transport">
-    <button id="btn-step-back" title="Step back">&#9198;</button>
-    <button id="btn-play" title="Play/Pause">&#9654;</button>
-    <button id="btn-step-fwd" title="Step forward">&#9197;</button>
-    <button id="btn-mark-in" title="Set In point">[</button>
-    <button id="btn-mark-out" title="Set Out point">]</button>
-    <span class="time" id="timecode">00:00.0 / 00:00.0</span>
-    <div class="spacer"></div>
-    <span id="fps-display" class="fps-green">-- FPS</span>
-    <span id="vu-meter" title="Audio level" style="display:inline-flex;align-items:center;gap:2px;margin-left:6px;">
-        <span style="font-size:10px;color:var(--fg2);">🔊</span>
-        <canvas id="vu-canvas" width="48" height="12" style="border-radius:2px;background:#111;"></canvas>
-    </span>
-</div>
-
-<!-- Seek bar -->
-<div class="seek-bar">
-    <input type="range" id="seek" min="0" max="1000" value="0">
-    <div class="markers">
-        <span id="mark-in-label">IN: --</span>
-        <span id="mark-out-label">OUT: --</span>
-    </div>
-</div>
-
-<!-- Timeline toggle (mobile) -->
-<button class="timeline-toggle" id="timeline-toggle">Timeline &#9660;</button>
-
-<!-- Timeline -->
-<div class="timeline">
-    <div class="track">
-        <span class="track-label">V</span>
-        <div class="track-bar" id="video-track">
-            <div class="track-fill video" id="video-fill" style="width:100%"></div>
-            <div class="trim-handle" id="trim-in" style="left:0"></div>
-            <div class="trim-handle" id="trim-out" style="right:0"></div>
-            <div class="playhead" id="track-playhead" style="left:0"></div>
-        </div>
-    </div>
-    <div class="track">
-        <span class="track-label">A</span>
-        <div class="track-bar">
-            <div class="track-fill audio" id="audio-fill" style="width:100%"></div>
-        </div>
-    </div>
-    <div class="ruler">
-        <span>0:00</span><span id="ruler-mid"></span><span id="ruler-end"></span>
-    </div>
-</div>
-
-<!-- Export modal -->
+<!-- Export modal (body level) -->
 <div class="modal-overlay" id="export-modal">
     <div class="modal">
         <h3>Export Command</h3>
@@ -840,16 +1042,117 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
 
 <input type="file" id="file-input" accept="video/*" style="display:none">
 
-<script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/perfect-freehand@1.2.2/dist/perfect-freehand.min.js"></script>
 <script src="editor.js"></script>
 <script>
+/* === Screen Router === */
+let currentMode = 'landing';
+
+function switchScreen(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const target = mode === 'webcam' ? 'screen-stream' : 'screen-' + mode;
+    document.getElementById(target).classList.add('active');
+
+    const vp = document.getElementById('viewport');
+    if (mode !== 'landing') {
+        vp.style.display = '';
+        const slot = document.querySelector('#' + target + ' .viewport-slot');
+        if (slot) slot.appendChild(vp);
+    } else {
+        vp.style.display = 'none';
+    }
+
+    if (mode === 'edit') {
+        currentTab = 'edit';
+        if (!videoLoaded && !webcamActive && !pendingFile) fileInput.click();
+    } else if (mode === 'webcam') {
+        currentTab = 'stream';
+        if (!webcamActive) document.getElementById('btn-webcam').click();
+    } else if (mode === 'stream') {
+        currentTab = 'stream';
+    }
+}
+
+/* Wire landing cards */
+document.querySelectorAll('.landing-card').forEach(c => {
+    c.onclick = () => switchScreen(c.dataset.mode);
+});
+
+/* Wire back buttons */
+document.getElementById('edit-back').onclick = () => switchScreen('landing');
+document.getElementById('stream-back').onclick = () => switchScreen('landing');
+
+/* Wire stream mini-bar */
+document.querySelectorAll('#stream-mini-bar button[data-stream-action]').forEach(btn => {
+    btn.onclick = () => {
+        const action = btn.dataset.streamAction;
+        const sheet = document.getElementById('stream-sheet');
+        const content = document.getElementById('stream-sheet-content');
+        const panel = document.getElementById('effects-panel');
+
+        /* Toggle: if same button clicked again, close sheet */
+        if (sheet.classList.contains('open') && btn.classList.contains('active')) {
+            sheet.classList.remove('open');
+            btn.classList.remove('active');
+            if (panel) panel.style.display = 'none';
+            return;
+        }
+
+        /* Deactivate all mini-bar buttons */
+        document.querySelectorAll('#stream-mini-bar button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        if (action === 'fx') {
+            /* Show effects grid inside stream sheet */
+            if (panel) panel.style.display = '';
+            content.innerHTML = '';
+            content.appendChild(panel);
+            sheet.classList.add('open');
+        } else if (action === 'subs') {
+            /* Toggle subtitles (effect 26) */
+            if (typeof currentEffect !== 'undefined') {
+                if (currentEffect === 26) {
+                    /* Turn off */
+                    const noneBtn = document.querySelector('#stream-effects button[data-fx="0"]');
+                    if (noneBtn) noneBtn.click();
+                } else {
+                    const subBtn = document.querySelector('#stream-effects button[data-fx="26"]');
+                    if (subBtn) subBtn.click();
+                }
+            }
+            sheet.classList.remove('open');
+        } else if (action === 'vj') {
+            if (panel) panel.style.display = 'none';
+            /* Show VJ controls in sheet */
+            const vjCtrl = document.getElementById('vj-controls');
+            if (vjCtrl) {
+                content.innerHTML = '';
+                content.appendChild(vjCtrl);
+                vjCtrl.style.display = 'flex';
+            }
+            sheet.classList.add('open');
+        } else if (action === 'settings') {
+            if (panel) panel.style.display = 'none';
+            /* Show webcam controls in sheet */
+            const wcCtrl = document.getElementById('webcam-controls');
+            if (wcCtrl) {
+                content.innerHTML = '';
+                content.appendChild(wcCtrl);
+                wcCtrl.style.display = 'flex';
+            }
+            sheet.classList.add('open');
+        }
+    };
+});
+
 /* Wire up file open IMMEDIATELY — before WASM loads */
+let videoLoaded = false;
 const video = document.createElement('video');
 video.muted = false;
 video.playsInline = true;
 const fileInput = document.getElementById('file-input');
 /* label[for=file-input] handles the click natively — no JS needed */
+let currentTab = 'edit';
 
 let fileName = '';
 let webcamActive = false;
@@ -865,6 +1168,8 @@ fileInput.onchange = (e) => {
     stopWebcam();
     fileName = file.name;
     pendingFile = URL.createObjectURL(file);
+    /* Auto-route to edit mode on file load */
+    if (currentMode === 'landing') switchScreen('edit');
     /* If WASM is ready, load immediately. Otherwise defer. */
     if (window._wasmReady) {
         video.src = pendingFile;
@@ -891,7 +1196,7 @@ function stopWebcam() {
         webcamStream = null;
     }
     webcamActive = false;
-    document.getElementById('btn-webcam').textContent = 'Webcam';
+    document.getElementById('btn-webcam').textContent = 'Record';
     document.getElementById('webcam-controls').style.display = 'none';
 }
 
@@ -931,16 +1236,12 @@ async function enumerateMics() {
 }
 
 async function startWebcamWithConstraints(deviceId, resStr) {
-    resStr = resStr || 'auto';
-    const constraints = { video: {}, audio: webcamMicEnabled };
-    if (resStr === 'auto') {
-        constraints.video.width = { ideal: 4096 };
-        constraints.video.height = { ideal: 2160 };
-    } else {
-        const parts = resStr.split('x');
-        constraints.video.width = { ideal: parseInt(parts[0]) };
-        constraints.video.height = { ideal: parseInt(parts[1]) };
-    }
+    const parts = (resStr || '640x360').split('x');
+    const w = parseInt(parts[0]), h = parseInt(parts[1]);
+    const constraints = {
+        video: { width: { ideal: w }, height: { ideal: h } },
+        audio: webcamMicEnabled
+    };
     if (deviceId) constraints.video.deviceId = { exact: deviceId };
     const micDeviceId = document.getElementById('webcam-mic-device').value;
     if (webcamMicEnabled && micDeviceId) {
@@ -954,37 +1255,11 @@ async function startWebcamWithConstraints(deviceId, resStr) {
     video.muted = true;
     video.play();
 
-    /* Wait for video metadata to know actual resolution */
-    await new Promise(resolve => {
-        if (video.videoWidth > 0) resolve();
-        else video.onloadedmetadata = resolve;
-    });
-
-    const actualW = video.videoWidth;
-    const actualH = video.videoHeight;
-
-    /* Cap at 1920x1080 for performance (effects are per-pixel) */
-    const maxW = 1920, maxH = 1080;
-    let targetW = actualW, targetH = actualH;
-    if (targetW > maxW || targetH > maxH) {
-        const scale = Math.min(maxW / targetW, maxH / targetH);
-        targetW = Math.round(targetW * scale);
-        targetH = Math.round(targetH * scale);
-    }
-    /* Ensure even dimensions */
-    targetW = targetW & ~1;
-    targetH = targetH & ~1;
-
-    /* Resize if different from current */
-    if (targetW !== W || targetH !== H) {
-        resizeEditor(targetW, targetH);
-    }
-
     webcamActive = true;
     fileName = 'webcam';
-    document.getElementById('btn-webcam').textContent = 'Stop Cam';
+    document.getElementById('btn-webcam').textContent = 'Stop Rec';
     document.getElementById('no-video').style.display = 'none';
-    setStatus('Webcam (' + actualW + 'x' + actualH + '\u2192' + W + 'x' + H + ')' + (webcamMicEnabled ? ' + Mic' : ''), 'ready');
+    setStatus('Camera (' + resStr + ')' + (webcamMicEnabled ? ' + Mic' : ''), 'ready');
     document.getElementById('webcam-controls').style.display = 'flex';
     /* Set up audio: mic → gain → analyser (always). gain → destination only when monitoring */
     const audioTracks = webcamStream.getAudioTracks();
@@ -1166,13 +1441,13 @@ function drawVU(level) {
     /* --- WASM Init --- */
     setStatus('Loading WASM...', 'loading');
     const Module = await RawBuf();
-    setStatus('Ready -- open a video', 'ready');
+    setStatus('Ready — import a video', 'ready');
 
     const canvas = document.getElementById('rawbuf');
-    let W = canvas.width;
-    let H = canvas.height;
-    let bufPtr = Module._editor_init(W, H);
-    let pixelCount = W * H;
+    const W = canvas.width;
+    const H = canvas.height;
+    const bufPtr = Module._editor_init(W, H);
+    const pixelCount = W * H;
 
     /* Offscreen canvas for video frame extraction */
     const offCanvas = document.createElement('canvas');
@@ -1180,27 +1455,11 @@ function drawVU(level) {
     offCanvas.height = H;
     const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
 
-    function resizeEditor(w, h) {
-        W = w; H = h;
-        pixelCount = W * H;
-        canvas.width = W; canvas.height = H;
-        document.getElementById('annot-canvas').width = W;
-        document.getElementById('annot-canvas').height = H;
-        document.getElementById('face-overlay').width = W;
-        document.getElementById('face-overlay').height = H;
-        offCanvas.width = W; offCanvas.height = H;
-        bufPtr = Module._editor_reinit(W, H);
-        if (window._fabricCanvas) {
-            window._fabricCanvas.setDimensions({ width: W, height: H });
-        }
-    }
-
     let prevMask = null;
 
-    let videoLoaded = false;
+    /* videoLoaded, currentTab declared at top level for screen router */
     let playing = false;
     let currentEffect = 0;
-    let currentTab = 'basic';
     let markIn = 0;
     let markOut = 0;
 
@@ -1236,10 +1495,24 @@ function drawVU(level) {
 
     video.onplay = () => {
         if (webcamActive) { videoLoaded = true; playing = true; }
+        /* Hide play overlay */
+        const overlay = document.getElementById('play-overlay');
+        if (overlay && currentMode === 'edit') overlay.classList.add('hidden');
+    };
+    video.onpause = () => {
+        /* Show play overlay in edit mode */
+        const overlay = document.getElementById('play-overlay');
+        if (overlay && currentMode === 'edit' && videoLoaded) overlay.classList.remove('hidden');
     };
 
     /* --- Transport --- */
     const btnPlay = document.getElementById('btn-play');
+
+    /* Play overlay click → toggle play */
+    document.getElementById('play-overlay').onclick = () => {
+        if (!videoLoaded) return;
+        btnPlay.click();
+    };
     btnPlay.onclick = () => {
         if (!videoLoaded) return;
         haptic(15);
@@ -1296,29 +1569,150 @@ function drawVU(level) {
         }
     }
 
-    /* --- Effects Tabs --- */
-    const tabButtons = document.querySelectorAll('.effects-tabs button[data-tab]');
-    const effectGroups = document.querySelectorAll('.effects-group[data-group]');
+    /* --- Effects Tabs — now handled by screen router, tab selection is implicit --- */
+    /* currentTab is set by switchScreen() */
 
-    tabButtons.forEach(btn => {
+    /* --- Edit Tool Strip (InShot-style bottom bar) --- */
+    let activeEditTool = null;
+    document.querySelectorAll('.edit-bar .tool-btn').forEach(btn => {
         btn.onclick = () => {
             haptic(8);
-            tabButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentTab = btn.dataset.tab;
-            effectGroups.forEach(g => g.classList.remove('active'));
-            const group = document.querySelector('.effects-group[data-group="' + currentTab + '"]');
-            if (group) group.classList.add('active');
-
-            /* Lazy-init audio context when Audio tab is clicked */
-            if (currentTab === 'audio') initAudio();
-
-            /* Lazy-init ML when ML tab is clicked */
-            if (currentTab === 'ml') {
-                /* Just show the tab; models load on effect select */
+            const tool = btn.dataset.tool;
+            const control = document.getElementById('edit-tool-control');
+            const sheet = document.getElementById('edit-sheet');
+            if (activeEditTool === tool) {
+                btn.classList.remove('active');
+                sheet.classList.remove('open');
+                activeEditTool = null;
+                return;
             }
+            document.querySelectorAll('.edit-bar .tool-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeEditTool = tool;
+            control.innerHTML = getToolControlHTML(tool);
+            control.style.display = 'flex';
+            sheet.classList.add('open');
+            wireToolControl(tool);
         };
     });
+
+    function getToolControlHTML(tool) {
+        switch (tool) {
+            case 'brightness':
+                return '<label>Brightness</label><input type="range" id="tool-brightness" min="-100" max="100" value="' + (document.getElementById('tool-brightness')?.value || 0) + '"><span class="range-val">' + (document.getElementById('tool-brightness')?.value || 0) + '</span><button class="reset-btn" data-tool-reset="brightness">Reset</button>';
+            case 'contrast':
+                return '<label>Contrast</label><input type="range" id="tool-contrast" min="-100" max="100" value="' + (document.getElementById('tool-contrast')?.value || 0) + '"><span class="range-val">' + (document.getElementById('tool-contrast')?.value || 0) + '</span><button class="reset-btn" data-tool-reset="contrast">Reset</button>';
+            case 'saturation':
+                return '<label>Saturation</label><input type="range" id="tool-saturation" min="-100" max="100" value="' + (document.getElementById('tool-saturation')?.value || 0) + '"><span class="range-val">' + (document.getElementById('tool-saturation')?.value || 0) + '</span><button class="reset-btn" data-tool-reset="saturation">Reset</button>';
+            case 'hue':
+                return '<label>Hue</label><input type="range" id="tool-hue" min="0" max="360" value="' + (document.getElementById('tool-hue')?.value || 0) + '"><span class="range-val">' + (document.getElementById('tool-hue')?.value || 0) + '</span><button class="reset-btn" data-tool-reset="hue">Reset</button>';
+            case 'speed':
+                return '<label>Speed</label><input type="range" id="tool-speed" min="25" max="400" value="' + (document.getElementById('tool-speed')?.value || 100) + '" step="25"><span class="range-val">' + ((document.getElementById('tool-speed')?.value || 100) / 100).toFixed(1) + 'x</span><button class="reset-btn" data-tool-reset="speed">Reset</button>';
+            case 'transitions':
+                return '<button class="toggle-pill' + (transitionState.fadeIn ? ' active' : '') + '" data-trans="fadeIn">Fade In</button>' +
+                    '<button class="toggle-pill' + (transitionState.fadeOut ? ' active' : '') + '" data-trans="fadeOut">Fade Out</button>' +
+                    '<button class="toggle-pill' + (transitionState.flash ? ' active' : '') + '" data-trans="flash">Flash</button>' +
+                    '<label>Duration</label><input type="range" id="trans-duration" min="5" max="30" value="' + Math.round(transitionState.duration * 10) + '"><span class="range-val">' + transitionState.duration.toFixed(1) + 's</span>';
+            case 'export':
+                return '<div style="display:flex;flex-direction:column;gap:6px;width:100%">' +
+                    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+                    '<button id="share-quick-save" style="flex:1">Record & Save WebM</button>' +
+                    '<span id="share-quick-status" style="color:var(--fg2);font-size:10px;"></span></div>' +
+                    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+                    '<label style="min-width:auto">Aspect</label><select id="share-aspect" style="background:var(--bg3);color:var(--fg);border:1px solid var(--border);padding:4px 8px;border-radius:6px;font-family:inherit;font-size:11px;">' +
+                    '<option value="original">Original</option><option value="16:9">16:9</option><option value="9:16">9:16</option><option value="1:1">1:1</option><option value="4:3">4:3</option></select>' +
+                    '<label style="min-width:auto">Quality</label><select id="share-quality" style="background:var(--bg3);color:var(--fg);border:1px solid var(--border);padding:4px 8px;border-radius:6px;font-family:inherit;font-size:11px;">' +
+                    '<option value="2500000">Low</option><option value="5000000" selected>Med</option><option value="10000000">High</option></select>' +
+                    '<label style="min-width:auto">FPS</label><select id="share-fps" style="background:var(--bg3);color:var(--fg);border:1px solid var(--border);padding:4px 8px;border-radius:6px;font-family:inherit;font-size:11px;">' +
+                    '<option value="24">24</option><option value="30" selected>30</option><option value="60">60</option></select></div>' +
+                    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+                    '<button id="share-final-export">Export Trimmed Clip</button>' +
+                    '<span id="share-final-status" style="color:var(--fg2);font-size:10px;"></span>' +
+                    '<button id="share-dev-export">FFmpeg Cmd</button></div></div>';
+            default: return '';
+        }
+    }
+
+    /* Store current slider values so they persist across tool switches */
+    let toolValues = { brightness: 0, contrast: 0, saturation: 0, hue: 0, speed: 100 };
+
+    function wireToolControl(tool) {
+        if (tool === 'brightness' || tool === 'contrast' || tool === 'saturation' || tool === 'hue') {
+            const input = document.getElementById('tool-' + tool);
+            if (input) {
+                input.value = toolValues[tool];
+                input.nextElementSibling.textContent = toolValues[tool];
+                input.oninput = function() {
+                    toolValues[tool] = parseInt(this.value);
+                    this.nextElementSibling.textContent = this.value;
+                    if (tool === 'brightness') Module._editor_set_brightness(parseInt(this.value));
+                    else if (tool === 'contrast') Module._editor_set_contrast(parseInt(this.value));
+                    else if (tool === 'saturation') Module._editor_set_saturation(parseInt(this.value));
+                    else if (tool === 'hue') Module._editor_set_hue_rotate(parseInt(this.value));
+                    if (!playing && videoLoaded) renderFrame();
+                };
+            }
+            const resetBtn = document.querySelector('[data-tool-reset="' + tool + '"]');
+            if (resetBtn) resetBtn.onclick = function() {
+                const inp = document.getElementById('tool-' + tool);
+                if (inp) { inp.value = tool === 'hue' ? 0 : 0; inp.oninput(); }
+            };
+        } else if (tool === 'speed') {
+            const input = document.getElementById('tool-speed');
+            if (input) {
+                input.value = toolValues.speed;
+                input.nextElementSibling.textContent = (toolValues.speed / 100).toFixed(1) + 'x';
+                input.oninput = function() {
+                    toolValues.speed = parseInt(this.value);
+                    const rate = parseInt(this.value) / 100;
+                    this.nextElementSibling.textContent = rate.toFixed(1) + 'x';
+                    video.playbackRate = rate;
+                };
+            }
+            const resetBtn = document.querySelector('[data-tool-reset="speed"]');
+            if (resetBtn) resetBtn.onclick = function() {
+                const inp = document.getElementById('tool-speed');
+                if (inp) { inp.value = 100; toolValues.speed = 100; inp.oninput(); }
+            };
+        } else if (tool === 'transitions') {
+            document.querySelectorAll('.toggle-pill[data-trans]').forEach(pill => {
+                pill.onclick = function() {
+                    const key = this.dataset.trans;
+                    transitionState[key] = !transitionState[key];
+                    this.classList.toggle('active', transitionState[key]);
+                };
+            });
+            const durInput = document.getElementById('trans-duration');
+            if (durInput) durInput.oninput = function() {
+                transitionState.duration = parseInt(this.value) / 10;
+                this.nextElementSibling.textContent = transitionState.duration.toFixed(1) + 's';
+            };
+        } else if (tool === 'export') {
+            wireExportButtons();
+        }
+    }
+
+    /* --- Transition State --- */
+    let transitionState = { fadeIn: false, fadeOut: false, flash: false, duration: 1.0 };
+
+    /* --- Stream Sub-Filter --- */
+    let streamFilter = 'look';
+    function applyStreamFilter() {
+        document.querySelectorAll('#stream-effects button[data-fx]').forEach(btn => {
+            btn.style.display = (btn.dataset.category === streamFilter) ? '' : 'none';
+        });
+    }
+    document.querySelectorAll('.filter-pill').forEach(pill => {
+        pill.onclick = () => {
+            haptic(8);
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            streamFilter = pill.dataset.filter;
+            applyStreamFilter();
+        };
+    });
+    /* Initial filter */
+    applyStreamFilter();
 
     /* --- Effects Selection --- */
     const effectNames = [
@@ -1333,12 +1727,12 @@ function drawVU(level) {
 
     const effectDisplayNames = [
         'None', 'Thermal', 'Edge Detect', 'Night Vision', 'VHS', 'Glitch', 'Pixelate', 'Invert',
-        'Chroma Key', 'Channel Split', 'Old Film', 'Time Freeze',
-        'FFT Color Grade', 'Beat Glitch', 'Waveform Overlay',
-        'BG Removal', 'Object Detect', 'Pose Skeleton', 'Face Filter', 'Depth Fog', 'Auto Color', 'Hand Gesture',
+        'Chroma Key', 'Channel Split', 'Old Film', 'Freeze Frame',
+        'Audio Glow', 'Beat Cut', 'Waveform',
+        'Background', 'Detect', 'Pose', 'Face FX', 'Depth Fog', 'Auto Tone', 'Hands',
         'PiP', 'Webcam+Screen',
-        'VJ Tool', 'Annotator', 'Live Subtitles',
-        'Hair Color', 'Body Outline', 'Tilt-Shift'
+        'VJ Tool', 'Annotator', 'Captions',
+        'Hair Color', 'Silhouette', 'Tilt-Shift'
     ];
 
     function hideAllFxControls() {
@@ -1393,11 +1787,11 @@ function drawVU(level) {
         if (fx === 29) document.getElementById('tiltshift-controls').style.display = 'flex';
     }
 
-    document.querySelectorAll('.effects button[data-fx]').forEach(btn => {
+    document.querySelectorAll('#stream-effects button[data-fx]').forEach(btn => {
         btn.onclick = () => {
             haptic(10);
-            /* Remove active from ALL effect buttons across all groups */
-            document.querySelectorAll('.effects button[data-fx]').forEach(b => b.classList.remove('active'));
+            /* Remove active from ALL effect buttons */
+            document.querySelectorAll('#stream-effects button[data-fx]').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentEffect = parseInt(btn.dataset.fx);
             showFxControls(currentEffect);
@@ -1425,10 +1819,10 @@ function drawVU(level) {
                 loadFont(subtitleSettings.font);
             }
 
-            /* Annotator: init Fabric.js canvas */
+            /* Annotator: init canvas overlay */
             if (currentEffect === 25) {
-                initFabricCanvas();
-                setupFabricShapeHandlers();
+                initAnnotCanvas();
+                setupAnnotHandlers();
                 setAnnotTool('freehand');
                 document.getElementById('annot-canvas').classList.add('active');
             } else {
@@ -2421,11 +2815,11 @@ function drawVU(level) {
     /* --- VJ Tool (Effect 24) - Redesigned --- */
     const vjEffectNames = {
         1:'Thermal', 2:'Edge Detect', 3:'Night Vision', 4:'VHS', 5:'Glitch', 6:'Pixelate', 7:'Invert',
-        8:'Chroma Key', 9:'Channel Split', 10:'Old Film', 11:'Time Freeze',
-        12:'FFT Color Grade', 13:'Beat Glitch', 14:'Waveform Overlay',
-        15:'BG Removal', 16:'Object Detect', 17:'Pose Skeleton', 18:'Face Filter', 19:'Depth Fog', 20:'Colorization', 21:'Hand Gesture',
-        22:'PiP', 23:'Webcam+Screen', 25:'Annotator', 26:'Live Subtitles',
-        27:'Hair Color', 28:'Body Outline', 29:'Tilt-Shift'
+        8:'Chroma Key', 9:'Channel Split', 10:'Old Film', 11:'Freeze Frame',
+        12:'Audio Glow', 13:'Beat Cut', 14:'Waveform',
+        15:'Background', 16:'Detect', 17:'Pose', 18:'Face FX', 19:'Depth Fog', 20:'Auto Tone', 21:'Hands',
+        22:'PiP', 23:'Webcam+Screen', 25:'Annotator', 26:'Captions',
+        27:'Hair Color', 28:'Silhouette', 29:'Tilt-Shift'
     };
 
     const vjPresets = {
@@ -2448,12 +2842,12 @@ function drawVU(level) {
         item.dataset.fx = fxId;
         item.innerHTML = '<span class="vj-drag-handle">=</span>' +
             '<span class="vj-fx-name">' + (vjEffectNames[fxId] || 'Effect ' + fxId) + '</span>' +
-            '<select class="vj-blend-mode" style="font-size:10px;background:var(--bg3);color:var(--fg);border:1px solid #333;padding:1px 4px;">' +
+            '<select class="vj-blend-mode" style="font-size:10px;background:var(--bg3);color:var(--fg);border:1px solid var(--border);padding:1px 4px;">' +
             '<option value="0">Normal</option><option value="1">Multiply</option><option value="2">Screen</option><option value="3">Overlay</option><option value="4">Soft Light</option>' +
             '</select>' +
             '<input type="range" min="0" max="100" value="' + intensity + '" class="vj-intensity">' +
             '<span class="vj-intensity-val">' + intensity + '%</span>' +
-            '<button class="vj-settings-btn" title="Settings" style="background:none;border:1px solid #555;color:var(--fg2);width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;padding:0;">⚙</button>' +
+            '<button class="vj-settings-btn" title="Settings" style="background:none;border:1px solid var(--border-hover);color:var(--fg2);width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;padding:0;">⚙</button>' +
             '<button class="vj-remove">x</button>';
 
         /* Settings expand/collapse */
@@ -2610,6 +3004,57 @@ function drawVU(level) {
             setStatus('No saved chain found', 'error');
         }
     };
+
+    /* --- Look Presets (Phase 3) --- */
+    const lookPresets = {
+        'Clean Stream': { effects: [{fx:20,intensity:100}], adjustments: {contrast:20} },
+        'Commentary Cam': { effects: [{fx:22,intensity:100},{fx:28,intensity:100}], adjustments: {} },
+        'Lo-fi VHS': { effects: [{fx:4,intensity:100},{fx:10,intensity:80},{fx:9,intensity:60}], adjustments: {} },
+        'Surveillance': { effects: [{fx:3,intensity:100},{fx:2,intensity:60}], adjustments: {} },
+        'Tutorial': { effects: [{fx:25,intensity:100},{fx:26,intensity:100},{fx:22,intensity:100}], adjustments: {contrast:15} },
+        'Dream Promo': { effects: [{fx:29,intensity:100},{fx:20,intensity:100}], adjustments: {} }
+    };
+
+    /* Build preset card buttons */
+    (function buildPresetCards() {
+        const container = document.getElementById('preset-cards');
+        if (!container) return;
+        for (const [name, preset] of Object.entries(lookPresets)) {
+            const btn = document.createElement('button');
+            btn.className = 'preset-card';
+            btn.textContent = name;
+            btn.onclick = function() {
+                /* Deactivate other preset cards */
+                container.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                /* Activate VJ Tool (effect 24) internally */
+                currentEffect = 24;
+                document.querySelectorAll('#stream-effects button[data-fx]').forEach(b => b.classList.remove('active'));
+                showFxControls(24);
+                document.getElementById('current-fx-name').textContent = name;
+                /* Populate VJ chain */
+                document.getElementById('vj-chain-list').innerHTML = '';
+                preset.effects.forEach(p => addVJChainItem(p.fx, p.intensity));
+                /* Apply adjustments */
+                if (preset.adjustments.contrast !== undefined) {
+                    const val = preset.adjustments.contrast;
+                    toolValues.contrast = val;
+                    Module._editor_set_contrast(val);
+                    const inp = document.getElementById('tool-contrast');
+                    if (inp) { inp.value = val; inp.nextElementSibling.textContent = val; }
+                }
+                /* Init ML/audio for preset effects if needed */
+                for (const p of preset.effects) {
+                    if ((p.fx >= 15 && p.fx <= 21) || p.fx >= 27) initMLEffect(p.fx);
+                    if (p.fx >= 12 && p.fx <= 14) initAudio();
+                    if (p.fx === 25) { initAnnotCanvas(); setupAnnotHandlers(); setAnnotTool('freehand'); document.getElementById('annot-canvas').classList.add('active'); }
+                    if (p.fx === 26) { initSpeechRecognition(); loadFont(subtitleSettings.font); }
+                }
+                if (!playing && videoLoaded) renderFrame();
+            };
+            container.appendChild(btn);
+        }
+    })();
 
     function getVJChain() {
         const chain = [];
@@ -3016,53 +3461,164 @@ function drawVU(level) {
         ctx.stroke();
     }
 
-    /* --- Annotator (Effect 25) — Fabric.js overlay --- */
-    let fabricCanvas = null;
+    /* --- Annotator (Effect 25) — vanilla Canvas2D overlay --- */
+    let annotCtx = null;
+    let annotCanvas = null;
+    let annotPoints = [];
+    let annotSnapshot = null;
     let annotTool = 'freehand';
     let annotUndoStack = [];
     let annotRedoStack = [];
     let annotDrawing = false;
     let annotStartX = 0, annotStartY = 0;
-    let annotTempObj = null;
+    let annotHandlersAttached = false;
 
-    function initFabricCanvas() {
-        if (fabricCanvas) return;
-        const annotEl = document.getElementById('annot-canvas');
-        annotEl.width = W;
-        annotEl.height = H;
-        fabricCanvas = new fabric.Canvas('annot-canvas', {
-            isDrawingMode: false,
-            selection: false,
-            width: W,
-            height: H
-        });
-        fabricCanvas.freeDrawingBrush.color = '#ff0000';
-        fabricCanvas.freeDrawingBrush.width = 4;
+    function initAnnotCanvas() {
+        if (annotCtx) return;
+        annotCanvas = document.getElementById('annot-canvas');
+        annotCanvas.width = W;
+        annotCanvas.height = H;
+        annotCtx = annotCanvas.getContext('2d');
+        /* Push initial blank state */
+        annotUndoStack.push(annotCtx.getImageData(0, 0, W, H));
+    }
 
-        fabricCanvas.on('object:added', function() {
-            annotUndoStack.push(fabricCanvas.toJSON());
-            if (annotUndoStack.length > 50) annotUndoStack.shift();
-            annotRedoStack = [];
-        });
+    function pushAnnotUndo() {
+        annotUndoStack.push(annotCtx.getImageData(0, 0, W, H));
+        if (annotUndoStack.length > 50) annotUndoStack.shift();
+        annotRedoStack = [];
+    }
+
+    function annotMouseCoords(e) {
+        const rect = annotCanvas.getBoundingClientRect();
+        return {
+            x: (e.clientX - rect.left) * (annotCanvas.width / rect.width),
+            y: (e.clientY - rect.top) * (annotCanvas.height / rect.height)
+        };
     }
 
     function setAnnotTool(tool) {
         annotTool = tool;
-        if (!fabricCanvas) return;
-        if (tool === 'freehand') {
-            fabricCanvas.isDrawingMode = true;
-            fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
-            fabricCanvas.freeDrawingBrush.color = document.getElementById('annot-color').value;
-            fabricCanvas.freeDrawingBrush.width = parseInt(document.getElementById('annot-brush').value);
-        } else if (tool === 'eraser') {
-            fabricCanvas.isDrawingMode = true;
-            if (fabric.EraserBrush) {
-                fabricCanvas.freeDrawingBrush = new fabric.EraserBrush(fabricCanvas);
-                fabricCanvas.freeDrawingBrush.width = parseInt(document.getElementById('annot-brush').value) * 3;
+    }
+
+    function setupAnnotHandlers() {
+        if (annotHandlersAttached || !annotCanvas) return;
+        annotHandlersAttached = true;
+
+        annotCanvas.addEventListener('mousedown', function(e) {
+            if (!annotCtx) return;
+            annotDrawing = true;
+            const pt = annotMouseCoords(e);
+            annotStartX = pt.x;
+            annotStartY = pt.y;
+            annotSnapshot = annotCtx.getImageData(0, 0, W, H);
+
+            if (annotTool === 'freehand' || annotTool === 'eraser') {
+                annotPoints = [pt];
+                const color = document.getElementById('annot-color').value;
+                const width = parseInt(document.getElementById('annot-brush').value);
+                const opacity = parseInt(document.getElementById('annot-opacity').value) / 100;
+                annotCtx.lineCap = 'round';
+                annotCtx.lineJoin = 'round';
+                annotCtx.lineWidth = annotTool === 'eraser' ? width * 3 : width;
+                annotCtx.globalAlpha = annotTool === 'eraser' ? 1 : opacity;
+                if (annotTool === 'eraser') {
+                    annotCtx.globalCompositeOperation = 'destination-out';
+                } else {
+                    annotCtx.globalCompositeOperation = 'source-over';
+                    annotCtx.strokeStyle = color;
+                }
+                annotCtx.beginPath();
+                annotCtx.moveTo(pt.x, pt.y);
             }
-        } else {
-            fabricCanvas.isDrawingMode = false;
+        });
+
+        annotCanvas.addEventListener('mousemove', function(e) {
+            if (!annotDrawing || !annotCtx) return;
+            const pt = annotMouseCoords(e);
+
+            if (annotTool === 'freehand' || annotTool === 'eraser') {
+                annotPoints.push(pt);
+                if (annotPoints.length < 3) {
+                    annotCtx.lineTo(pt.x, pt.y);
+                    annotCtx.stroke();
+                    return;
+                }
+                /* Quadratic Bezier smoothing: curve to midpoint, control at previous point */
+                const prev = annotPoints[annotPoints.length - 2];
+                const mid = { x: (prev.x + pt.x) / 2, y: (prev.y + pt.y) / 2 };
+                annotCtx.quadraticCurveTo(prev.x, prev.y, mid.x, mid.y);
+                annotCtx.stroke();
+            } else {
+                /* Shape preview: restore snapshot then draw preview */
+                annotCtx.putImageData(annotSnapshot, 0, 0);
+                const color = document.getElementById('annot-color').value;
+                const width = parseInt(document.getElementById('annot-brush').value);
+                const opacity = parseInt(document.getElementById('annot-opacity').value) / 100;
+                annotCtx.globalAlpha = opacity;
+                annotCtx.strokeStyle = color;
+                annotCtx.lineWidth = width;
+                annotCtx.lineCap = 'round';
+                annotCtx.lineJoin = 'round';
+                annotCtx.globalCompositeOperation = 'source-over';
+
+                if (annotTool === 'rect') {
+                    annotCtx.beginPath();
+                    annotCtx.strokeRect(
+                        Math.min(annotStartX, pt.x), Math.min(annotStartY, pt.y),
+                        Math.abs(pt.x - annotStartX), Math.abs(pt.y - annotStartY)
+                    );
+                } else if (annotTool === 'circle') {
+                    const dx = pt.x - annotStartX, dy = pt.y - annotStartY;
+                    const radius = Math.sqrt(dx * dx + dy * dy) / 2;
+                    const cx = (annotStartX + pt.x) / 2, cy = (annotStartY + pt.y) / 2;
+                    annotCtx.beginPath();
+                    annotCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+                    annotCtx.stroke();
+                } else if (annotTool === 'line' || annotTool === 'arrow') {
+                    annotCtx.beginPath();
+                    annotCtx.moveTo(annotStartX, annotStartY);
+                    annotCtx.lineTo(pt.x, pt.y);
+                    annotCtx.stroke();
+                    if (annotTool === 'arrow') {
+                        const angle = Math.atan2(pt.y - annotStartY, pt.x - annotStartX);
+                        const headLen = 12;
+                        annotCtx.beginPath();
+                        annotCtx.moveTo(pt.x - headLen * Math.cos(angle - Math.PI / 6), pt.y - headLen * Math.sin(angle - Math.PI / 6));
+                        annotCtx.lineTo(pt.x, pt.y);
+                        annotCtx.lineTo(pt.x - headLen * Math.cos(angle + Math.PI / 6), pt.y - headLen * Math.sin(angle + Math.PI / 6));
+                        annotCtx.stroke();
+                    }
+                }
+            }
+        });
+
+        function annotMouseUp(e) {
+            if (!annotDrawing || !annotCtx) return;
+            annotDrawing = false;
+
+            if (annotTool === 'freehand' || annotTool === 'eraser') {
+                /* Flush final segment */
+                if (annotPoints.length >= 2) {
+                    const last = annotPoints[annotPoints.length - 1];
+                    annotCtx.lineTo(last.x, last.y);
+                    annotCtx.stroke();
+                }
+                annotPoints = [];
+            }
+
+            /* Reset compositing state */
+            annotCtx.globalAlpha = 1;
+            annotCtx.globalCompositeOperation = 'source-over';
+
+            pushAnnotUndo();
+            annotSnapshot = null;
         }
+
+        annotCanvas.addEventListener('mouseup', annotMouseUp);
+        annotCanvas.addEventListener('mouseleave', function(e) {
+            if (annotDrawing) annotMouseUp(e);
+        });
     }
 
     document.getElementById('annot-tool').onchange = function() {
@@ -3070,14 +3626,11 @@ function drawVU(level) {
     };
 
     document.getElementById('annot-color').oninput = function() {
-        if (!fabricCanvas) return;
-        fabricCanvas.freeDrawingBrush.color = this.value;
+        /* Color read from DOM at draw time — no brush object to update */
     };
 
     document.getElementById('annot-brush').oninput = function() {
         this.nextElementSibling.textContent = this.value;
-        if (!fabricCanvas) return;
-        fabricCanvas.freeDrawingBrush.width = parseInt(this.value);
     };
 
     document.getElementById('annot-opacity').oninput = function() {
@@ -3085,121 +3638,28 @@ function drawVU(level) {
     };
 
     document.getElementById('annot-undo').onclick = function() {
-        if (!fabricCanvas || annotUndoStack.length <= 1) return;
+        if (!annotCtx || annotUndoStack.length <= 1) return;
         annotRedoStack.push(annotUndoStack.pop());
         const state = annotUndoStack[annotUndoStack.length - 1];
-        if (state) {
-            fabricCanvas.loadFromJSON(state, function() { fabricCanvas.renderAll(); });
-        } else {
-            fabricCanvas.clear();
-        }
+        annotCtx.putImageData(state, 0, 0);
     };
 
     document.getElementById('annot-redo').onclick = function() {
-        if (!fabricCanvas || annotRedoStack.length === 0) return;
+        if (!annotCtx || annotRedoStack.length === 0) return;
         const state = annotRedoStack.pop();
         annotUndoStack.push(state);
-        fabricCanvas.loadFromJSON(state, function() { fabricCanvas.renderAll(); });
+        annotCtx.putImageData(state, 0, 0);
     };
 
     document.getElementById('annot-clear').onclick = function() {
-        if (fabricCanvas) {
-            fabricCanvas.clear();
-            annotUndoStack = [];
+        if (annotCtx) {
+            annotCtx.clearRect(0, 0, W, H);
+            annotUndoStack = [annotCtx.getImageData(0, 0, W, H)];
             annotRedoStack = [];
         }
         Module._editor_annotation_clear();
         if (!playing && videoLoaded) renderFrame();
     };
-
-    /* Shape drawing with Fabric.js mouse events */
-    function setupFabricShapeHandlers() {
-        if (!fabricCanvas) return;
-        fabricCanvas.on('mouse:down', function(opt) {
-            if (fabricCanvas.isDrawingMode) return;
-            if (annotTool === 'text') {
-                const pointer = fabricCanvas.getPointer(opt.e);
-                const text = new fabric.IText('Text', {
-                    left: pointer.x, top: pointer.y,
-                    fill: document.getElementById('annot-color').value,
-                    fontSize: parseInt(document.getElementById('annot-brush').value) * 5 + 10,
-                    fontFamily: 'monospace'
-                });
-                fabricCanvas.add(text);
-                fabricCanvas.setActiveObject(text);
-                text.enterEditing();
-                return;
-            }
-            annotDrawing = true;
-            const pointer = fabricCanvas.getPointer(opt.e);
-            annotStartX = pointer.x;
-            annotStartY = pointer.y;
-            const color = document.getElementById('annot-color').value;
-            const width = parseInt(document.getElementById('annot-brush').value);
-
-            if (annotTool === 'rect') {
-                annotTempObj = new fabric.Rect({
-                    left: annotStartX, top: annotStartY, width: 0, height: 0,
-                    fill: 'transparent', stroke: color, strokeWidth: width
-                });
-            } else if (annotTool === 'circle') {
-                annotTempObj = new fabric.Circle({
-                    left: annotStartX, top: annotStartY, radius: 0,
-                    fill: 'transparent', stroke: color, strokeWidth: width
-                });
-            } else if (annotTool === 'line') {
-                annotTempObj = new fabric.Line([annotStartX, annotStartY, annotStartX, annotStartY], {
-                    stroke: color, strokeWidth: width
-                });
-            } else if (annotTool === 'arrow') {
-                annotTempObj = new fabric.Line([annotStartX, annotStartY, annotStartX, annotStartY], {
-                    stroke: color, strokeWidth: width
-                });
-            }
-            if (annotTempObj) fabricCanvas.add(annotTempObj);
-        });
-
-        fabricCanvas.on('mouse:move', function(opt) {
-            if (!annotDrawing || !annotTempObj) return;
-            const pointer = fabricCanvas.getPointer(opt.e);
-            if (annotTool === 'rect') {
-                annotTempObj.set({
-                    width: Math.abs(pointer.x - annotStartX),
-                    height: Math.abs(pointer.y - annotStartY),
-                    left: Math.min(annotStartX, pointer.x),
-                    top: Math.min(annotStartY, pointer.y)
-                });
-            } else if (annotTool === 'circle') {
-                const dx = pointer.x - annotStartX, dy = pointer.y - annotStartY;
-                annotTempObj.set({ radius: Math.sqrt(dx*dx + dy*dy) / 2 });
-            } else if (annotTool === 'line' || annotTool === 'arrow') {
-                annotTempObj.set({ x2: pointer.x, y2: pointer.y });
-            }
-            fabricCanvas.renderAll();
-        });
-
-        fabricCanvas.on('mouse:up', function(opt) {
-            if (!annotDrawing) return;
-            annotDrawing = false;
-            if (annotTool === 'arrow' && annotTempObj) {
-                /* Add arrowhead */
-                const x1 = annotTempObj.x1, y1 = annotTempObj.y1;
-                const x2 = annotTempObj.x2, y2 = annotTempObj.y2;
-                const angle = Math.atan2(y2 - y1, x2 - x1);
-                const headLen = 12;
-                const color = document.getElementById('annot-color').value;
-                const width = parseInt(document.getElementById('annot-brush').value);
-                const head = new fabric.Path(
-                    'M ' + (x2 - headLen * Math.cos(angle - Math.PI/6)) + ' ' + (y2 - headLen * Math.sin(angle - Math.PI/6)) +
-                    ' L ' + x2 + ' ' + y2 +
-                    ' L ' + (x2 - headLen * Math.cos(angle + Math.PI/6)) + ' ' + (y2 - headLen * Math.sin(angle + Math.PI/6)),
-                    { stroke: color, strokeWidth: width, fill: 'transparent' }
-                );
-                fabricCanvas.add(head);
-            }
-            annotTempObj = null;
-        });
-    }
 
     /* Keyboard shortcuts for annotator undo/redo */
     document.addEventListener('keydown', function(e) {
@@ -3381,6 +3841,64 @@ function drawVU(level) {
             ? 'Timeline &#9650;' : 'Timeline &#9660;';
     });
 
+    /* Mobile bottom sheet swipe-to-dismiss */
+    if (window.matchMedia('(max-width: 600px)').matches) {
+        /* New bottom sheets: swipe to close */
+        document.querySelectorAll('.bottom-sheet').forEach(bs => {
+            let bsStartY = 0, bsCurY = 0, bsDragging = false;
+            bs.addEventListener('touchstart', function(e) {
+                if (e.touches[0].clientY < bs.getBoundingClientRect().top + 30) {
+                    bsStartY = e.touches[0].clientY;
+                    bsDragging = true;
+                }
+            }, { passive: true });
+            bs.addEventListener('touchmove', function(e) {
+                if (!bsDragging) return;
+                bsCurY = e.touches[0].clientY;
+                const dy = bsCurY - bsStartY;
+                if (dy > 0) bs.style.transform = 'translateY(' + dy + 'px)';
+            }, { passive: true });
+            bs.addEventListener('touchend', function() {
+                if (!bsDragging) return;
+                bsDragging = false;
+                if (bsCurY - bsStartY > 80) {
+                    bs.classList.remove('open');
+                    /* Deactivate edit bar buttons */
+                    document.querySelectorAll('.edit-bar .tool-btn, #stream-mini-bar button').forEach(b => b.classList.remove('active'));
+                    activeEditTool = null;
+                }
+                bs.style.transform = '';
+            }, { passive: true });
+        });
+
+        document.querySelectorAll('.fx-controls, .annot-controls, #webcam-controls').forEach(sheet => {
+            let startY = 0, curY = 0, dragging = false;
+            sheet.addEventListener('touchstart', function(e) {
+                if (e.target === sheet || e.target.tagName === 'LABEL' || (sheet.scrollTop <= 0 && e.touches[0].clientY > sheet.getBoundingClientRect().top && e.touches[0].clientY < sheet.getBoundingClientRect().top + 30)) {
+                    startY = e.touches[0].clientY;
+                    dragging = true;
+                }
+            }, { passive: true });
+            sheet.addEventListener('touchmove', function(e) {
+                if (!dragging) return;
+                curY = e.touches[0].clientY;
+                const dy = curY - startY;
+                if (dy > 0) {
+                    sheet.style.transform = 'translateY(' + dy + 'px)';
+                }
+            }, { passive: true });
+            sheet.addEventListener('touchend', function() {
+                if (!dragging) return;
+                dragging = false;
+                const dy = curY - startY;
+                if (dy > 80) {
+                    sheet.style.display = 'none';
+                }
+                sheet.style.transform = '';
+            }, { passive: true });
+        });
+    }
+
     /* --- Live Subtitles (Effect 26) --- */
     let recognition = null;
     function initSpeechRecognition() {
@@ -3421,29 +3939,7 @@ function drawVU(level) {
         if (e.key === 'Enter') document.getElementById('sub-manual-send').click();
     });
 
-    /* --- Tools Panel --- */
-    /* Adjustment sliders */
-    document.getElementById('tool-brightness').oninput = function() {
-        this.nextElementSibling.textContent = this.value;
-        Module._editor_set_brightness(parseInt(this.value));
-        if (!playing && videoLoaded) renderFrame();
-    };
-    document.getElementById('tool-contrast').oninput = function() {
-        this.nextElementSibling.textContent = this.value;
-        Module._editor_set_contrast(parseInt(this.value));
-        if (!playing && videoLoaded) renderFrame();
-    };
-    document.getElementById('tool-saturation').oninput = function() {
-        this.nextElementSibling.textContent = this.value;
-        Module._editor_set_saturation(parseInt(this.value));
-        if (!playing && videoLoaded) renderFrame();
-    };
-    document.getElementById('tool-hue').oninput = function() {
-        this.nextElementSibling.textContent = this.value;
-        Module._editor_set_hue(parseInt(this.value));
-        if (!playing && videoLoaded) renderFrame();
-    };
-
+    /* --- Tools Panel (secondary icon buttons in edit strip) --- */
     /* Flip buttons */
     document.getElementById('tool-flip-h').onclick = function() {
         this.classList.toggle('active');
@@ -3456,32 +3952,6 @@ function drawVU(level) {
         if (!playing && videoLoaded) renderFrame();
     };
 
-    /* Reset adjustments */
-    document.getElementById('tool-reset-adj').onclick = function() {
-        document.getElementById('tool-brightness').value = 0;
-        document.getElementById('tool-brightness').nextElementSibling.textContent = '0';
-        document.getElementById('tool-contrast').value = 0;
-        document.getElementById('tool-contrast').nextElementSibling.textContent = '0';
-        document.getElementById('tool-saturation').value = 0;
-        document.getElementById('tool-saturation').nextElementSibling.textContent = '0';
-        document.getElementById('tool-hue').value = 0;
-        document.getElementById('tool-hue').nextElementSibling.textContent = '0';
-        Module._editor_set_brightness(0);
-        Module._editor_set_contrast(0);
-        Module._editor_set_saturation(0);
-        Module._editor_set_hue(0);
-        document.getElementById('tool-flip-h').classList.remove('active');
-        document.getElementById('tool-flip-v').classList.remove('active');
-        if (!playing && videoLoaded) renderFrame();
-    };
-
-    /* Speed */
-    document.getElementById('tool-speed').oninput = function() {
-        const rate = parseInt(this.value) / 100;
-        this.nextElementSibling.textContent = rate.toFixed(1) + 'x';
-        video.playbackRate = rate;
-    };
-
     /* Snapshot */
     function flattenCanvases() {
         const tmp = document.createElement('canvas');
@@ -3490,8 +3960,8 @@ function drawVU(level) {
         ctx.drawImage(document.getElementById('rawbuf'), 0, 0);
         const faceOverlay = document.getElementById('face-overlay');
         if (faceOverlay) ctx.drawImage(faceOverlay, 0, 0);
-        if (fabricCanvas) {
-            ctx.drawImage(fabricCanvas.getElement(), 0, 0);
+        if (annotCanvas) {
+            ctx.drawImage(annotCanvas, 0, 0);
         }
         return tmp;
     }
@@ -3514,9 +3984,28 @@ function drawVU(level) {
         document.getElementById('tool-zoom-level').textContent = '100%';
     };
 
-    /* --- Export --- */
+    /* --- Export (toolbar Share button opens Export tool in edit bar) --- */
     document.getElementById('btn-export').onclick = () => {
+        const exportBtn = document.querySelector('.edit-bar .tool-btn[data-tool="export"]');
+        if (exportBtn) exportBtn.click();
+    };
+
+    function wireExportButtons() {
+        const quickSaveBtn = document.getElementById('share-quick-save');
+        const finalExportBtn = document.getElementById('share-final-export');
+        const devExportBtn = document.getElementById('share-dev-export');
+        if (quickSaveBtn) quickSaveBtn.onclick = quickSaveHandler;
+        if (finalExportBtn) finalExportBtn.onclick = finalExportHandler;
+        if (devExportBtn) devExportBtn.onclick = devExportHandler;
+    }
+
+    function devExportHandler() {
         if (!videoLoaded) return;
+        document.getElementById('export-cmd').textContent = generateFFmpegCmd();
+        document.getElementById('export-modal').classList.add('show');
+    }
+
+    function generateFFmpegCmd() {
         const dur = markOut - markIn;
         const eff = effectNames[currentEffect] || 'none';
         let filter = '';
@@ -3524,11 +4013,107 @@ function drawVU(level) {
         else if (eff === 'edge') filter = ' -vf "edgedetect=mode=colormix"';
         else if (eff === 'pixelate') filter = ' -vf "scale=iw/6:ih/6,scale=iw*6:ih*6:flags=neighbor"';
         else if (eff !== 'none') filter = ' -vf "eq=contrast=1.2"  # apply ' + eff + ' externally';
+        return 'ffmpeg -ss ' + markIn.toFixed(2) + ' -i "' + fileName + '" -t ' + dur.toFixed(2) + filter + ' -c:a copy output.' + fileName.split('.').pop();
+    }
 
-        const cmd = 'ffmpeg -ss ' + markIn.toFixed(2) + ' -i "' + fileName + '" -t ' + dur.toFixed(2) + filter + ' -c:a copy output.' + fileName.split('.').pop();
-        document.getElementById('export-cmd').textContent = cmd;
-        document.getElementById('export-modal').classList.add('show');
-    };
+    /* Quick Save: record canvas stream → download WebM */
+    let quickSaveRecorder = null;
+    function quickSaveHandler() {
+        const btn = document.getElementById('share-quick-save');
+        const statusEl = document.getElementById('share-quick-status');
+        if (quickSaveRecorder && quickSaveRecorder.state === 'recording') {
+            quickSaveRecorder.stop();
+            if (btn) btn.textContent = 'Record & Save WebM';
+            if (statusEl) statusEl.textContent = 'Saving...';
+            return;
+        }
+        const canvasEl = document.getElementById('rawbuf');
+        const fps = parseInt(document.getElementById('share-fps')?.value) || 30;
+        const bitrate = parseInt(document.getElementById('share-quality')?.value) || 5000000;
+        const videoStream = canvasEl.captureStream(fps);
+        let stream = videoStream;
+        if (audioCtx && analyser) {
+            const dest = audioCtx.createMediaStreamDestination();
+            analyser.connect(dest);
+            stream = new MediaStream([...videoStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+        }
+        const chunks = [];
+        quickSaveRecorder = new MediaRecorder(stream, { mimeType: 'video/webm', videoBitsPerSecond: bitrate });
+        quickSaveRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        quickSaveRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'rawcut-quick.webm';
+            a.click();
+            if (statusEl) statusEl.textContent = 'Saved!';
+            setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000);
+        };
+        quickSaveRecorder.start();
+        if (btn) btn.textContent = 'Stop Recording';
+        if (statusEl) statusEl.textContent = 'Recording...';
+    }
+
+    /* Final Export: seek to markIn, play to markOut, record, auto-download */
+    let finalExportRecorder = null;
+    function finalExportHandler() {
+        if (!videoLoaded || webcamActive) return;
+        const btn = document.getElementById('share-final-export');
+        const statusEl = document.getElementById('share-final-status');
+        if (finalExportRecorder && finalExportRecorder.state === 'recording') {
+            finalExportRecorder.stop();
+            if (btn) btn.textContent = 'Export Trimmed Clip';
+            return;
+        }
+        const canvasEl = document.getElementById('rawbuf');
+        const fps = parseInt(document.getElementById('share-fps')?.value) || 30;
+        const bitrate = parseInt(document.getElementById('share-quality')?.value) || 5000000;
+        const videoStream = canvasEl.captureStream(fps);
+        let stream = videoStream;
+        if (audioCtx && analyser) {
+            const dest = audioCtx.createMediaStreamDestination();
+            analyser.connect(dest);
+            stream = new MediaStream([...videoStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+        }
+        const chunks = [];
+        finalExportRecorder = new MediaRecorder(stream, { mimeType: 'video/webm', videoBitsPerSecond: bitrate });
+        finalExportRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        finalExportRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'rawcut-export.webm';
+            a.click();
+            if (statusEl) statusEl.textContent = 'Exported!';
+            if (btn) btn.textContent = 'Export Trimmed Clip';
+            setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000);
+        };
+        video.currentTime = markIn;
+        const savedRate = video.playbackRate;
+        video.playbackRate = 1;
+        const startExport = () => {
+            video.removeEventListener('seeked', startExport);
+            finalExportRecorder.start();
+            playing = true;
+            video.play();
+            document.getElementById('btn-play').innerHTML = '&#9646;&#9646;';
+            if (statusEl) statusEl.textContent = 'Exporting...';
+            if (btn) btn.textContent = 'Stop Export';
+        };
+        const checkEnd = () => {
+            if (video.currentTime >= markOut && finalExportRecorder && finalExportRecorder.state === 'recording') {
+                finalExportRecorder.stop();
+                video.pause();
+                playing = false;
+                video.playbackRate = savedRate;
+                document.getElementById('btn-play').innerHTML = '&#9654;';
+                video.removeEventListener('timeupdate', checkEnd);
+            }
+        };
+        video.addEventListener('seeked', startExport, { once: true });
+        video.addEventListener('timeupdate', checkEnd);
+        video.currentTime = markIn;
+    }
 
     /* --- Render Loop --- */
     let lastTime = performance.now();
@@ -3619,6 +4204,26 @@ function drawVU(level) {
 
         /* Present to visible canvas */
         Module._editor_present();
+
+        /* Transitions overlay */
+        if (transitionState.fadeIn || transitionState.fadeOut || transitionState.flash) {
+            const ctx2d = canvas.getContext('2d');
+            if (transitionState.fadeIn && video.currentTime < markIn + transitionState.duration) {
+                const progress = (video.currentTime - markIn) / transitionState.duration;
+                const alpha = 1.0 - Math.min(1, Math.max(0, progress));
+                if (alpha > 0) { ctx2d.fillStyle = 'rgba(0,0,0,' + alpha + ')'; ctx2d.fillRect(0, 0, W, H); }
+            }
+            if (transitionState.fadeOut && video.currentTime > markOut - transitionState.duration) {
+                const progress = (video.currentTime - (markOut - transitionState.duration)) / transitionState.duration;
+                const alpha = Math.min(1, Math.max(0, progress));
+                if (alpha > 0) { ctx2d.fillStyle = 'rgba(0,0,0,' + alpha + ')'; ctx2d.fillRect(0, 0, W, H); }
+            }
+            if (transitionState.flash && video.currentTime >= markIn && video.currentTime < markIn + 0.15) {
+                const progress = (video.currentTime - markIn) / 0.15;
+                const alpha = 1.0 - Math.min(1, progress);
+                if (alpha > 0) { ctx2d.fillStyle = 'rgba(255,255,255,' + alpha + ')'; ctx2d.fillRect(0, 0, W, H); }
+            }
+        }
 
         /* Render face overlay */
         if (currentEffect === 18 && lastFaceLandmarks) {
@@ -3712,12 +4317,11 @@ function drawVU(level) {
         else if (e.key === 'o' || e.key === ']') document.getElementById('btn-mark-out').click();
         else if (e.key === 's' || e.key === 'S') takeSnapshot();
         else if (e.key >= '1' && e.key <= '9') {
-            /* Select Nth effect within active tab */
-            const idx = parseInt(e.key) - 1;
-            const activeGroup = document.querySelector('.effects-group.active');
-            if (activeGroup) {
-                const buttons = activeGroup.querySelectorAll('button[data-fx]');
-                if (idx < buttons.length) buttons[idx].click();
+            /* Select Nth visible effect in stream tab */
+            if (currentTab === 'stream') {
+                const idx = parseInt(e.key) - 1;
+                const visible = Array.from(document.querySelectorAll('#stream-effects button[data-fx]')).filter(b => b.style.display !== 'none');
+                if (idx < visible.length) visible[idx].click();
             }
         }
     });
