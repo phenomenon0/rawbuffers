@@ -71,6 +71,7 @@ body {
   color: var(--v-fg-0);
   background: var(--v-bg-0);
   -webkit-font-smoothing: antialiased;
+  position: relative;
 }
 button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 select, input { font-family: inherit; color: var(--v-fg-0); background: var(--v-bg-2); border: 1px solid var(--v-border); border-radius: var(--v-radius-md); height: 36px; padding: 0 12px; font-size: 13px; outline: none; }
@@ -88,6 +89,29 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
 }
 #topbar h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.5px; }
 #topbar h1 span { color: var(--v-accent); font-weight: 700; }
+.brand-lockup { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.brand-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+#topbar-sub {
+  font-size: 11px; color: var(--v-fg-2); letter-spacing: 0.02em;
+}
+#topbar-actions {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.top-pill, .stage-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 28px; padding: 0 11px;
+  border-radius: var(--v-radius-full);
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.03);
+  font-size: 11px; font-weight: 600; color: var(--v-fg-1);
+  backdrop-filter: blur(16px) saturate(150%);
+}
+.top-pill strong, .stage-chip strong { color: var(--v-fg-0); font-weight: 600; }
+.top-pill-accent {
+  color: var(--v-accent);
+  border-color: rgba(232,97,77,0.18);
+  background: rgba(232,97,77,0.1);
+}
 .icon-btn {
   width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
   border-radius: var(--v-radius-md); transition: background 0.15s var(--v-ease);
@@ -105,6 +129,7 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
   display: flex; flex-direction: column;
   background: #000;
   overflow: hidden;
+  position: relative;
 }
 #source-panel > section { padding: 0; flex-shrink: 0; }
 #source-panel > section:first-child { padding: 8px 12px; background: var(--v-bg-0); }
@@ -134,16 +159,92 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
   position: relative; flex: 1; min-height: 0;
   background: #000; overflow: hidden;
 }
+#preview-container::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(232,97,77,0.12), transparent 28%),
+    radial-gradient(circle at 80% 0%, rgba(96,165,250,0.08), transparent 26%),
+    linear-gradient(180deg, rgba(255,255,255,0.03), transparent 22%, transparent 78%, rgba(255,255,255,0.02));
+  opacity: 0.9;
+  pointer-events: none;
+  transition: opacity 280ms var(--v-ease);
+}
+#preview-container::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.35), transparent 28%, transparent 72%, rgba(0,0,0,0.45));
+  pointer-events: none;
+}
+#preview-container.has-feed::before { opacity: 0.18; }
 #preview-canvas {
   width: 100%; height: 100%; object-fit: contain;
   display: block; background: #000;
 }
+#stage-hud {
+  position: absolute; top: 14px; left: 14px; right: 14px; z-index: 4;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  pointer-events: none;
+}
+#stage-hud-left, #stage-hud-right {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.stage-chip-accent {
+  color: var(--v-accent);
+  border-color: rgba(232,97,77,0.18);
+  background: rgba(232,97,77,0.12);
+}
+#stage-active-strip {
+  position: absolute; left: 14px; bottom: 18px; z-index: 4;
+  display: flex; flex-wrap: wrap; gap: 8px;
+  max-width: min(70%, 620px);
+  pointer-events: none;
+}
+.active-fx-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 30px; padding: 0 11px;
+  border-radius: var(--v-radius-full);
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(10,10,11,0.66);
+  color: var(--v-fg-0); font-size: 11px; font-weight: 600;
+  backdrop-filter: blur(16px) saturate(150%);
+}
+body.mobile-ui #stage-active-strip { max-width: calc(100% - 28px); bottom: 142px; }
 #preview-placeholder {
   position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 12px;
-  color: var(--v-fg-2); font-size: 13px;
+  color: var(--v-fg-2); font-size: 13px; z-index: 3;
+  padding: 24px;
 }
 #preview-placeholder svg { width: 56px; height: 56px; stroke: var(--v-fg-2); stroke-width: 0.8; fill: none; opacity: 0.3; }
+#preview-placeholder-card {
+  width: min(520px, 100%);
+  padding: 24px 24px 20px;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(10,10,11,0.72);
+  box-shadow: var(--v-shadow-lg);
+  backdrop-filter: blur(18px) saturate(140%);
+  text-align: center;
+}
+.placeholder-label {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 0 12px; height: 28px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  color: var(--v-fg-1); font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.placeholder-title {
+  margin-top: 14px;
+  font-size: 30px; line-height: 1.05; font-weight: 700; letter-spacing: -0.04em;
+  color: var(--v-fg-0);
+}
+.placeholder-sub {
+  margin-top: 10px;
+  font-size: 14px; line-height: 1.5; color: var(--v-fg-1);
+}
+#btn-source-cta { margin-top: 18px; min-width: 170px; justify-content: center; }
 
 /* Device pickers — compact inline strip */
 #device-section {
@@ -159,10 +260,82 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
 
 /* ─── EFFECTS PANEL (right sidebar — compact) ─── */
 #effects-panel {
-  width: 260px; flex-shrink: 0;
+  width: 320px; flex-shrink: 0;
   display: flex; flex-direction: column;
   background: var(--v-bg-0); border-left: 1px solid rgba(255,255,255,0.04);
   overflow: hidden;
+}
+#effects-panel-header {
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)),
+    linear-gradient(135deg, rgba(232,97,77,0.06), transparent 56%);
+}
+.panel-eyebrow {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--v-fg-2); margin-bottom: 8px;
+}
+.panel-heading-row {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+#effects-panel-title {
+  font-size: 20px; line-height: 1.05; letter-spacing: -0.04em;
+}
+#effects-panel-meta {
+  margin-top: 6px;
+  font-size: 12px; line-height: 1.4; color: var(--v-fg-1);
+}
+#btn-sheet-toggle {
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  flex-shrink: 0;
+}
+#mobile-sheet-tabs {
+  display: none; gap: 6px; margin-top: 12px;
+}
+.sheet-tab {
+  flex: 1; height: 34px; border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.05);
+  color: var(--v-fg-2); font-size: 11px; font-weight: 600;
+  transition: all 180ms var(--v-ease);
+}
+.sheet-tab.active {
+  background: rgba(232,97,77,0.14);
+  border-color: rgba(232,97,77,0.18);
+  color: var(--v-accent);
+}
+#mobile-rig-panel {
+  display: none; flex-direction: column; gap: 10px;
+  padding: 10px 12px 14px;
+}
+.rig-card {
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+}
+.rig-card h3 {
+  font-size: 12px; font-weight: 600; color: var(--v-fg-0);
+  margin-bottom: 10px;
+}
+.rig-card p {
+  font-size: 12px; line-height: 1.45; color: var(--v-fg-1);
+}
+.rig-grid {
+  display: grid; gap: 8px;
+}
+.rig-grid select, .rig-grid button {
+  width: 100%; height: 40px; border-radius: 12px; font-size: 12px;
+}
+.rig-hint {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--v-fg-1);
+}
+.rig-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--v-accent); box-shadow: 0 0 12px var(--v-rec-glow);
 }
 
 /* Effects list — scrollable with inline params */
@@ -249,10 +422,18 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
 
 /* ─── ACTION BAR (bottom) ─── */
 #action-bar {
-  display: flex; align-items: center; justify-content: center; gap: var(--v-space-4);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--v-space-4);
   padding: 10px var(--v-space-4);
   background: var(--v-bg-0); border-top: 1px solid rgba(255,255,255,0.04);
   flex-shrink: 0;
+  transition: opacity 220ms var(--v-ease), transform 220ms var(--v-ease);
+}
+.action-cluster { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.action-meta { display: flex; flex-direction: column; gap: 2px; min-width: 112px; }
+#action-hint { font-size: 10px; color: var(--v-fg-1); opacity: 0.78; }
+#action-caption { font-size: 10px; color: var(--v-fg-2); }
+#action-bar.is-recording {
+  opacity: 0; pointer-events: none; transform: translateY(14px);
 }
 #btn-record {
   height: 40px; padding: 0 28px; border-radius: var(--v-radius-full);
@@ -340,6 +521,154 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
 .btn-ghost { color: var(--v-fg-2); }
 .btn-ghost:hover { color: var(--v-fg-0); }
 
+/* ─── DESKTOP STANCE ─── */
+body.desktop-ui #app {
+  background:
+    radial-gradient(circle at top left, rgba(232,97,77,0.08), transparent 26%),
+    linear-gradient(180deg, #0a0a0b, #0d0d10 30%, #0a0a0b 100%);
+}
+body.desktop-ui #main {
+  gap: 12px;
+  padding: 12px 12px 0;
+}
+body.desktop-ui #source-panel,
+body.desktop-ui #effects-panel,
+body.desktop-ui #action-bar {
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: var(--v-shadow-md);
+}
+body.desktop-ui #source-panel,
+body.desktop-ui #effects-panel {
+  border-radius: 22px;
+  background: var(--v-bg-1);
+}
+body.desktop-ui #source-panel > section:first-child,
+body.desktop-ui #device-section,
+body.desktop-ui #effects-panel,
+body.desktop-ui #action-bar,
+body.desktop-ui #topbar {
+  background: rgba(12,12,14,0.92);
+}
+body.desktop-ui #action-bar {
+  margin: 0 12px 12px;
+  border-radius: 20px;
+  background: rgba(12,12,14,0.88);
+  backdrop-filter: blur(16px) saturate(150%);
+}
+body.desktop-ui #effects-panel.panel-wide { width: 380px; }
+body.desktop-ui #btn-record { min-width: 116px; }
+body.desktop-ui #topbar {
+  padding: 10px 12px 0;
+  height: auto;
+  border-bottom: none;
+}
+body.desktop-ui #topbar > * {
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(12,12,14,0.88);
+  border-radius: 18px;
+}
+body.desktop-ui #topbar .brand-lockup {
+  padding: 12px 14px;
+}
+body.desktop-ui #topbar #topbar-actions {
+  padding: 8px;
+}
+
+/* ─── MOBILE STANCE ─── */
+body.mobile-ui {
+  --mobile-safe-bottom: calc(env(safe-area-inset-bottom) + 12px);
+}
+body.mobile-ui #app {
+  height: 100dvh;
+}
+body.mobile-ui #topbar {
+  height: auto;
+  padding: 10px 12px 0;
+  background: transparent;
+  border-bottom: none;
+}
+body.mobile-ui #topbar-sub,
+body.mobile-ui #topbar-status {
+  display: none;
+}
+body.mobile-ui .brand-line { gap: 6px; }
+body.mobile-ui #topbar > * {
+  background: rgba(12,12,14,0.82);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 18px;
+  backdrop-filter: blur(18px) saturate(145%);
+}
+body.mobile-ui #topbar .brand-lockup {
+  padding: 10px 12px;
+}
+body.mobile-ui #topbar #topbar-actions {
+  padding: 8px;
+}
+body.mobile-ui #main {
+  padding-top: 8px;
+}
+body.mobile-ui #source-panel {
+  padding-bottom: 112px;
+  background: transparent;
+}
+body.mobile-ui #source-panel > section:first-child {
+  background: transparent;
+}
+body.mobile-ui #device-section {
+  display: none;
+}
+body.mobile-ui #action-bar {
+  position: fixed;
+  left: 12px; right: 12px;
+  bottom: var(--mobile-safe-bottom);
+  z-index: 12;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 22px;
+  background: rgba(12,12,14,0.9);
+  backdrop-filter: blur(18px) saturate(150%);
+}
+body.mobile-ui #action-caption { display: none; }
+body.mobile-ui #action-hint { opacity: 0.58; }
+body.mobile-ui #action-status-pill { padding: 0 10px; min-height: 26px; font-size: 10px; }
+body.mobile-ui #effects-panel {
+  position: fixed;
+  left: 8px; right: 8px;
+  bottom: calc(var(--mobile-safe-bottom) + 88px);
+  z-index: 10;
+  width: auto;
+  max-height: min(34vh, 300px);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 24px 24px 18px 18px;
+  background: rgba(12,12,14,0.92);
+  box-shadow: var(--v-shadow-lg);
+  backdrop-filter: blur(22px) saturate(150%);
+  transition: max-height 260ms var(--v-ease), transform 260ms var(--v-ease);
+}
+body.mobile-ui.sheet-open #effects-panel {
+  max-height: min(72vh, 620px);
+}
+body.mobile-ui #mobile-sheet-tabs { display: flex; }
+body.mobile-ui #effects-panel::before {
+  content: '';
+  display: block;
+  width: 38px; height: 4px; margin: 10px auto 0;
+  border-radius: 999px; background: rgba(255,255,255,0.16);
+}
+body.mobile-ui[data-mobile-tab="rig"] #preset-bar,
+body.mobile-ui[data-mobile-tab="rig"] #effects-list {
+  display: none;
+}
+body.mobile-ui[data-mobile-tab="rig"] #mobile-rig-panel {
+  display: flex;
+}
+body.mobile-ui[data-mobile-tab="looks"] #mobile-rig-panel {
+  display: none;
+}
+body.mobile-ui.is-recording #device-section {
+  opacity: 0; pointer-events: none;
+}
+
 /* ─── RESPONSIVE (mobile) ─── */
 @media (max-width: 768px) {
   /* Stack vertical: camera fills top, effects slide up from bottom */
@@ -359,8 +688,8 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
   .mode-pill svg { width: 12px; height: 12px; }
 
   /* Device strip: even more compact */
-  #device-section { padding: 4px 8px !important; gap: 4px; }
-  #device-section select, #device-section button { height: 24px; font-size: 9px; }
+  #device-section { padding: 8px 10px !important; gap: 6px; }
+  #device-section select, #device-section button { height: 34px; font-size: 11px; }
 
   /* Effects panel: bottom sheet */
   #effects-panel {
@@ -386,11 +715,11 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
 
   /* Preset bar compact */
   #preset-bar { padding: 4px 8px !important; }
-  #preset-bar select { font-size: 10px; height: 24px; }
+  #preset-bar select { font-size: 11px; height: 34px; }
 
   /* Action bar: tighter */
-  #action-bar { padding: 6px 8px; }
-  #btn-record { height: 36px; padding: 0 22px; font-size: 12px; }
+  #action-bar { padding: 10px 12px; }
+  #btn-record { height: 44px; padding: 0 24px; font-size: 13px; }
 
   /* Floating bar: closer to bottom, wider */
   #floating-bar { bottom: 56px; padding: 6px 14px; height: 42px; }
@@ -401,6 +730,8 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
   #preview-video { max-width: 95vw; max-height: 50vh; }
   #preview-actions { gap: var(--v-space-2); }
   .btn { padding: 8px 16px; font-size: 13px; }
+  .placeholder-title { font-size: 24px; }
+  #preview-placeholder-card { padding: 20px 18px 18px; }
 }
 
 /* Extra small (phones < 400px) */
@@ -409,7 +740,9 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
   .mode-pill { padding: 3px 8px; font-size: 9px; }
   .fx-header { padding: 6px 8px; font-size: 10px; gap: 8px; }
   .fx-param { gap: 5px; }
-  #btn-record { height: 34px; padding: 0 18px; font-size: 11px; }
+  #btn-record { height: 42px; padding: 0 18px; font-size: 12px; }
+  #preview-placeholder-card { padding: 18px 16px 16px; }
+  .placeholder-title { font-size: 20px; }
 }
 
 /* ─── SKELETON SHIMMER ─── */
@@ -435,10 +768,19 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
 
   <!-- ─── TOP BAR ─── -->
   <header id="topbar">
-    <h1><span>V</span>izvim</h1>
-    <button class="icon-btn" id="btn-settings" title="Settings">
-      <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-    </button>
+    <div class="brand-lockup">
+      <div class="brand-line">
+        <h1><span>V</span>izvim</h1>
+        <span class="top-pill top-pill-accent" id="stance-pill">Studio</span>
+      </div>
+      <p id="topbar-sub">Live capture studio with effect-first control.</p>
+    </div>
+    <div id="topbar-actions">
+      <span class="top-pill" id="topbar-status">Awaiting source</span>
+      <button class="icon-btn" id="btn-settings" title="Settings">
+        <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
   </header>
 
   <!-- ─── MAIN ─── -->
@@ -469,10 +811,24 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
 
       <section>
         <div id="preview-container">
+          <div id="stage-hud">
+            <div id="stage-hud-left">
+              <span class="stage-chip stage-chip-accent" id="stage-mode-chip">Camera</span>
+              <span class="stage-chip" id="stage-fx-chip">0 FX live</span>
+            </div>
+            <div id="stage-hud-right">
+              <span class="stage-chip" id="stage-preset-chip">0 presets</span>
+            </div>
+          </div>
+          <div id="stage-active-strip"></div>
           <canvas id="preview-canvas"></canvas>
           <div id="preview-placeholder">
-            <svg viewBox="0 0 24 24"><path d="M15 2H9a1 1 0 0 0-1 1v2H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4V3a1 1 0 0 0-1-1z" stroke="currentColor" stroke-width="1" fill="none"/></svg>
-            Click to enable camera
+            <div id="preview-placeholder-card">
+              <span class="placeholder-label" id="placeholder-label">Camera standby</span>
+              <div class="placeholder-title" id="placeholder-title">Shape the look live before you roll.</div>
+              <div class="placeholder-sub" id="placeholder-sub">Vizvim treats the preview as the stage. Stack effects, tune the chain, then capture exactly what you see.</div>
+              <button class="btn btn-primary" id="btn-source-cta" type="button">Enable Camera</button>
+            </div>
           </div>
         </div>
       </section>
@@ -480,7 +836,7 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
       <section id="device-section">
         <select id="camera-select" title="Camera"><option>Camera</option></select>
         <select id="mic-select" title="Microphone"><option>Mic</option></select>
-        <button class="btn btn-secondary" id="btn-sys-audio" onclick="toggleSystemAudio()" title="System Audio" style="font-size:10px;padding:0 8px;height:26px;border-radius:9999px;white-space:nowrap" id="sys-audio-row">
+        <button class="btn btn-secondary" id="btn-sys-audio" onclick="toggleSystemAudio()" title="System Audio" style="font-size:10px;padding:0 8px;height:26px;border-radius:9999px;white-space:nowrap">
           System
         </button>
       </section>
@@ -488,9 +844,40 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
 
     <!-- EFFECTS PANEL -->
     <div id="effects-panel">
+      <div id="effects-panel-header">
+        <div class="panel-eyebrow">Signal Chain</div>
+        <div class="panel-heading-row">
+          <div>
+            <h2 id="effects-panel-title">Looks</h2>
+            <p id="effects-panel-meta">No effects active yet.</p>
+          </div>
+          <button class="icon-btn" id="btn-sheet-toggle" title="Toggle effect panel">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M7 12h10"/><path d="M10 17h4"/></svg>
+          </button>
+        </div>
+        <div id="mobile-sheet-tabs">
+          <button class="sheet-tab active" data-mobile-tab="looks" type="button">Looks</button>
+          <button class="sheet-tab" data-mobile-tab="rig" type="button">Rig</button>
+        </div>
+      </div>
 
       <!-- Preset bar -->
       <div id="preset-bar" style="display:flex;align-items:center;gap:4px;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.04)"></div>
+
+      <div id="mobile-rig-panel">
+        <div class="rig-card">
+          <h3>Input rig</h3>
+          <div class="rig-grid">
+            <select id="camera-select-mobile" title="Camera"><option>Camera</option></select>
+            <select id="mic-select-mobile" title="Microphone"><option>Mic</option></select>
+            <button class="btn btn-secondary" id="btn-sys-audio-mobile" type="button" onclick="toggleSystemAudio()">System Audio</button>
+          </div>
+        </div>
+        <div class="rig-card rig-hint">
+          <span class="rig-dot"></span>
+          <p id="mobile-rig-hint">Mobile rig favors touch-first capture: keep the stage clear, open the sheet only when you want to tune.</p>
+        </div>
+      </div>
 
       <!-- Effects list (scrollable, with inline params) -->
       <div id="effects-list"></div>
@@ -501,14 +888,22 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
 
   <!-- ACTION BAR -->
   <div id="action-bar">
-    <button class="icon-btn" onclick="previewCanvas.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='vizvim-snap-'+Date.now()+'.png';a.click();URL.revokeObjectURL(a.href);previewCanvas.style.opacity='0.7';setTimeout(()=>previewCanvas.style.opacity='1',100)})" title="Snapshot (S)" style="margin-right:8px">
-      <svg viewBox="0 0 24 24"><path d="M15 2H9a1 1 0 0 0-1 1v2H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4V3a1 1 0 0 0-1-1z"/><circle cx="12" cy="12" r="3"/></svg>
-    </button>
+    <div class="action-cluster">
+      <button class="icon-btn" id="btn-snapshot" onclick="previewCanvas.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='vizvim-snap-'+Date.now()+'.png';a.click();URL.revokeObjectURL(a.href);previewCanvas.style.opacity='0.7';setTimeout(()=>previewCanvas.style.opacity='1',100)})" title="Snapshot (S)">
+        <svg viewBox="0 0 24 24"><path d="M15 2H9a1 1 0 0 0-1 1v2H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4V3a1 1 0 0 0-1-1z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <div class="action-meta">
+        <span id="action-hint">Space to record</span>
+        <span id="action-caption">Live to canvas</span>
+      </div>
+    </div>
     <button id="btn-record" onclick="startRecording()">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
       REC
     </button>
-    <span style="font-size:10px;color:var(--v-fg-2);margin-left:12px;opacity:0.5">Space to record</span>
+    <div class="action-cluster" style="justify-content:flex-end">
+      <span class="top-pill" id="action-status-pill">Preview live</span>
+    </div>
   </div>
 
 </div>
@@ -606,8 +1001,14 @@ let isRecording = false;
 let previewBlob = null;
 let systemAudioStream = null;
 let systemAudioSource = null;
+let isMobileUI = false;
+let mobileSheetExpanded = false;
+let mobileSheetTab = 'looks';
+let previewState = 'idle';
+let previewStateDetail = '';
 
 // Canvas refs
+const previewContainer = document.getElementById('preview-container');
 const previewCanvas = document.getElementById('preview-canvas');
 const previewCtx = previewCanvas.getContext('2d', { willReadFrequently: true });
 // Recording uses the preview canvas directly — no separate recording canvas needed
@@ -616,6 +1017,182 @@ const previewCtx = previewCanvas.getContext('2d', { willReadFrequently: true });
 const camVideo = document.createElement('video');
 camVideo.setAttribute('playsinline', '');
 camVideo.muted = true;
+
+const MODE_LABELS = {
+  camera: 'Camera',
+  screen: 'Screen',
+  'screen-cam': 'Screen+Cam',
+  audio: 'Audio'
+};
+
+function getModeLabel(mode) {
+  return MODE_LABELS[mode] || 'Camera';
+}
+
+function getPreviewButtonLabel() {
+  if (currentMode === 'screen') return 'Share Screen';
+  if (currentMode === 'screen-cam') return 'Share Screen + Cam';
+  if (currentMode === 'audio') return 'Enable Mic';
+  return 'Enable Camera';
+}
+
+function setPreviewState(state, detail = '') {
+  previewState = state;
+  previewStateDetail = detail;
+  const placeholder = document.getElementById('preview-placeholder');
+  const label = document.getElementById('placeholder-label');
+  const title = document.getElementById('placeholder-title');
+  const sub = document.getElementById('placeholder-sub');
+  const cta = document.getElementById('btn-source-cta');
+
+  previewContainer.classList.toggle('has-feed', state === 'live');
+
+  if (state === 'live') {
+    placeholder.style.display = 'none';
+    renderSurfaceStatus();
+    return;
+  }
+
+  placeholder.style.display = 'flex';
+  cta.style.display = '';
+  cta.textContent = getPreviewButtonLabel();
+
+  if (state === 'error') {
+    label.textContent = 'Source blocked';
+    title.textContent = detail || `${getModeLabel(currentMode)} access failed.`;
+    sub.textContent = 'Retry the source or switch modes. The stage stays intact while you re-arm capture.';
+  } else if (state === 'screen-idle') {
+    label.textContent = 'Screen capture';
+    title.textContent = 'Share a window or screen when you are ready.';
+    sub.textContent = 'Desktop mode stays editor-first. Mobile mode keeps the capture stage dominant and hides tuning in the sheet.';
+  } else {
+    label.textContent = `${getModeLabel(currentMode)} standby`;
+    title.textContent = 'Shape the look live before you roll.';
+    sub.textContent = 'Vizvim treats the preview as the stage. Stack effects, tune the chain, then capture exactly what you see.';
+  }
+
+  renderSurfaceStatus();
+}
+
+function renderStageActiveStrip() {
+  const strip = document.getElementById('stage-active-strip');
+  if (!strip) return;
+  strip.innerHTML = '';
+  activeEffects.slice(0, 4).forEach((fx, idx) => {
+    const fxDef = EFFECTS.find(f => f.id === fx.id);
+    if (!fxDef) return;
+    const chip = document.createElement('span');
+    chip.className = 'active-fx-chip';
+    chip.textContent = `${idx + 1}. ${fxDef.name}`;
+    strip.appendChild(chip);
+  });
+}
+
+function renderSystemAudioButtons() {
+  const buttons = [
+    document.getElementById('btn-sys-audio'),
+    document.getElementById('btn-sys-audio-mobile'),
+  ].filter(Boolean);
+
+  buttons.forEach((btn, idx) => {
+    const isEnabled = !!systemAudioStream;
+    btn.textContent = isEnabled ? (idx === 0 ? 'System ON' : 'Desktop Audio On') : (idx === 0 ? 'System' : 'Capture Desktop Audio');
+    btn.classList.toggle('btn-primary', isEnabled);
+    btn.classList.toggle('btn-secondary', !isEnabled);
+  });
+}
+
+function syncMobileDeviceControls() {
+  const cameraDesktop = document.getElementById('camera-select');
+  const micDesktop = document.getElementById('mic-select');
+  const cameraMobile = document.getElementById('camera-select-mobile');
+  const micMobile = document.getElementById('mic-select-mobile');
+
+  if (!cameraMobile || !micMobile) return;
+
+  cameraMobile.innerHTML = cameraDesktop.innerHTML;
+  micMobile.innerHTML = micDesktop.innerHTML;
+  if (cameraDesktop.value) cameraMobile.value = cameraDesktop.value;
+  if (micDesktop.value) micMobile.value = micDesktop.value;
+
+  renderSystemAudioButtons();
+}
+
+function renderSurfaceStatus() {
+  const activeCount = activeEffects.length;
+  const presetCount = getPresets().length;
+  const live = previewState === 'live';
+  const stanceText = isMobileUI ? 'Mobile Rig' : 'Studio';
+  const statusText = live ? `${getModeLabel(currentMode)} live` : `Awaiting ${getModeLabel(currentMode).toLowerCase()}`;
+
+  document.body.dataset.mobileTab = mobileSheetTab;
+  document.body.classList.toggle('sheet-open', isMobileUI && mobileSheetExpanded);
+
+  const stancePill = document.getElementById('stance-pill');
+  const topbarStatus = document.getElementById('topbar-status');
+  const stageMode = document.getElementById('stage-mode-chip');
+  const stageFx = document.getElementById('stage-fx-chip');
+  const stagePreset = document.getElementById('stage-preset-chip');
+  const panelMeta = document.getElementById('effects-panel-meta');
+  const actionHint = document.getElementById('action-hint');
+  const actionStatus = document.getElementById('action-status-pill');
+  const rigHint = document.getElementById('mobile-rig-hint');
+
+  if (stancePill) stancePill.textContent = stanceText;
+  if (topbarStatus) topbarStatus.textContent = statusText;
+  if (stageMode) stageMode.textContent = getModeLabel(currentMode);
+  if (stageFx) stageFx.textContent = `${activeCount} FX ${activeCount ? 'live' : 'ready'}`;
+  if (stagePreset) stagePreset.textContent = `${presetCount} preset${presetCount === 1 ? '' : 's'}`;
+  if (panelMeta) panelMeta.textContent = activeCount
+    ? `${activeCount} active in chain. Reorder live and save the look when it lands.`
+    : 'Start with a base look, then layer adjustments and texture.';
+  if (actionHint) actionHint.textContent = isMobileUI ? 'Tap to record' : 'Space to record';
+  if (actionStatus) actionStatus.textContent = live ? 'Preview live' : 'Stage armed';
+  if (rigHint) rigHint.textContent = isMobileUI
+    ? 'Mobile rig favors touch-first capture: keep the stage clear, open the sheet only when you want to tune.'
+    : 'Use the sheet for source changes and the stage for framing.';
+
+  document.querySelectorAll('[data-mobile-tab]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mobileTab === mobileSheetTab);
+  });
+
+  renderStageActiveStrip();
+  renderSystemAudioButtons();
+}
+
+function setMobileSheetExpanded(next) {
+  mobileSheetExpanded = !!next && isMobileUI;
+  renderSurfaceStatus();
+}
+
+function setMobileTab(tab) {
+  mobileSheetTab = tab === 'rig' ? 'rig' : 'looks';
+  if (isMobileUI) setMobileSheetExpanded(true);
+  renderSurfaceStatus();
+}
+
+function isLikelyMobileUI() {
+  const uaMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const coarse = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1;
+  const narrow = window.matchMedia('(max-width: 860px)').matches;
+  return narrow && (uaMobile || coarse);
+}
+
+function applyInterfaceStance() {
+  isMobileUI = isLikelyMobileUI();
+  document.body.classList.toggle('mobile-ui', isMobileUI);
+  document.body.classList.toggle('desktop-ui', !isMobileUI);
+  if (!isMobileUI) {
+    mobileSheetExpanded = false;
+    mobileSheetTab = 'looks';
+  }
+  renderSurfaceStatus();
+}
+
+function startSelectedSource() {
+  if (currentMode === 'screen' || currentMode === 'screen-cam') startScreenCapture();
+  else startCamera(document.getElementById('camera-select').value);
+}
 
 /* ─── WASM INIT ─── */
 async function initWasm() {
@@ -665,7 +1242,7 @@ async function startCamera(deviceId) {
       camVideo.addEventListener('loadedmetadata', resolve, { once: true });
     });
     await camVideo.play();
-    document.getElementById('preview-placeholder').style.display = 'none';
+    setPreviewState('live');
 
     // Setup audio
     if (!audioCtx) {
@@ -695,11 +1272,10 @@ async function startCamera(deviceId) {
 
     // Start preview loop
     startPreviewLoop();
+    renderSurfaceStatus();
   } catch (e) {
     console.error('Camera error:', e);
-    document.getElementById('preview-placeholder').textContent = 'Camera access denied — click to retry';
-    document.getElementById('preview-placeholder').style.cursor = 'pointer';
-    document.getElementById('preview-placeholder').onclick = () => startCamera();
+    setPreviewState('error', 'Camera access denied.');
   }
 }
 
@@ -721,19 +1297,18 @@ async function enumerateDevices() {
     opt.textContent = d.label || `Mic ${i + 1}`;
     micSelect.appendChild(opt);
   });
+  syncMobileDeviceControls();
+  renderSurfaceStatus();
 }
 
 /* ─── SYSTEM AUDIO ─── */
 async function toggleSystemAudio() {
-  const btn = document.getElementById('btn-sys-audio');
   if (systemAudioStream) {
     // Stop system audio
     systemAudioStream.getTracks().forEach(t => t.stop());
     if (systemAudioSource) { systemAudioSource.disconnect(); systemAudioSource = null; }
     systemAudioStream = null;
-    btn.textContent = 'Capture Desktop Audio';
-    btn.classList.remove('btn-primary');
-    btn.classList.add('btn-secondary');
+    renderSystemAudioButtons();
     console.log('[vizvim] System audio stopped');
     return;
   }
@@ -746,6 +1321,7 @@ async function toggleSystemAudio() {
     if (audioTracks.length === 0) {
       alert('No system audio captured. Make sure to check "Share audio" in the dialog.');
       systemAudioStream = null;
+      renderSystemAudioButtons();
       return;
     }
     // Create audio source and connect to our recording destination
@@ -758,17 +1334,13 @@ async function toggleSystemAudio() {
     systemAudioSource = audioCtx.createMediaStreamSource(new MediaStream(audioTracks));
     systemAudioSource.connect(analyser);
     systemAudioSource.connect(recordingDest);
-    btn.textContent = 'System Audio ON';
-    btn.classList.remove('btn-secondary');
-    btn.classList.add('btn-primary');
+    renderSystemAudioButtons();
     console.log('[vizvim] System audio connected');
     // Auto-stop if the user stops sharing
     audioTracks[0].onended = () => {
       systemAudioStream = null;
       if (systemAudioSource) { systemAudioSource.disconnect(); systemAudioSource = null; }
-      btn.textContent = 'Capture Desktop Audio';
-      btn.classList.remove('btn-primary');
-      btn.classList.add('btn-secondary');
+      renderSystemAudioButtons();
     };
   } catch (e) {
     console.warn('[vizvim] System audio cancelled:', e.message);
@@ -916,9 +1488,12 @@ function beginRecording() {
 
   // Show floating bar over the preview
   document.getElementById('floating-bar').style.display = 'flex';
+  document.body.classList.add('is-recording');
+  document.getElementById('action-bar').classList.add('is-recording');
   // Update record button to show "stop" state
   document.getElementById('btn-record').innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="#fff"/></svg> STOP';
   document.getElementById('btn-record').onclick = stopRecording;
+  if (isMobileUI) setMobileSheetExpanded(false);
 
   // Timer
   recordingStartTime = Date.now();
@@ -955,9 +1530,12 @@ function stopRecording() {
 
   // Hide floating bar, restore record button
   document.getElementById('floating-bar').style.display = 'none';
+  document.body.classList.remove('is-recording');
+  document.getElementById('action-bar').classList.remove('is-recording');
   document.getElementById('btn-record').innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg> REC';
   document.getElementById('btn-record').onclick = startRecording;
   document.getElementById('rec-timer').textContent = '00:00';
+  renderSurfaceStatus();
 }
 
 function onRecordingComplete() {
@@ -1107,6 +1685,7 @@ function renderEffectsList() {
 
     list.appendChild(item);
   });
+  renderSurfaceStatus();
 }
 
 function enableEffect(id) {
@@ -1118,6 +1697,10 @@ function enableEffect(id) {
   fx.params.forEach(p => { params[p.key] = p.def !== undefined ? p.def : 0; });
   activeEffects.push({ id, params });
   expandedEffect = id; // auto-expand params
+  if (isMobileUI) {
+    mobileSheetTab = 'looks';
+    setMobileSheetExpanded(true);
+  }
   renderEffectsList();
 }
 
@@ -1180,6 +1763,36 @@ function setAdjustment(key, value) {
 }
 
 /* ─── PRESETS ─── */
+const ADJUST_KEYS = ['brightness', 'contrast', 'saturation', 'hue'];
+
+function getAdjustSnapshot() {
+  const afx = activeEffects.find(a => a.id === -1);
+  if (!afx) return undefined;
+  return ADJUST_KEYS.reduce((acc, key) => {
+    acc[key] = Number(afx.params[key] ?? 0);
+    return acc;
+  }, {});
+}
+
+function mergeLegacyAdjustments(effects, adjustments) {
+  if (!adjustments || typeof adjustments !== 'object') return effects;
+
+  const legacyParams = ADJUST_KEYS.reduce((acc, key) => {
+    if (adjustments[key] !== undefined) acc[key] = Number(adjustments[key]) || 0;
+    return acc;
+  }, {});
+
+  if (Object.keys(legacyParams).length === 0) return effects;
+
+  const adjustFx = effects.find(fx => fx.id === -1);
+  if (adjustFx) {
+    adjustFx.params = { ...legacyParams, ...adjustFx.params };
+    return effects;
+  }
+
+  return [...effects, { id: -1, params: legacyParams }];
+}
+
 function getPresets() {
   try { return JSON.parse(localStorage.getItem('vizvim-presets') || '[]'); } catch { return []; }
 }
@@ -1190,12 +1803,7 @@ function savePreset() {
   const preset = {
     name,
     effects: activeEffects.map(fx => ({ id: fx.id, params: { ...fx.params } })),
-    adjustments: {
-      brightness: parseInt(document.getElementById('adj-brightness').value),
-      contrast: parseInt(document.getElementById('adj-contrast').value),
-      saturation: parseInt(document.getElementById('adj-saturation').value),
-      hue: parseInt(document.getElementById('adj-hue').value),
-    }
+    adjustments: getAdjustSnapshot(),
   };
   const presets = getPresets();
   const existing = presets.findIndex(p => p.name === name);
@@ -1211,7 +1819,10 @@ function loadPreset(name) {
   const preset = presets.find(p => p.name === name);
   if (!preset) return;
   // Restore effects
-  activeEffects = preset.effects.map(fx => ({ id: fx.id, params: { ...fx.params } }));
+  activeEffects = mergeLegacyAdjustments(
+    (preset.effects || []).map(fx => ({ id: fx.id, params: { ...fx.params } })),
+    preset.adjustments
+  );
   // Apply params to WASM
   if (wasmReady) {
     activeEffects.forEach(afx => {
@@ -1223,13 +1834,6 @@ function loadPreset(name) {
           vz.module.ccall(p.fn, null, args.map(() => 'number'), args);
         }
       });
-    });
-  }
-  // Restore adjustments
-  if (preset.adjustments) {
-    Object.entries(preset.adjustments).forEach(([k, v]) => {
-      document.getElementById(`adj-${k}`).value = v;
-      setAdjustment(k, v);
     });
   }
   expandedEffect = null;
@@ -1295,6 +1899,7 @@ function renderPresetMenu() {
       <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     </button>
   `;
+  renderSurfaceStatus();
 }
 
 /* ─── SCREEN CAPTURE ─── */
@@ -1310,7 +1915,7 @@ async function startScreenCapture() {
       camVideo.addEventListener('loadedmetadata', resolve, { once: true });
     });
     await camVideo.play();
-    document.getElementById('preview-placeholder').style.display = 'none';
+    setPreviewState('live');
 
     const vw = camVideo.videoWidth || 1920;
     const vh = camVideo.videoHeight || 1080;
@@ -1337,6 +1942,7 @@ async function startScreenCapture() {
     // If screen-cam mode, also start camera for PiP (TODO: Phase 2.5)
 
     startPreviewLoop();
+    renderSurfaceStatus();
 
     // Auto-stop when user stops sharing
     screenStream.getVideoTracks()[0].onended = () => {
@@ -1346,11 +1952,13 @@ async function startScreenCapture() {
         currentMode = 'camera';
         document.querySelectorAll('.mode-pill').forEach(p => p.classList.remove('active'));
         document.querySelector('[data-mode="camera"]').classList.add('active');
+        setPreviewState('idle');
         startCamera();
       }
     };
   } catch (e) {
     console.warn('[vizvim] Screen capture cancelled:', e.message);
+    setPreviewState('screen-idle', e.message);
   }
 }
 
@@ -1362,19 +1970,35 @@ document.querySelectorAll('.mode-pill').forEach(pill => {
     document.querySelectorAll('.mode-pill').forEach(p => p.classList.remove('active'));
     pill.classList.add('active');
     currentMode = pill.dataset.mode;
-    if (currentMode === 'camera') {
+    setPreviewState(currentMode === 'screen' || currentMode === 'screen-cam' ? 'screen-idle' : 'idle');
+    if (currentMode === 'camera' || currentMode === 'audio') {
       startCamera();
     } else if (currentMode === 'screen' || currentMode === 'screen-cam') {
       startScreenCapture();
     }
+    renderSurfaceStatus();
   };
 });
 
 /* ─── DEVICE SELECT ─── */
-document.getElementById('camera-select').onchange = function() { startCamera(this.value); };
+document.getElementById('camera-select').onchange = function() {
+  syncMobileDeviceControls();
+  startCamera(this.value);
+};
 document.getElementById('mic-select').onchange = function() {
   // Restart camera with same video device but new mic
+  syncMobileDeviceControls();
   startCamera(document.getElementById('camera-select').value);
+};
+document.getElementById('camera-select-mobile').onchange = function() {
+  document.getElementById('camera-select').value = this.value;
+  startCamera(this.value);
+  syncMobileDeviceControls();
+};
+document.getElementById('mic-select-mobile').onchange = function() {
+  document.getElementById('mic-select').value = this.value;
+  startCamera(document.getElementById('camera-select').value);
+  syncMobileDeviceControls();
 };
 
 /* ─── SCREEN DETECT ─── */
@@ -1437,15 +2061,34 @@ document.addEventListener('keydown', (e) => {
 function detectCapabilities() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
     document.querySelectorAll('[data-mode="screen"],[data-mode="screen-cam"]').forEach(p => p.classList.add('disabled'));
-    document.getElementById('sys-audio-row').style.display = 'none';
+    ['btn-sys-audio', 'btn-sys-audio-mobile'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
   }
 }
 
 /* ─── INIT ─── */
 async function init() {
   detectCapabilities();
+  applyInterfaceStance();
   renderEffectsList();
   renderPresetMenu();
+  syncMobileDeviceControls();
+  setPreviewState('idle');
+  document.getElementById('btn-source-cta').onclick = startSelectedSource;
+  document.getElementById('btn-sheet-toggle').onclick = () => {
+    if (isMobileUI) setMobileSheetExpanded(!mobileSheetExpanded);
+    else document.getElementById('effects-panel').classList.toggle('panel-wide');
+  };
+  document.getElementById('btn-settings').onclick = () => {
+    if (isMobileUI) setMobileTab(mobileSheetTab === 'looks' ? 'rig' : 'looks');
+    else document.getElementById('effects-panel').classList.toggle('panel-wide');
+  };
+  document.querySelectorAll('[data-mobile-tab]').forEach(btn => {
+    btn.onclick = () => setMobileTab(btn.dataset.mobileTab);
+  });
+  window.addEventListener('resize', applyInterfaceStance);
 
   // Load WASM
   await initWasm();
