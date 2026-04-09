@@ -342,10 +342,74 @@ select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px
 
 /* ─── RESPONSIVE (mobile) ─── */
 @media (max-width: 768px) {
+  /* Stack vertical: camera fills top, effects slide up from bottom */
   #main { flex-direction: column; }
-  #source-panel { flex: 1; min-height: 40vh; border-right: none; }
-  #effects-panel { width: 100%; max-height: 35vh; border-left: none; border-top: 1px solid rgba(255,255,255,0.04); }
-  .mode-pills { overflow-x: auto; flex-wrap: nowrap; }
+
+  /* Topbar slimmer */
+  #topbar { height: 40px; }
+  #topbar h1 { font-size: 14px; }
+
+  /* Camera fills available space */
+  #source-panel { flex: 1; min-height: 0; border-right: none; }
+  #source-panel > section:first-child { padding: 4px 8px; }
+
+  /* Mode pills: tiny horizontal scroll */
+  .mode-pills { overflow-x: auto; flex-wrap: nowrap; gap: 4px; }
+  .mode-pill { padding: 4px 10px; font-size: 10px; flex: none; }
+  .mode-pill svg { width: 12px; height: 12px; }
+
+  /* Device strip: even more compact */
+  #device-section { padding: 4px 8px !important; gap: 4px; }
+  #device-section select, #device-section button { height: 24px; font-size: 9px; }
+
+  /* Effects panel: bottom sheet */
+  #effects-panel {
+    width: 100%; max-height: 40vh; border-left: none;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    overflow-y: auto;
+    border-radius: var(--v-radius-xl) var(--v-radius-xl) 0 0;
+  }
+
+  /* Grab handle at top of effects panel */
+  #effects-panel::before {
+    content: ''; display: block;
+    width: 36px; height: 4px; margin: 8px auto 4px;
+    background: rgba(255,255,255,0.15); border-radius: 2px;
+  }
+
+  /* Effect items slightly more compact */
+  .fx-header { padding: 7px 10px; font-size: 11px; }
+  .fx-header svg { width: 15px; height: 15px; }
+  .fx-params { padding: 2px 10px 8px 36px !important; }
+  .fx-param label { font-size: 9px; width: 55px; }
+  .fx-param .fx-val { font-size: 9px; width: 26px; }
+
+  /* Preset bar compact */
+  #preset-bar { padding: 4px 8px !important; }
+  #preset-bar select { font-size: 10px; height: 24px; }
+
+  /* Action bar: tighter */
+  #action-bar { padding: 6px 8px; }
+  #btn-record { height: 36px; padding: 0 22px; font-size: 12px; }
+
+  /* Floating bar: closer to bottom, wider */
+  #floating-bar { bottom: 56px; padding: 6px 14px; height: 42px; }
+  #rec-timer { font-size: 15px; min-width: 55px; }
+
+  /* Preview screen: tighter padding */
+  #preview-screen { padding: var(--v-space-4); }
+  #preview-video { max-width: 95vw; max-height: 50vh; }
+  #preview-actions { gap: var(--v-space-2); }
+  .btn { padding: 8px 16px; font-size: 13px; }
+}
+
+/* Extra small (phones < 400px) */
+@media (max-width: 400px) {
+  #effects-panel { max-height: 35vh; }
+  .mode-pill { padding: 3px 8px; font-size: 9px; }
+  .fx-header { padding: 6px 8px; font-size: 10px; gap: 8px; }
+  .fx-param { gap: 5px; }
+  #btn-record { height: 34px; padding: 0 18px; font-size: 11px; }
 }
 
 /* ─── SKELETON SHIMMER ─── */
