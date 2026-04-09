@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>rawcut type lang</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=Cormorant+Garamond:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0d0f;
+  --bg-1: #121216;
+  --bg-2: #17171c;
+  --bg-3: #212128;
+  --fg: #f0eded;
+  --fg-1: #c5c0bc;
+  --fg-2: #7e7873;
+  --accent: #e8614d;
+  --accent-soft: rgba(232, 97, 77, 0.12);
+  --border: rgba(255, 255, 255, 0.07);
+  --shadow: 0 18px 46px rgba(0, 0, 0, 0.38);
+  --radius: 18px;
+  --radius-sm: 12px;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-body);
+  color: var(--fg);
+  background:
+    radial-gradient(circle at top left, rgba(232, 97, 77, 0.08), transparent 22%),
+    linear-gradient(180deg, #0b0b0d, #111115 42%, #0c0c0f 100%);
+  overflow: hidden;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(320px, 420px);
+  height: 100vh;
+  gap: 12px;
+  padding: 12px;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: rgba(16, 16, 20, 0.88);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.preview-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)),
+    linear-gradient(120deg, rgba(232,97,77,0.06), transparent 52%);
+}
+
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+.title {
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.sub {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--fg-1);
+  max-width: 44ch;
+}
+
+.pill-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--fg-1);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin: 18px;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+  background:
+    radial-gradient(circle at 18% 18%, rgba(232,97,77,0.11), transparent 26%),
+    radial-gradient(circle at 82% 16%, rgba(96,165,250,0.07), transparent 24%),
+    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.16)),
+    #09090b;
+}
+
+.stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.02), transparent 20%, transparent 82%, rgba(255,255,255,0.02)),
+    linear-gradient(90deg, rgba(255,255,255,0.015), transparent 28%, transparent 72%, rgba(255,255,255,0.015));
+  pointer-events: none;
+}
+
+.stage-note {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 2;
+}
+
+.stage-note .pill {
+  background: rgba(10,10,12,0.52);
+  backdrop-filter: blur(14px) saturate(145%);
+}
+
+.overlay {
+  position: absolute;
+  left: 50%;
+  width: min(calc(var(--overlay-width, 62) * 1%), calc(100% - 40px));
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.overlay[data-anchor="top-center"] { top: 64px; }
+.overlay[data-anchor="center"] { top: 50%; transform: translate(-50%, -50%); }
+.overlay[data-anchor="bottom-center"] { bottom: 42px; }
+
+.overlay-shell {
+  display: flex;
+  justify-content: center;
+}
+
+.overlay-shell.align-left { justify-content: flex-start; text-align: left; }
+.overlay-shell.align-center { justify-content: center; text-align: center; }
+.overlay-shell.align-right { justify-content: flex-end; text-align: right; }
+
+.overlay-copy {
+  display: inline;
+  color: var(--copy-color, #f0eded);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: var(--copy-line-height, 1.1);
+  letter-spacing: var(--copy-tracking, 0px);
+  font-size: var(--copy-size, 34px);
+  font-weight: var(--copy-weight, 700);
+  font-family: var(--copy-family, 'Inter', sans-serif);
+  text-shadow: 0 6px 18px rgba(0,0,0,0.34), 0 1px 3px rgba(0,0,0,0.5);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.overlay-copy.backdrop-pill {
+  padding: 0.16em 0.34em 0.22em;
+  border-radius: 0.66em;
+  background: rgba(17,17,19,0.86);
+}
+
+.overlay-copy.backdrop-block {
+  display: inline-block;
+  padding: 0.28em 0.44em 0.34em;
+  border-radius: 0.4em;
+  background: rgba(17,17,19,0.82);
+}
+
+.overlay-copy.backdrop-none {
+  background: transparent;
+  padding: 0;
+}
+
+.overlay-copy .accent {
+  color: var(--accent-color, #e8614d);
+}
+
+.footer-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+
+.footer-card {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.025);
+}
+
+.footer-card span {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+.footer-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--fg);
+}
+
+.controls-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.controls-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.group {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.02);
+  overflow: hidden;
+}
+
+.group-head {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.02);
+}
+
+.group-head h3 {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: -0.02em;
+}
+
+.group-head p {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--fg-2);
+}
+
+.group-body {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.field label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-3);
+  color: var(--fg);
+  font: inherit;
+  outline: none;
+}
+
+.field input,
+.field select {
+  height: 38px;
+  padding: 0 12px;
+}
+
+.field textarea {
+  min-height: 94px;
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: rgba(232,97,77,0.34);
+  box-shadow: 0 0 0 2px rgba(232,97,77,0.14);
+}
+
+.field input[type="color"] {
+  padding: 4px;
+}
+
+.range-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.range-row code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-1);
+}
+
+.preset-output {
+  min-height: 0;
+}
+
+.preset-code {
+  width: 100%;
+  min-height: 210px;
+  resize: vertical;
+  border: none;
+  background: #0d0d10;
+  color: #d7dfb0;
+  padding: 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  outline: none;
+}
+
+.seg {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.seg.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.seg button {
+  min-height: 38px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--fg-1);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.seg button.active {
+  background: rgba(232,97,77,0.12);
+  border-color: rgba(232,97,77,0.22);
+  color: var(--accent);
+}
+
+.hint {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--fg-2);
+}
+
+@media (max-width: 980px) {
+  body { overflow: auto; }
+  .shell {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
+  }
+  .stage {
+    min-height: 52vh;
+  }
+  .footer-strip,
+  .group-body {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body>
+  <div class="shell">
+    <section class="panel preview-panel">
+      <div class="topbar">
+        <div>
+          <div class="eyebrow">Video Editor Folder</div>
+          <div class="title">Type Lang</div>
+          <p class="sub">An isolated text-overlay playground for future editor presets. No live subtitle runtime, just the styling system.</p>
+        </div>
+        <div class="pill-row">
+          <span class="pill" id="font-pill">Inter / 34</span>
+          <span class="pill" id="mode-pill">Accent tail</span>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-note">
+          <span class="pill">Editor-safe text styling</span>
+        </div>
+        <div class="overlay" id="overlay" data-anchor="bottom-center">
+          <div class="overlay-shell align-center" id="overlay-shell">
+            <div class="overlay-copy backdrop-pill" id="overlay-copy"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-strip">
+        <div class="footer-card">
+          <span>Use</span>
+          <strong>Future caption overlays, title cards, lower thirds, and presettable text looks.</strong>
+        </div>
+        <div class="footer-card">
+          <span>Scope</span>
+          <strong>Pure styling and layout. The editor can wire timing and clip metadata later.</strong>
+        </div>
+        <div class="footer-card">
+          <span>Markup</span>
+          <strong>Wrap a word or phrase in <code>[brackets]</code> to preview accent color without a subtitle engine.</strong>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel controls-panel">
+      <div class="controls-scroll">
+        <section class="group">
+          <div class="group-head">
+            <h3>Copy</h3>
+            <p>Write the line once, shape the typography, and keep the output ready for editor-side presets.</p>
+          </div>
+          <div class="group-body">
+            <div class="field field-wide">
+              <label for="sample-text">Preview Text</label>
+              <textarea id="sample-text" spellcheck="false">Can you [hear me] now?</textarea>
+            </div>
+            <div class="field">
+              <label for="accent-mode">Accent Mode</label>
+              <select id="accent-mode">
+                <option value="brackets">Bracketed phrase</option>
+                <option value="tail">Last word</option>
+                <option value="none">None</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="casing">Case</label>
+              <select id="casing">
+                <option value="natural">Natural</option>
+                <option value="upper">Upper</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head">
+            <h3>Type</h3>
+            <p>The font game stays here. Keep it expressive, but controlled enough to drop into presets later.</p>
+          </div>
+          <div class="group-body">
+            <div class="field">
+              <label for="font-family">Font</label>
+              <select id="font-family">
+                <option value="Inter">Inter</option>
+                <option value="Space Grotesk">Space Grotesk</option>
+                <option value="Cormorant Garamond">Cormorant Garamond</option>
+                <option value="JetBrains Mono">JetBrains Mono</option>
+                <option value="IBM Plex Mono">IBM Plex Mono</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="font-weight">Weight</label>
+              <select id="font-weight">
+                <option value="500">Medium</option>
+                <option value="600">Semibold</option>
+                <option value="700" selected>Bold</option>
+                <option value="800">Heavy</option>
+              </select>
+            </div>
+            <div class="field field-wide">
+              <div class="range-row">
+                <label for="font-size">Size</label>
+                <code id="font-size-value">34px</code>
+              </div>
+              <input id="font-size" type="range" min="20" max="88" value="34">
+            </div>
+            <div class="field field-wide">
+              <div class="range-row">
+                <label for="tracking">Tracking</label>
+                <code id="tracking-value">0px</code>
+              </div>
+              <input id="tracking" type="range" min="-1" max="6" step="0.25" value="0">
+            </div>
+            <div class="field field-wide">
+              <div class="range-row">
+                <label for="line-height">Line Height</label>
+                <code id="line-height-value">1.10</code>
+              </div>
+              <input id="line-height" type="range" min="0.9" max="1.6" step="0.05" value="1.1">
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head">
+            <h3>Layout</h3>
+            <p>Keep the composition editor-friendly: clean anchoring, reliable width, and predictable alignment.</p>
+          </div>
+          <div class="group-body">
+            <div class="field">
+              <label for="anchor">Placement</label>
+              <select id="anchor">
+                <option value="bottom-center">Bottom center</option>
+                <option value="center">Center</option>
+                <option value="top-center">Top center</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="align">Align</label>
+              <select id="align">
+                <option value="center">Center</option>
+                <option value="left">Left</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
+            <div class="field field-wide">
+              <div class="range-row">
+                <label for="max-width">Width</label>
+                <code id="max-width-value">62%</code>
+              </div>
+              <input id="max-width" type="range" min="34" max="92" value="62">
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head">
+            <h3>Surface</h3>
+            <p>Preview text, accent, and backdrop styling without tying it to live speech input.</p>
+          </div>
+          <div class="group-body">
+            <div class="field">
+              <label for="text-color">Text</label>
+              <input id="text-color" type="color" value="#f0eded">
+            </div>
+            <div class="field">
+              <label for="accent-color">Accent</label>
+              <input id="accent-color" type="color" value="#e8614d">
+            </div>
+            <div class="field">
+              <label for="background-color">Background</label>
+              <input id="background-color" type="color" value="#111113">
+            </div>
+            <div class="field">
+              <label for="background-style">Backdrop</label>
+              <select id="background-style">
+                <option value="pill">Pill lines</option>
+                <option value="block">Soft block</option>
+                <option value="none">None</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="group preset-output">
+          <div class="group-head">
+            <h3>Preset Shape</h3>
+            <p>This is the config packet worth carrying into the editor later.</p>
+          </div>
+          <textarea class="preset-code" id="preset-output" readonly></textarea>
+        </section>
+      </div>
+    </aside>
+  </div>
+
+<script>
+const controls = {
+  text: document.getElementById('sample-text'),
+  fontFamily: document.getElementById('font-family'),
+  fontWeight: document.getElementById('font-weight'),
+  fontSize: document.getElementById('font-size'),
+  tracking: document.getElementById('tracking'),
+  lineHeight: document.getElementById('line-height'),
+  maxWidth: document.getElementById('max-width'),
+  align: document.getElementById('align'),
+  anchor: document.getElementById('anchor'),
+  casing: document.getElementById('casing'),
+  backgroundStyle: document.getElementById('background-style'),
+  accentMode: document.getElementById('accent-mode'),
+  textColor: document.getElementById('text-color'),
+  accentColor: document.getElementById('accent-color'),
+  backgroundColor: document.getElementById('background-color'),
+};
+
+const overlay = document.getElementById('overlay');
+const overlayShell = document.getElementById('overlay-shell');
+const overlayCopy = document.getElementById('overlay-copy');
+const fontPill = document.getElementById('font-pill');
+const modePill = document.getElementById('mode-pill');
+const presetOutput = document.getElementById('preset-output');
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function normalizeText(text, casing) {
+  return casing === 'upper' ? text.toUpperCase() : text;
+}
+
+function renderAccentMarkup(rawText, accentMode) {
+  if (accentMode === 'none') {
+    return escapeHtml(rawText);
+  }
+
+  if (accentMode === 'brackets') {
+    return escapeHtml(rawText)
+      .replace(/\\\[([^\\]]+)\\\]/g, '<span class="accent">$1</span>')
+      .replace(/\\[|\\]/g, '');
+  }
+
+  const trimmed = rawText.trim();
+  if (!trimmed) return '';
+  const lastSpace = trimmed.lastIndexOf(' ');
+  if (lastSpace === -1) {
+    return '<span class="accent">' + escapeHtml(trimmed) + '</span>';
+  }
+  return escapeHtml(trimmed.slice(0, lastSpace + 1)) +
+    '<span class="accent">' + escapeHtml(trimmed.slice(lastSpace + 1)) + '</span>';
+}
+
+function getConfig() {
+  return {
+    kind: 'text-style-lang',
+    text: controls.text.value,
+    fontFamily: controls.fontFamily.value,
+    fontWeight: Number(controls.fontWeight.value),
+    fontSize: Number(controls.fontSize.value),
+    letterSpacing: Number(controls.tracking.value),
+    lineHeight: Number(controls.lineHeight.value),
+    maxWidth: Number(controls.maxWidth.value),
+    align: controls.align.value,
+    anchor: controls.anchor.value,
+    casing: controls.casing.value,
+    backgroundStyle: controls.backgroundStyle.value,
+    backgroundColor: controls.backgroundColor.value,
+    textColor: controls.textColor.value,
+    accentColor: controls.accentColor.value,
+    accentMode: controls.accentMode.value,
+  };
+}
+
+function render() {
+  const config = getConfig();
+  const normalized = normalizeText(config.text, config.casing);
+  const html = renderAccentMarkup(normalized, config.accentMode);
+
+  overlay.dataset.anchor = config.anchor;
+  overlay.style.setProperty('--overlay-width', String(config.maxWidth));
+  overlayShell.className = 'overlay-shell align-' + config.align;
+  overlayCopy.className = 'overlay-copy backdrop-' + config.backgroundStyle;
+  overlayCopy.style.setProperty('--copy-color', config.textColor);
+  overlayCopy.style.setProperty('--accent-color', config.accentColor);
+  overlayCopy.style.setProperty('--copy-size', config.fontSize + 'px');
+  overlayCopy.style.setProperty('--copy-tracking', config.letterSpacing + 'px');
+  overlayCopy.style.setProperty('--copy-line-height', String(config.lineHeight));
+  overlayCopy.style.setProperty('--copy-weight', String(config.fontWeight));
+  overlayCopy.style.setProperty('--copy-family', "'" + config.fontFamily + "', sans-serif");
+  overlayCopy.style.backgroundColor = config.backgroundStyle === 'none' ? 'transparent' : config.backgroundColor + 'dd';
+  overlayCopy.innerHTML = html || '&nbsp;';
+
+  document.getElementById('font-size-value').textContent = config.fontSize + 'px';
+  document.getElementById('tracking-value').textContent = config.letterSpacing.toFixed(2).replace(/\\.00$/, '') + 'px';
+  document.getElementById('line-height-value').textContent = config.lineHeight.toFixed(2);
+  document.getElementById('max-width-value').textContent = config.maxWidth + '%';
+
+  fontPill.textContent = config.fontFamily + ' / ' + config.fontSize;
+  modePill.textContent = config.accentMode === 'tail'
+    ? 'Accent tail'
+    : config.accentMode === 'brackets'
+      ? 'Accent brackets'
+      : 'No accent';
+
+  presetOutput.value = JSON.stringify({
+    textStyle: {
+      fontFamily: config.fontFamily,
+      fontWeight: config.fontWeight,
+      fontSize: config.fontSize,
+      letterSpacing: config.letterSpacing,
+      lineHeight: config.lineHeight,
+      textColor: config.textColor,
+      accentColor: config.accentColor,
+      backgroundColor: config.backgroundColor,
+      backgroundStyle: config.backgroundStyle,
+      align: config.align,
+      anchor: config.anchor,
+      maxWidth: config.maxWidth,
+      casing: config.casing,
+      accentMode: config.accentMode,
+    }
+  }, null, 2);
+}
+
+Object.values(controls).forEach(control => {
+  control.addEventListener('input', render);
+  control.addEventListener('change', render);
+});
+
+render();
+</script>
+</body>
+</html>
