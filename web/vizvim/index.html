@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Vizvim</title>
+<meta name="theme-color" content="#e8614d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* ─── DESIGN TOKENS (from DESIGN.md — Ember Dark, Physical archetype) ─── */
+:root {
+  /* Backgrounds */
+  --v-bg-0: #0a0a0b;
+  --v-bg-1: #111113;
+  --v-bg-2: #19191c;
+  --v-bg-3: #222226;
+  --v-bg-4: #2c2c31;
+  /* Foregrounds */
+  --v-fg-0: #f0eded;
+  --v-fg-1: #b8b3b0;
+  --v-fg-2: #78736f;
+  /* Accent — Ember/Coral */
+  --v-accent: #e8614d;
+  --v-accent-hover: #f07560;
+  --v-accent-dim: #c04a3a;
+  --v-accent-subtle: rgba(232, 97, 77, 0.12);
+  /* Recording */
+  --v-rec: #e8614d;
+  --v-rec-glow: rgba(232, 97, 77, 0.35);
+  /* Semantic */
+  --v-success: #34d399;
+  --v-warn: #fbbf24;
+  --v-error: #f87171;
+  --v-info: #60a5fa;
+  /* Borders */
+  --v-border: rgba(255,255,255,0.06);
+  --v-border-hover: rgba(255,255,255,0.12);
+  /* Glass */
+  --v-glass: rgba(255,255,255,0.03);
+  --v-scrim: rgba(0,0,0,0.7);
+  /* Spacing */
+  --v-space-1: 4px; --v-space-2: 8px; --v-space-3: 12px; --v-space-4: 16px;
+  --v-space-5: 24px; --v-space-6: 32px; --v-space-7: 48px;
+  /* Radius */
+  --v-radius-sm: 6px; --v-radius-md: 10px; --v-radius-lg: 14px;
+  --v-radius-xl: 20px; --v-radius-full: 9999px;
+  /* Shadows */
+  --v-shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --v-shadow-md: 0 4px 12px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.2);
+  --v-shadow-lg: 0 12px 40px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.25);
+  /* Typography */
+  --v-font: 'Inter', -apple-system, system-ui, sans-serif;
+  --v-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  /* Easing (Physical archetype) */
+  --v-ease: cubic-bezier(0.4, 0, 0.6, 1);
+  --v-ease-soft: cubic-bezier(0.25, 0.1, 0.3, 1);
+  --v-ease-snap: cubic-bezier(0.4, 0.01, 0.165, 0.99);
+  --v-ease-decel: cubic-bezier(0.11, 0.86, 0.15, 1);
+}
+
+/* ─── RESET ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: var(--v-font);
+  font-size: 14px;
+  color: var(--v-fg-0);
+  background: var(--v-bg-0);
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+select, input { font-family: inherit; color: var(--v-fg-0); background: var(--v-bg-2); border: 1px solid var(--v-border); border-radius: var(--v-radius-md); height: 36px; padding: 0 12px; font-size: 13px; outline: none; }
+select:focus, input:focus { border-color: var(--v-accent); box-shadow: 0 0 0 2px rgba(232,97,77,0.25); }
+
+/* ─── LAYOUT ─── */
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* Top bar */
+#topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 44px; padding: 0 var(--v-space-4);
+  background: var(--v-bg-0); border-bottom: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+#topbar h1 { font-size: 15px; font-weight: 700; letter-spacing: -0.5px; }
+#topbar h1 span { color: var(--v-accent); font-weight: 700; }
+.icon-btn {
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--v-radius-md); transition: background 0.15s var(--v-ease);
+}
+.icon-btn:hover { background: var(--v-bg-3); }
+.icon-btn:active { transform: scale(0.95); }
+.icon-btn svg { width: 20px; height: 20px; stroke: var(--v-fg-1); stroke-width: 1.5; fill: none; }
+
+/* Main area */
+#main { display: flex; flex: 1; overflow: hidden; }
+
+/* ─── SOURCE PANEL (center — the hero) ─── */
+#source-panel {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  background: #000;
+  overflow: hidden;
+}
+#source-panel > section { padding: 0; flex-shrink: 0; }
+#source-panel > section:first-child { padding: 8px 12px; background: var(--v-bg-0); }
+#source-panel > section:nth-child(2) { flex: 1; display: flex; min-height: 0; }
+#device-section { padding: 8px 12px !important; background: var(--v-bg-0); border-top: 1px solid rgba(255,255,255,0.04); }
+
+/* Mode pills — horizontal compact strip */
+.mode-pills { display: flex; gap: 4px; }
+.mode-pill {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 12px;
+  background: transparent; border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--v-radius-full); font-size: 11px; font-weight: 500;
+  color: var(--v-fg-2); transition: all 200ms var(--v-ease);
+  white-space: nowrap;
+}
+.mode-pill svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.5; fill: none; }
+.mode-pill:hover { border-color: rgba(255,255,255,0.12); color: var(--v-fg-1); }
+.mode-pill:active { transform: scale(0.95); }
+.mode-pill.active {
+  border-color: var(--v-accent); background: rgba(232,97,77,0.1); color: var(--v-accent);
+}
+.mode-pill.disabled { opacity: 0.25; pointer-events: none; }
+
+/* Preview area — THE HERO, fills all available space */
+#preview-container {
+  position: relative; flex: 1; min-height: 0;
+  background: #000; overflow: hidden;
+}
+#preview-canvas {
+  width: 100%; height: 100%; object-fit: contain;
+  display: block; background: #000;
+}
+#preview-placeholder {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  color: var(--v-fg-2); font-size: 13px;
+}
+#preview-placeholder svg { width: 56px; height: 56px; stroke: var(--v-fg-2); stroke-width: 0.8; fill: none; opacity: 0.3; }
+
+/* Device pickers — compact inline strip */
+#device-section {
+  display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  padding: 6px 12px !important; background: var(--v-bg-0); border-top: 1px solid rgba(255,255,255,0.04);
+}
+#device-section select, #device-section button {
+  height: 26px; font-size: 10px; padding: 0 8px;
+  border-radius: var(--v-radius-full); flex: 1; min-width: 0;
+}
+#device-section .dev-label { font-size: 9px; color: var(--v-fg-2); opacity: 0.5; flex-shrink: 0; }
+.device-row { display: none; } /* hide old rows */
+
+/* ─── EFFECTS PANEL (right sidebar — compact) ─── */
+#effects-panel {
+  width: 260px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  background: var(--v-bg-0); border-left: 1px solid rgba(255,255,255,0.04);
+  overflow: hidden;
+}
+
+/* Effects list — scrollable with inline params */
+#effects-list {
+  flex: 1; overflow-y: auto; padding: 4px 0;
+}
+.fx-item { width: 100%; text-align: left; display: block; }
+.fx-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; cursor: pointer;
+  color: var(--v-fg-2); font-size: 12px; font-weight: 500;
+  transition: all 200ms var(--v-ease); border-left: 3px solid transparent;
+}
+.fx-header svg { width: 17px; height: 17px; flex-shrink: 0; stroke: var(--v-fg-2); stroke-width: 1.5; fill: none; opacity: 0.5; transition: all 200ms var(--v-ease); }
+.fx-header:hover { background: rgba(255,255,255,0.03); color: var(--v-fg-1); }
+.fx-header:hover svg { opacity: 0.7; }
+.fx-header:active { transform: scale(0.98); }
+/* Dim inactive effects when there are active ones */
+.fx-item:not(.active) .fx-header { opacity: 0.5; }
+.fx-item:not(.active) .fx-header:hover { opacity: 0.8; }
+/* Drag reorder for active effects */
+.fx-item.active { cursor: grab; }
+.fx-item.active:active { cursor: grabbing; }
+.fx-item.dragging { opacity: 0.3; }
+.fx-item.drag-over { border-top: 2px solid var(--v-accent); }
+.fx-item.active .fx-header {
+  color: var(--v-accent); border-left-color: var(--v-accent);
+  background: rgba(232,97,77,0.06);
+}
+.fx-item.active .fx-header svg { stroke: var(--v-accent); opacity: 1; }
+.fx-header .fx-name { flex: 1; }
+.fx-header .fx-remove {
+  width: 20px; height: 20px; display: none; align-items: center; justify-content: center;
+  border-radius: 50%; font-size: 12px; color: var(--v-fg-2);
+  transition: all 150ms var(--v-ease); flex-shrink: 0;
+}
+.fx-item.active .fx-remove { display: flex; }
+.fx-header .fx-remove:hover { color: #fff; background: var(--v-error); }
+
+/* Inline params — always visible when active */
+.fx-params {
+  max-height: 0; overflow: hidden; padding: 0 12px 0 42px;
+  transition: max-height 250ms var(--v-ease), padding 250ms var(--v-ease);
+}
+.fx-item.active .fx-params {
+  max-height: 200px; padding: 4px 12px 10px 42px;
+}
+.fx-param {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.fx-param label { font-size: 10px; color: var(--v-fg-2); width: 65px; flex-shrink: 0; }
+.fx-param input[type="range"] {
+  flex: 1; height: 3px; -webkit-appearance: none; appearance: none;
+  background: rgba(255,255,255,0.08); border-radius: var(--v-radius-full); outline: none;
+  position: relative;
+}
+.fx-param input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--v-accent); cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  transition: transform 100ms var(--v-ease);
+}
+.fx-param input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.2); }
+/* Bipolar sliders (min < 0) show center notch via CSS */
+.fx-param input[type="range"].bipolar {
+  background: linear-gradient(to right, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.08) 49.5%, var(--v-fg-2) 49.5%, var(--v-fg-2) 50.5%, rgba(255,255,255,0.08) 50.5%, rgba(255,255,255,0.08) 100%);
+}
+.fx-param .fx-val { font-family: var(--v-mono); font-size: 10px; color: var(--v-fg-2); width: 30px; text-align: right; }
+.fx-param-seg { display: flex; gap: 3px; flex: 1; }
+.fx-param-seg button {
+  flex: 1; padding: 3px 6px; font-size: 9px; font-weight: 500;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--v-radius-sm); color: var(--v-fg-2);
+  transition: all 150ms var(--v-ease);
+}
+.fx-param-seg button.on { background: var(--v-accent); color: #fff; border-color: var(--v-accent); }
+
+/* Adjustments use fx-param styling (inline in the effects chain) */
+
+/* ─── ACTION BAR (bottom) ─── */
+#action-bar {
+  display: flex; align-items: center; justify-content: center; gap: var(--v-space-4);
+  padding: 10px var(--v-space-4);
+  background: var(--v-bg-0); border-top: 1px solid rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+#btn-record {
+  height: 40px; padding: 0 28px; border-radius: var(--v-radius-full);
+  background: var(--v-rec); color: #fff; font-size: 13px; font-weight: 600;
+  letter-spacing: 0.5px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 0 20px var(--v-rec-glow), 0 2px 8px rgba(0,0,0,0.3);
+  transition: all 280ms var(--v-ease);
+}
+#btn-record:hover { background: var(--v-accent-hover); box-shadow: 0 0 32px var(--v-rec-glow), 0 4px 16px rgba(0,0,0,0.3); transform: scale(1.04); }
+#btn-record:active { transform: scale(0.92); }
+#btn-record svg { width: 14px; height: 14px; fill: #fff; stroke: none; }
+
+/* Recording uses preview canvas directly — no overlay screen needed */
+#floating-bar {
+  position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
+  display: none; align-items: center; gap: var(--v-space-4);
+  padding: 8px 20px; height: 48px;
+  background: rgba(17,17,19,0.88); backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: var(--v-radius-xl);
+  box-shadow: var(--v-shadow-md); z-index: 50;
+}
+#rec-timer { font-family: var(--v-mono); font-size: 18px; color: var(--v-fg-0); min-width: 70px; text-align: center; }
+#vu-meter { width: 80px; height: 4px; background: var(--v-bg-4); border-radius: var(--v-radius-full); overflow: hidden; }
+#vu-fill { height: 100%; width: 0%; background: var(--v-success); border-radius: var(--v-radius-full); transition: width 50ms linear, background 100ms; }
+.bar-btn {
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--v-radius-md); transition: all 150ms var(--v-ease);
+}
+.bar-btn:hover { background: rgba(255,255,255,0.1); }
+.bar-btn:active { transform: scale(0.92); }
+.bar-btn svg { width: 20px; height: 20px; stroke: var(--v-fg-0); stroke-width: 1.5; fill: none; }
+#btn-stop { background: var(--v-accent); border-radius: var(--v-radius-md); }
+#btn-stop svg { width: 16px; height: 16px; fill: #fff; stroke: none; }
+.rec-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--v-rec);
+  animation: rec-pulse 1.5s ease-in-out infinite;
+}
+@keyframes rec-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--v-rec-glow); }
+  50% { opacity: 0.4; box-shadow: 0 0 2px var(--v-rec-glow); }
+}
+
+/* ─── COUNTDOWN OVERLAY ─── */
+#countdown-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.6);
+}
+#countdown-overlay.active { display: flex; }
+#countdown-num {
+  font-size: 120px; font-weight: 700; color: var(--v-fg-0);
+  opacity: 0; transform: scale(0.5);
+}
+@keyframes countdown-in {
+  0% { opacity: 0; transform: scale(0.5); }
+  40% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ─── PREVIEW SCREEN (overlay) ─── */
+#preview-screen {
+  position: fixed; inset: 0; z-index: 100; background: var(--v-bg-0);
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  padding: var(--v-space-6);
+}
+#preview-screen.active { display: flex; }
+#preview-video {
+  max-width: 80vw; max-height: 60vh; border-radius: var(--v-radius-lg);
+  background: #000;
+}
+#preview-actions {
+  display: flex; gap: var(--v-space-3); margin-top: var(--v-space-5);
+}
+.btn {
+  padding: 10px 20px; border-radius: var(--v-radius-md);
+  font-size: 14px; font-weight: 500;
+  transition: all 280ms var(--v-ease);
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--v-accent); color: #fff; }
+.btn-primary:hover { background: var(--v-accent-hover); }
+.btn-secondary { background: var(--v-bg-3); color: var(--v-fg-0); border: 1px solid var(--v-border); }
+.btn-secondary:hover { background: var(--v-bg-4); }
+.btn-ghost { color: var(--v-fg-2); }
+.btn-ghost:hover { color: var(--v-fg-0); }
+
+/* ─── RESPONSIVE (mobile) ─── */
+@media (max-width: 768px) {
+  #main { flex-direction: column; }
+  #source-panel { flex: 1; min-height: 40vh; border-right: none; }
+  #effects-panel { width: 100%; max-height: 35vh; border-left: none; border-top: 1px solid rgba(255,255,255,0.04); }
+  .mode-pills { overflow-x: auto; flex-wrap: nowrap; }
+}
+
+/* ─── SKELETON SHIMMER ─── */
+@keyframes v-shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--v-bg-2) 0%, var(--v-bg-3) 50%, var(--v-bg-2) 100%);
+  background-size: 400px 100%; animation: v-shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--v-radius-md);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .rec-dot { animation: none; opacity: 1; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ─── TOP BAR ─── -->
+  <header id="topbar">
+    <h1><span>V</span>izvim</h1>
+    <button class="icon-btn" id="btn-settings" title="Settings">
+      <svg viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+  </header>
+
+  <!-- ─── MAIN ─── -->
+  <div id="main">
+
+    <!-- SOURCE PANEL -->
+    <div id="source-panel">
+      <section>
+        <div class="mode-pills">
+          <button class="mode-pill active" data-mode="camera">
+            <svg viewBox="0 0 24 24"><path d="M15 2H9a1 1 0 0 0-1 1v2H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4V3a1 1 0 0 0-1-1z"/><circle cx="12" cy="12" r="4"/></svg>
+            Camera
+          </button>
+          <button class="mode-pill" data-mode="screen">
+            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+            Screen
+          </button>
+          <button class="mode-pill" data-mode="screen-cam">
+            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><circle cx="18" cy="14" r="3"/></svg>
+            Screen+Cam
+          </button>
+          <button class="mode-pill" data-mode="audio">
+            <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+            Audio
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <div id="preview-container">
+          <canvas id="preview-canvas"></canvas>
+          <div id="preview-placeholder">
+            <svg viewBox="0 0 24 24"><path d="M15 2H9a1 1 0 0 0-1 1v2H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4V3a1 1 0 0 0-1-1z" stroke="currentColor" stroke-width="1" fill="none"/></svg>
+            Click to enable camera
+          </div>
+        </div>
+      </section>
+
+      <section id="device-section">
+        <select id="camera-select" title="Camera"><option>Camera</option></select>
+        <select id="mic-select" title="Microphone"><option>Mic</option></select>
+        <button class="btn btn-secondary" id="btn-sys-audio" onclick="toggleSystemAudio()" title="System Audio" style="font-size:10px;padding:0 8px;height:26px;border-radius:9999px;white-space:nowrap" id="sys-audio-row">
+          System
+        </button>
+      </section>
+    </div>
+
+    <!-- EFFECTS PANEL -->
+    <div id="effects-panel">
+
+      <!-- Preset bar -->
+      <div id="preset-bar" style="display:flex;align-items:center;gap:4px;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.04)"></div>
+
+      <!-- Effects list (scrollable, with inline params) -->
+      <div id="effects-list"></div>
+
+      <!-- Adjustments are now part of the effect chain -->
+
+    </div>
+  </div>
+
+  <!-- ACTION BAR -->
+  <div id="action-bar">
+    <button class="icon-btn" onclick="previewCanvas.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='vizvim-snap-'+Date.now()+'.png';a.click();URL.revokeObjectURL(a.href);previewCanvas.style.opacity='0.7';setTimeout(()=>previewCanvas.style.opacity='1',100)})" title="Snapshot (S)" style="margin-right:8px">
+      <svg viewBox="0 0 24 24"><path d="M15 2H9a1 1 0 0 0-1 1v2H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4V3a1 1 0 0 0-1-1z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+    <button id="btn-record" onclick="startRecording()">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>
+      REC
+    </button>
+    <span style="font-size:10px;color:var(--v-fg-2);margin-left:12px;opacity:0.5">Space to record</span>
+  </div>
+
+</div>
+
+<!-- Floating recording bar (overlays preview during recording) -->
+<div id="floating-bar">
+  <div class="rec-dot"></div>
+  <button class="bar-btn" id="btn-pause" onclick="togglePause()" title="Pause">
+    <svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+  </button>
+  <span id="rec-timer">00:00</span>
+  <div id="vu-meter"><div id="vu-fill"></div></div>
+  <button class="bar-btn" id="btn-stop" onclick="stopRecording()" title="Stop">
+    <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+  </button>
+</div>
+
+<!-- ─── COUNTDOWN ─── -->
+<div id="countdown-overlay">
+  <div id="countdown-num">3</div>
+</div>
+
+<!-- ─── PREVIEW SCREEN ─── -->
+<div id="preview-screen">
+  <video id="preview-video" controls></video>
+  <div id="preview-actions">
+    <button class="btn btn-primary" onclick="downloadRecording()">Download</button>
+    <button class="btn btn-secondary" onclick="recordAgain()">Record Again</button>
+    <button class="btn btn-ghost" onclick="discardRecording()">Discard</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   VIZVIM — Creative Capture Tool
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── EFFECT REGISTRY ─── */
+const EFFECTS = [
+  { id: 1,  name: 'Thermal',       icon: 'thermo',   params: [{ key: 'thermal_palette', label: 'Palette', type: 'seg', opts: ['Classic','Arctic','Lava'], fn: 'vz_set_thermal', args: v => [v] }] },
+  { id: 3,  name: 'Night Vision',  icon: 'moon',     params: [{ key: 'nv_gain', label: 'Gain', type: 'range', min: 0.5, max: 4, step: 0.1, def: 1.5, fn: 'vz_set_nightvision', args: (v,s) => [v, s.nv_noise||8] }, { key: 'nv_noise', label: 'Noise', type: 'range', min: 0, max: 40, def: 8, fn: 'vz_set_nightvision', args: (v,s) => [s.nv_gain||1.5, v] }] },
+  { id: 7,  name: 'Invert',        icon: 'contrast', params: [] },
+  { id: 9,  name: 'Channel Split', icon: 'split',    params: [{ key: 'split_mode', label: 'Mode', type: 'seg', opts: ['H','V'], fn: 'vz_set_channel_split', args: (v,s) => [v, s.split_offset||4] }, { key: 'split_offset', label: 'Offset', type: 'range', min: 1, max: 30, def: 4, fn: 'vz_set_channel_split', args: (v,s) => [s.split_mode||0, v] }] },
+  { id: 12, name: 'FFT Grade',     icon: 'bars',     params: [{ key: 'fft_bass', label: 'Bass', type: 'range', min: 0, max: 3, step: 0.1, def: 1, fn: 'vz_set_fft_gains', args: (v,s) => [v, s.fft_mid||1, s.fft_high||1] }, { key: 'fft_mid', label: 'Mid', type: 'range', min: 0, max: 3, step: 0.1, def: 1, fn: 'vz_set_fft_gains', args: (v,s) => [s.fft_bass||1, v, s.fft_high||1] }, { key: 'fft_high', label: 'High', type: 'range', min: 0, max: 3, step: 0.1, def: 1, fn: 'vz_set_fft_gains', args: (v,s) => [s.fft_bass||1, s.fft_mid||1, v] }] },
+  { id: 4,  name: 'VHS',           icon: 'tape',     params: [{ key: 'vhs_aberration', label: 'Aberration', type: 'range', min: 0, max: 20, def: 2, fn: 'vz_set_vhs', args: (v,s) => [v, s.vhs_noise||30] }, { key: 'vhs_noise', label: 'Static', type: 'range', min: 0, max: 60, def: 30, fn: 'vz_set_vhs', args: (v,s) => [s.vhs_aberration||2, v] }] },
+  { id: 10, name: 'Old Film',      icon: 'clapboard',params: [{ key: 'film_dust', label: 'Dust', type: 'range', min: 0, max: 30, def: 8, fn: 'vz_set_old_film', args: (v,s) => [v, s.film_scratch||4, s.film_flicker||0.1] }, { key: 'film_scratch', label: 'Scratches', type: 'range', min: 0, max: 15, def: 4, fn: 'vz_set_old_film', args: (v,s) => [s.film_dust||8, v, s.film_flicker||0.1] }, { key: 'film_flicker', label: 'Flicker', type: 'range', min: 0, max: 0.5, step: 0.05, def: 0.1, fn: 'vz_set_old_film', args: (v,s) => [s.film_dust||8, s.film_scratch||4, v] }] },
+  { id: 5,  name: 'Glitch',        icon: 'zap',      params: [{ key: 'glitch_intensity', label: 'Intensity', type: 'range', min: 0, max: 20, def: 5, fn: 'vz_set_glitch', args: (v,s) => [v, s.glitch_block||30] }, { key: 'glitch_block', label: 'Block Size', type: 'range', min: 5, max: 100, def: 30, fn: 'vz_set_glitch', args: (v,s) => [s.glitch_intensity||5, v] }] },
+  { id: 2,  name: 'Edge Detect',   icon: 'scan',     params: [{ key: 'edge_threshold', label: 'Threshold', type: 'range', min: 0, max: 255, def: 128, fn: 'vz_set_edge', args: (v,s) => [v, s.edge_mono||0] }, { key: 'edge_mono', label: 'Mono', type: 'seg', opts: ['Color','B&W'], fn: 'vz_set_edge', args: (v,s) => [s.edge_threshold||128, v] }] },
+  { id: 6,  name: 'Pixelate',      icon: 'grid',     params: [{ key: 'pixel_block', label: 'Block Size', type: 'range', min: 2, max: 40, def: 6, fn: 'vz_set_pixelate', args: v => [v] }] },
+  { id: 99, name: 'Noise',         icon: 'grain',    params: [{ key: 'noise_amount', label: 'Amount', type: 'range', min: 0, max: 100, def: 20 }, { key: 'noise_type', label: 'Type', type: 'seg', opts: ['Uniform','Grain','Mono'] }], jsOnly: true },
+  { id: 8,  name: 'Chroma Key',    icon: 'layers',   params: [{ key: 'chroma_threshold', label: 'Threshold', type: 'range', min: 10, max: 200, def: 100, fn: 'vz_set_chroma', args: (v,s) => [0, 255, 0, v, 64, 64, 64] }] },
+];
+
+/* Unique SVG icons for each effect */
+const ICONS = {
+  thermo:    '<svg viewBox="0 0 24 24"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>',
+  moon:      '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+  contrast:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20z"/></svg>',
+  split:     '<svg viewBox="0 0 24 24"><path d="M4 4h6v16H4zM14 4h6v16h-6z"/></svg>',
+  tape:      '<svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="12" r="3"/><circle cx="16" cy="12" r="3"/><path d="M8 15h8"/></svg>',
+  clapboard: '<svg viewBox="0 0 24 24"><path d="M4 3l3.5 5H2V6a2 2 0 0 1 2-2z"/><path d="M7.5 3l3.5 5"/><path d="M11 3l3.5 5"/><path d="M14.5 3l3.5 5"/><path d="M18 3h2a2 2 0 0 1 2 2v1h-5.5"/><rect x="2" y="8" width="20" height="13" rx="2"/></svg>',
+  zap:       '<svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg>',
+  scan:      '<svg viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>',
+  grid:      '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+  snowflake: '<svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/></svg>',
+  bars:      '<svg viewBox="0 0 24 24"><rect x="4" y="10" width="3" height="10" rx="1"/><rect x="10.5" y="4" width="3" height="16" rx="1"/><rect x="17" y="8" width="3" height="12" rx="1"/></svg>',
+  pulse:     '<svg viewBox="0 0 24 24"><polyline points="2 12 6 12 9 3 13 21 16 12 22 12"/></svg>',
+  wave:      '<svg viewBox="0 0 24 24"><path d="M2 12c2-3 4-6 6-3s4 6 6 3 4-6 6-3"/></svg>',
+  layers:    '<svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+  grain:     '<svg viewBox="0 0 24 24"><circle cx="5" cy="5" r="1"/><circle cx="12" cy="3" r="1"/><circle cx="19" cy="6" r="1"/><circle cx="7" cy="11" r="1"/><circle cx="15" cy="10" r="1"/><circle cx="3" cy="17" r="1"/><circle cx="10" cy="16" r="1"/><circle cx="18" cy="15" r="1"/><circle cx="6" cy="22" r="1"/><circle cx="14" cy="21" r="1"/><circle cx="20" cy="20" r="1"/></svg>',
+};
+
+/* ─── STATE ─── */
+let wasmReady = false;
+let vz = null; // WASM module
+let activeEffects = []; // [{id, params: {key: value}}]
+let selectedEffectChip = null; // id of effect whose params are shown
+let currentCategory = 'all';
+let currentMode = 'camera';
+let cameraStream = null;
+let screenStream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordingStartTime = 0;
+let timerInterval = null;
+let isPaused = false;
+let previewAnimFrame = null;
+let recordAnimFrame = null;
+let audioCtx = null;
+let analyser = null;
+let recordingDest = null;
+let isRecording = false;
+let previewBlob = null;
+let systemAudioStream = null;
+let systemAudioSource = null;
+
+// Canvas refs
+const previewCanvas = document.getElementById('preview-canvas');
+const previewCtx = previewCanvas.getContext('2d', { willReadFrequently: true });
+// Recording uses the preview canvas directly — no separate recording canvas needed
+
+// Hidden video element for camera feed
+const camVideo = document.createElement('video');
+camVideo.setAttribute('playsinline', '');
+camVideo.muted = true;
+
+/* ─── WASM INIT ─── */
+async function initWasm() {
+  try {
+    const mod = await Vizvim();
+    vz = {
+      module: mod,
+      init: mod.cwrap('vz_init', 'number', ['number', 'number']),
+      reinit: mod.cwrap('vz_reinit', 'number', ['number', 'number']),
+      getBuffer: mod.cwrap('vz_get_buffer', 'number', []),
+      applyEffect: mod.cwrap('vz_apply_effect', null, ['number']),
+      present: mod.cwrap('vz_present', null, []),
+      width: mod.cwrap('vz_width', 'number', []),
+      height: mod.cwrap('vz_height', 'number', []),
+      applyAdjustments: mod.cwrap('vz_apply_adjustments', null, []),
+      // Setters
+      setBrightness: mod.cwrap('vz_set_brightness', null, ['number']),
+      setContrast: mod.cwrap('vz_set_contrast', null, ['number']),
+      setSaturation: mod.cwrap('vz_set_saturation', null, ['number']),
+      setHueRotate: mod.cwrap('vz_set_hue_rotate', null, ['number']),
+      setAudioData: mod.cwrap('vz_set_audio_data', null, ['number','number','number','number']),
+      getWaveformBuffer: mod.cwrap('vz_get_waveform_buffer', 'number', []),
+    };
+    wasmReady = true;
+    console.log('[vizvim] WASM ready');
+  } catch (e) {
+    console.warn('[vizvim] WASM not available, effects disabled:', e.message);
+  }
+}
+
+/* ─── CAMERA ─── */
+async function startCamera(deviceId) {
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); }
+  const micSel = document.getElementById('mic-select');
+  const micId = micSel?.value?.length > 10 ? micSel.value : null; // deviceIds are long hex strings
+  const constraints = {
+    video: deviceId ? { deviceId: { exact: deviceId } } : true,
+    audio: micId ? { deviceId: { exact: micId } } : true
+  };
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    camVideo.srcObject = cameraStream;
+
+    // Wait for video metadata so dimensions are known
+    await new Promise((resolve) => {
+      if (camVideo.readyState >= 1) return resolve();
+      camVideo.addEventListener('loadedmetadata', resolve, { once: true });
+    });
+    await camVideo.play();
+    document.getElementById('preview-placeholder').style.display = 'none';
+
+    // Setup audio
+    if (!audioCtx) {
+      audioCtx = new AudioContext();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      recordingDest = audioCtx.createMediaStreamDestination();
+    }
+    const source = audioCtx.createMediaStreamSource(cameraStream);
+    source.connect(analyser);
+    source.connect(recordingDest);
+
+    // Size canvas to video dimensions (always, regardless of WASM state)
+    const vw = camVideo.videoWidth || 640;
+    const vh = camVideo.videoHeight || 480;
+    previewCanvas.width = vw;
+    previewCanvas.height = vh;
+    console.log(`[vizvim] Camera ${vw}x${vh}, WASM: ${wasmReady}`);
+
+    // Init WASM buffer if ready
+    if (wasmReady) {
+      vz.init(vw, vh);
+    }
+
+    // Enumerate devices now we have permission
+    enumerateDevices();
+
+    // Start preview loop
+    startPreviewLoop();
+  } catch (e) {
+    console.error('Camera error:', e);
+    document.getElementById('preview-placeholder').textContent = 'Camera access denied — click to retry';
+    document.getElementById('preview-placeholder').style.cursor = 'pointer';
+    document.getElementById('preview-placeholder').onclick = () => startCamera();
+  }
+}
+
+async function enumerateDevices() {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const camSelect = document.getElementById('camera-select');
+  const micSelect = document.getElementById('mic-select');
+  camSelect.innerHTML = '';
+  micSelect.innerHTML = '';
+  devices.filter(d => d.kind === 'videoinput').forEach((d, i) => {
+    const opt = document.createElement('option');
+    opt.value = d.deviceId;
+    opt.textContent = d.label || `Camera ${i + 1}`;
+    camSelect.appendChild(opt);
+  });
+  devices.filter(d => d.kind === 'audioinput').forEach((d, i) => {
+    const opt = document.createElement('option');
+    opt.value = d.deviceId;
+    opt.textContent = d.label || `Mic ${i + 1}`;
+    micSelect.appendChild(opt);
+  });
+}
+
+/* ─── SYSTEM AUDIO ─── */
+async function toggleSystemAudio() {
+  const btn = document.getElementById('btn-sys-audio');
+  if (systemAudioStream) {
+    // Stop system audio
+    systemAudioStream.getTracks().forEach(t => t.stop());
+    if (systemAudioSource) { systemAudioSource.disconnect(); systemAudioSource = null; }
+    systemAudioStream = null;
+    btn.textContent = 'Capture Desktop Audio';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-secondary');
+    console.log('[vizvim] System audio stopped');
+    return;
+  }
+  try {
+    // Request screen share just for audio — user can pick any tab/screen
+    systemAudioStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    // We only want the audio track — stop the video track immediately
+    systemAudioStream.getVideoTracks().forEach(t => t.stop());
+    const audioTracks = systemAudioStream.getAudioTracks();
+    if (audioTracks.length === 0) {
+      alert('No system audio captured. Make sure to check "Share audio" in the dialog.');
+      systemAudioStream = null;
+      return;
+    }
+    // Create audio source and connect to our recording destination
+    if (!audioCtx) {
+      audioCtx = new AudioContext();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      recordingDest = audioCtx.createMediaStreamDestination();
+    }
+    systemAudioSource = audioCtx.createMediaStreamSource(new MediaStream(audioTracks));
+    systemAudioSource.connect(analyser);
+    systemAudioSource.connect(recordingDest);
+    btn.textContent = 'System Audio ON';
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-primary');
+    console.log('[vizvim] System audio connected');
+    // Auto-stop if the user stops sharing
+    audioTracks[0].onended = () => {
+      systemAudioStream = null;
+      if (systemAudioSource) { systemAudioSource.disconnect(); systemAudioSource = null; }
+      btn.textContent = 'Capture Desktop Audio';
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-secondary');
+    };
+  } catch (e) {
+    console.warn('[vizvim] System audio cancelled:', e.message);
+  }
+}
+
+/* ─── PREVIEW LOOP ─── */
+function startPreviewLoop() {
+  if (previewAnimFrame) cancelAnimationFrame(previewAnimFrame);
+
+  function loop() {
+    if (camVideo.readyState >= 2) {
+      const w = previewCanvas.width, h = previewCanvas.height;
+
+      // Check if we need the WASM pipeline (effects OR adjustments active)
+      const hasEffects = activeEffects.length > 0;
+      const hasAdj = parseInt(document.getElementById('adj-brightness')?.value||0) !== 0 ||
+                     parseInt(document.getElementById('adj-contrast')?.value||0) !== 0 ||
+                     parseInt(document.getElementById('adj-saturation')?.value||0) !== 0 ||
+                     parseInt(document.getElementById('adj-hue')?.value||0) !== 0;
+      const needsWasm = wasmReady && (hasEffects || hasAdj);
+
+      if (needsWasm) {
+        // Draw video, copy to WASM buffer
+        previewCtx.drawImage(camVideo, 0, 0, w, h);
+        const imageData = previewCtx.getImageData(0, 0, w, h);
+        const bufPtr = vz.getBuffer();
+        const wasmBuf = new Uint8Array(vz.module.HEAPU8.buffer, bufPtr, w * h * 4);
+        const px = imageData.data;
+        for (let i = 0; i < w * h; i++) {
+          const si = i * 4;
+          wasmBuf[si]     = px[si + 2]; // B (ABGR)
+          wasmBuf[si + 1] = px[si + 1]; // G
+          wasmBuf[si + 2] = px[si];     // R
+          wasmBuf[si + 3] = px[si + 3]; // A
+        }
+
+        // Feed audio FFT data for audio-reactive effects
+        if (analyser && hasEffects) {
+          const fftData = new Uint8Array(analyser.frequencyBinCount);
+          analyser.getByteFrequencyData(fftData);
+          let bass = 0, mid = 0, high = 0, bCnt = 0, mCnt = 0, hCnt = 0;
+          for (let i = 0; i < fftData.length; i++) {
+            if (i < 10) { bass += fftData[i]; bCnt++; }
+            else if (i < 80) { mid += fftData[i]; mCnt++; }
+            else { high += fftData[i]; hCnt++; }
+          }
+          bass = bCnt ? (bass / bCnt) / 255 : 0;
+          mid = mCnt ? (mid / mCnt) / 255 : 0;
+          high = hCnt ? (high / hCnt) / 255 : 0;
+          vz.setAudioData(bass, mid, high, bass > 0.6 ? 1 : 0);
+        }
+
+        // Apply effects chain with adjustments at their position
+        for (let i = 0; i < activeEffects.length; i++) {
+          if (i === adjChainPosition) vz.applyAdjustments();
+          vz.applyEffect(activeEffects[i].id);
+        }
+        if (adjChainPosition >= activeEffects.length) vz.applyAdjustments();
+
+        // Read back WASM → canvas
+        const resultBuf = new Uint8Array(vz.module.HEAPU8.buffer, bufPtr, w * h * 4);
+        const outData = previewCtx.createImageData(w, h);
+        const out = outData.data;
+        for (let i = 0; i < w * h; i++) {
+          const si = i * 4;
+          out[si]     = resultBuf[si + 2];
+          out[si + 1] = resultBuf[si + 1];
+          out[si + 2] = resultBuf[si];
+          out[si + 3] = 255;
+        }
+        previewCtx.putImageData(outData, 0, 0);
+      } else {
+        // Clean pass — no effects, no adjustments
+        previewCtx.drawImage(camVideo, 0, 0, w, h);
+      }
+      // JS-only effects always run last
+      applyNoise(previewCtx, w, h);
+
+      // Update audio VU (for preview)
+      updateVU();
+    }
+    previewAnimFrame = requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+function updateVU() {
+  if (!analyser) return;
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(data);
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) sum += data[i];
+  const avg = sum / data.length / 255 * 100;
+  const fill = document.getElementById('vu-fill');
+  if (fill) {
+    fill.style.width = avg + '%';
+    fill.style.background = avg > 80 ? 'var(--v-error)' : avg > 50 ? 'var(--v-warn)' : 'var(--v-success)';
+  }
+}
+
+/* ─── RECORDING ─── */
+function startRecording() {
+  // Countdown first
+  const overlay = document.getElementById('countdown-overlay');
+  const numEl = document.getElementById('countdown-num');
+  overlay.classList.add('active');
+  let count = 3;
+  numEl.textContent = count;
+  numEl.style.animation = 'countdown-in 0.6s var(--v-ease) forwards';
+
+  const tick = setInterval(() => {
+    count--;
+    if (count <= 0) {
+      clearInterval(tick);
+      overlay.classList.remove('active');
+      beginRecording();
+    } else {
+      numEl.textContent = count;
+      numEl.style.animation = 'none';
+      void numEl.offsetHeight; // reflow
+      numEl.style.animation = 'countdown-in 0.6s var(--v-ease) forwards';
+    }
+  }, 1000);
+}
+
+function beginRecording() {
+  // Record directly from the preview canvas — no separate overlay.
+  // Effects panel stays visible, user can tweak effects in real-time!
+  const videoStream = previewCanvas.captureStream(30);
+  let tracks = [...videoStream.getVideoTracks()];
+  if (recordingDest) tracks.push(...recordingDest.stream.getAudioTracks());
+  const combinedStream = new MediaStream(tracks);
+
+  const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus'
+    : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus') ? 'video/webm;codecs=vp8,opus' : 'video/webm';
+
+  recordedChunks = [];
+  mediaRecorder = new MediaRecorder(combinedStream, { mimeType, videoBitsPerSecond: 5000000, audioBitsPerSecond: 256000 });
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+  mediaRecorder.onstop = onRecordingComplete;
+  mediaRecorder.start(1000);
+
+  // Show floating bar over the preview
+  document.getElementById('floating-bar').style.display = 'flex';
+  // Update record button to show "stop" state
+  document.getElementById('btn-record').innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="#fff"/></svg> STOP';
+  document.getElementById('btn-record').onclick = stopRecording;
+
+  // Timer
+  recordingStartTime = Date.now();
+  isPaused = false;
+  timerInterval = setInterval(updateTimer, 200);
+  isRecording = true;
+}
+
+function updateTimer() {
+  if (isPaused) return;
+  const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+  const s = String(elapsed % 60).padStart(2, '0');
+  document.getElementById('rec-timer').textContent = `${m}:${s}`;
+}
+
+function togglePause() {
+  if (!mediaRecorder) return;
+  if (isPaused) {
+    mediaRecorder.resume();
+    isPaused = false;
+    document.querySelector('#btn-pause svg').innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+  } else {
+    mediaRecorder.pause();
+    isPaused = true;
+    document.querySelector('#btn-pause svg').innerHTML = '<polygon points="5 3 19 12 5 21"/>';
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  isRecording = false;
+
+  // Hide floating bar, restore record button
+  document.getElementById('floating-bar').style.display = 'none';
+  document.getElementById('btn-record').innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg> REC';
+  document.getElementById('btn-record').onclick = startRecording;
+  document.getElementById('rec-timer').textContent = '00:00';
+}
+
+function onRecordingComplete() {
+  previewBlob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+  const url = URL.createObjectURL(previewBlob);
+  const video = document.getElementById('preview-video');
+  video.src = url;
+  document.getElementById('preview-screen').classList.add('active');
+}
+
+function downloadRecording() {
+  if (!previewBlob) return;
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(previewBlob);
+  a.download = `vizvim-${ts}.webm`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function recordAgain() {
+  document.getElementById('preview-screen').classList.remove('active');
+  previewBlob = null;
+}
+
+function discardRecording() {
+  previewBlob = null;
+  document.getElementById('preview-screen').classList.remove('active');
+}
+
+/* ─── EFFECTS UI (inline params) ─── */
+let expandedEffect = null; // which effect has its params expanded
+let dragSrcId = null; // effect being dragged
+let adjChainPosition = 999; // where adjustments sit in the chain (default: after all effects)
+
+function renderEffectsList() {
+  const list = document.getElementById('effects-list');
+  list.innerHTML = '';
+
+  // Sort: active effects first (in chain order), then inactive
+  const activeIds = activeEffects.map(a => a.id);
+  const sorted = [
+    ...EFFECTS.filter(f => activeIds.includes(f.id)).sort((a, b) => activeIds.indexOf(a.id) - activeIds.indexOf(b.id)),
+    ...EFFECTS.filter(f => !activeIds.includes(f.id)),
+  ];
+
+  // Divider between active and inactive
+  let addedDivider = false;
+
+  sorted.forEach(fx => {
+    const afx = activeEffects.find(a => a.id === fx.id);
+    const isActive = !!afx;
+    const isExpanded = isActive && expandedEffect === fx.id;
+    const chainIndex = isActive ? activeIds.indexOf(fx.id) : -1;
+
+    // Add Adjustments as a chain item right after active effects, before inactive
+    if (!isActive && !addedDivider) {
+      addedDivider = true;
+      // Adjustments item — always in chain, draggable
+      const adjItem = document.createElement('div');
+      adjItem.className = 'fx-item active' + (expandedEffect === -1 ? ' expanded' : '');
+      adjItem.dataset.fxId = -1;
+      adjItem.draggable = true;
+      adjItem.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', '-1'); adjItem.classList.add('dragging'); dragSrcId = -1; });
+      adjItem.addEventListener('dragend', () => { adjItem.classList.remove('dragging'); dragSrcId = null; });
+      adjItem.addEventListener('dragover', (e) => { e.preventDefault(); if (dragSrcId !== null && dragSrcId !== -1) adjItem.classList.add('drag-over'); });
+      adjItem.addEventListener('dragleave', () => adjItem.classList.remove('drag-over'));
+      adjItem.addEventListener('drop', (e) => {
+        e.preventDefault(); adjItem.classList.remove('drag-over');
+        const fromId = parseInt(e.dataTransfer.getData('text/plain'));
+        if (fromId === -1) return;
+        // Move the dropped effect to just before adjustments position
+        const fromIdx = activeEffects.findIndex(a => a.id === fromId);
+        if (fromIdx < 0) return;
+        const [moved] = activeEffects.splice(fromIdx, 1);
+        activeEffects.push(moved); // put at end (adjustments conceptually after)
+        adjChainPosition = activeEffects.length; // adjust pos
+        renderEffectsList();
+      });
+
+      const adjHeader = document.createElement('div');
+      adjHeader.className = 'fx-header';
+      adjHeader.style.borderLeftColor = 'var(--v-fg-2)';
+      adjHeader.innerHTML = `<span style="font-size:9px;opacity:0.5;font-family:var(--v-mono);width:16px">~</span><svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:var(--v-fg-1);stroke-width:1.5;fill:none"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m-10-10h4m12 0h4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg><span class="fx-name">Adjust</span>`;
+      adjHeader.onclick = () => { expandedEffect = expandedEffect === -1 ? null : -1; renderEffectsList(); };
+      adjItem.appendChild(adjHeader);
+
+      // Adjustment params
+      const adjParams = document.createElement('div');
+      adjParams.className = 'fx-params';
+      const adjs = [
+        { key: 'brightness', label: 'Bright', min: -100, max: 100, def: 0 },
+        { key: 'contrast', label: 'Contrast', min: -100, max: 100, def: 0 },
+        { key: 'saturation', label: 'Saturate', min: -100, max: 100, def: 0 },
+        { key: 'hue', label: 'Hue', min: 0, max: 360, def: 0 },
+      ];
+      adjs.forEach(a => {
+        const val = parseInt(document.getElementById(`adj-${a.key}`)?.value || a.def);
+        const isBipolar = a.min < 0;
+        const row = document.createElement('div');
+        row.className = 'fx-param';
+        row.innerHTML = `<label>${a.label}</label><input type="range" min="${a.min}" max="${a.max}" value="${val}" id="adj-${a.key}" class="${isBipolar ? 'bipolar' : ''}"><span class="fx-val" id="adj-${a.key}-val">${val}</span>`;
+        const input = row.querySelector('input');
+        input.oninput = () => {
+          const v = parseInt(input.value);
+          row.querySelector('.fx-val').textContent = v;
+          setAdjustment(a.key, v);
+        };
+        input.onclick = (e) => e.stopPropagation();
+        // Double-click to reset to 0
+        input.addEventListener('dblclick', (e) => {
+          e.stopPropagation();
+          input.value = a.def;
+          row.querySelector('.fx-val').textContent = a.def;
+          setAdjustment(a.key, a.def);
+        });
+        adjParams.appendChild(row);
+      });
+      adjItem.appendChild(adjParams);
+      list.appendChild(adjItem);
+
+      // Divider
+      const div = document.createElement('div');
+      div.style.cssText = 'height:1px;background:rgba(255,255,255,0.04);margin:4px 12px';
+      list.appendChild(div);
+    }
+
+    const item = document.createElement('div');
+    item.className = 'fx-item' + (isActive ? ' active' : '') + (isExpanded ? ' expanded' : '');
+    item.dataset.fxId = fx.id;
+
+    // Drag reorder for active effects
+    if (isActive) {
+      item.draggable = true;
+      item.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', fx.id);
+        item.classList.add('dragging');
+        dragSrcId = fx.id;
+      });
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        list.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        dragSrcId = null;
+      });
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (dragSrcId !== null && dragSrcId !== fx.id) {
+          item.classList.add('drag-over');
+        }
+      });
+      item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        item.classList.remove('drag-over');
+        const fromId = parseInt(e.dataTransfer.getData('text/plain'));
+        if (fromId === fx.id) return;
+        // Reorder activeEffects
+        const fromIdx = activeEffects.findIndex(a => a.id === fromId);
+        const toIdx = activeEffects.findIndex(a => a.id === fx.id);
+        if (fromIdx < 0 || toIdx < 0) return;
+        const [moved] = activeEffects.splice(fromIdx, 1);
+        activeEffects.splice(toIdx, 0, moved);
+        renderEffectsList();
+      });
+    }
+
+    // Header row
+    const header = document.createElement('div');
+    header.className = 'fx-header';
+    const orderBadge = isActive ? `<span style="font-size:9px;opacity:0.5;font-family:var(--v-mono);width:16px">${chainIndex + 1}</span>` : '';
+    header.innerHTML = `${orderBadge}${ICONS[fx.icon] || ''}<span class="fx-name">${fx.name}</span>`;
+    if (isActive) {
+      const rm = document.createElement('span');
+      rm.className = 'fx-remove';
+      rm.textContent = '×';
+      rm.onclick = (e) => { e.stopPropagation(); removeEffect(fx.id); };
+      header.appendChild(rm);
+    }
+    header.onclick = () => {
+      if (!isActive) {
+        enableEffect(fx.id);
+      }
+      // Active effects: clicking header does nothing (params always visible, use × to remove)
+    };
+    item.appendChild(header);
+
+    // Inline params (only if active)
+    if (isActive && fx.params.length > 0) {
+      const paramsDiv = document.createElement('div');
+      paramsDiv.className = 'fx-params';
+      fx.params.forEach(p => {
+        if (p.type === 'range') {
+          const val = afx.params[p.key] !== undefined ? afx.params[p.key] : (p.def || 0);
+          const step = p.step || 1;
+          const isBipolar = p.min < 0;
+          const row = document.createElement('div');
+          row.className = 'fx-param';
+          row.innerHTML = `<label>${p.label}</label><input type="range" min="${p.min}" max="${p.max}" step="${step}" value="${val}" class="${isBipolar ? 'bipolar' : ''}"><span class="fx-val">${Number.isInteger(val) ? val : parseFloat(val).toFixed(1)}</span>`;
+          const input = row.querySelector('input');
+          input.oninput = () => {
+            const v = parseFloat(input.value);
+            afx.params[p.key] = v;
+            row.querySelector('.fx-val').textContent = Number.isInteger(v) ? v : v.toFixed(1);
+            applyEffectParam(fx, p, v, afx.params);
+          };
+          input.onclick = (e) => e.stopPropagation();
+          input.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            input.value = p.def || 0;
+            afx.params[p.key] = p.def || 0;
+            row.querySelector('.fx-val').textContent = p.def || 0;
+            applyEffectParam(fx, p, p.def || 0, afx.params);
+          });
+          paramsDiv.appendChild(row);
+        } else if (p.type === 'seg') {
+          const val = afx.params[p.key] !== undefined ? afx.params[p.key] : 0;
+          const row = document.createElement('div');
+          row.className = 'fx-param';
+          row.innerHTML = `<label>${p.label}</label><div class="fx-param-seg">${p.opts.map((o, i) =>
+            `<button class="${i === val ? 'on' : ''}" data-seg="${i}">${o}</button>`
+          ).join('')}</div>`;
+          row.querySelectorAll('[data-seg]').forEach(btn => {
+            btn.onclick = (e) => {
+              e.stopPropagation();
+              const v = parseInt(btn.dataset.seg);
+              afx.params[p.key] = v;
+              row.querySelectorAll('[data-seg]').forEach(b => b.classList.remove('on'));
+              btn.classList.add('on');
+              if (p.fn) applyEffectParam(fx, p, v, afx.params);
+            };
+          });
+          paramsDiv.appendChild(row);
+        }
+      });
+      item.appendChild(paramsDiv);
+    }
+
+    list.appendChild(item);
+  });
+}
+
+function enableEffect(id) {
+  if (wasmReady && vz.width() === 0 && previewCanvas.width > 0) {
+    vz.init(previewCanvas.width, previewCanvas.height);
+  }
+  const fx = EFFECTS.find(f => f.id === id);
+  const params = {};
+  fx.params.forEach(p => { params[p.key] = p.def !== undefined ? p.def : 0; });
+  activeEffects.push({ id, params });
+  expandedEffect = id; // auto-expand params
+  renderEffectsList();
+}
+
+function removeEffect(id) {
+  activeEffects = activeEffects.filter(a => a.id !== id);
+  if (expandedEffect === id) expandedEffect = null;
+  renderEffectsList();
+}
+
+function applyEffectParam(fx, paramDef, value, allParams) {
+  if (!wasmReady || !paramDef.fn) return;
+  const args = paramDef.args(value, allParams);
+  vz.module.ccall(paramDef.fn, null, args.map(() => 'number'), args);
+}
+
+/* ─── NOISE EFFECT (JS-only, applied after WASM chain) ─── */
+function applyNoise(ctx, w, h) {
+  const afx = activeEffects.find(a => a.id === 99);
+  if (!afx) return;
+  const amount = afx.params.noise_amount || 0;
+  if (amount <= 0) return;
+  const type = afx.params.noise_type || 0;
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const d = imageData.data;
+  const strength = amount * 2.55;
+  for (let i = 0; i < d.length; i += 4) {
+    let n;
+    if (type === 0) { // Uniform
+      n = (Math.random() - 0.5) * strength;
+      d[i] += n; d[i+1] += n; d[i+2] += n;
+    } else if (type === 1) { // Film grain (luminance-weighted)
+      const lum = (d[i] * 0.3 + d[i+1] * 0.6 + d[i+2] * 0.1) / 255;
+      n = (Math.random() - 0.5) * strength * (1 - lum * 0.5);
+      d[i] += n; d[i+1] += n; d[i+2] += n;
+    } else { // Mono (same noise per pixel)
+      n = (Math.random() - 0.5) * strength;
+      const gray = d[i] * 0.3 + d[i+1] * 0.6 + d[i+2] * 0.1 + n;
+      d[i] = d[i] * 0.5 + gray * 0.5;
+      d[i+1] = d[i+1] * 0.5 + gray * 0.5;
+      d[i+2] = d[i+2] * 0.5 + gray * 0.5;
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function setAdjustment(key, value) {
+  const v = parseFloat(value);
+  document.getElementById(`adj-${key}-val`).textContent = key === 'hue' ? v + '°' : v;
+  if (!wasmReady) return;
+  if (key === 'brightness') vz.setBrightness(v);
+  else if (key === 'contrast') vz.setContrast(v);
+  else if (key === 'saturation') vz.setSaturation(v);
+  else if (key === 'hue') vz.setHueRotate(v);
+}
+
+function resetAdjustments() {
+  ['brightness', 'contrast', 'saturation', 'hue'].forEach(k => {
+    const el = document.getElementById(`adj-${k}`);
+    el.value = k === 'hue' ? 0 : 0;
+    setAdjustment(k, 0);
+  });
+}
+
+/* ─── PRESETS ─── */
+function getPresets() {
+  try { return JSON.parse(localStorage.getItem('vizvim-presets') || '[]'); } catch { return []; }
+}
+
+function savePreset() {
+  const name = prompt('Preset name:');
+  if (!name) return;
+  const preset = {
+    name,
+    effects: activeEffects.map(fx => ({ id: fx.id, params: { ...fx.params } })),
+    adjustments: {
+      brightness: parseInt(document.getElementById('adj-brightness').value),
+      contrast: parseInt(document.getElementById('adj-contrast').value),
+      saturation: parseInt(document.getElementById('adj-saturation').value),
+      hue: parseInt(document.getElementById('adj-hue').value),
+    }
+  };
+  const presets = getPresets();
+  const existing = presets.findIndex(p => p.name === name);
+  if (existing >= 0) presets[existing] = preset;
+  else presets.push(preset);
+  localStorage.setItem('vizvim-presets', JSON.stringify(presets));
+  renderPresetMenu();
+  console.log(`[vizvim] Preset "${name}" saved`);
+}
+
+function loadPreset(name) {
+  const presets = getPresets();
+  const preset = presets.find(p => p.name === name);
+  if (!preset) return;
+  // Restore effects
+  activeEffects = preset.effects.map(fx => ({ id: fx.id, params: { ...fx.params } }));
+  // Apply params to WASM
+  if (wasmReady) {
+    activeEffects.forEach(afx => {
+      const fxDef = EFFECTS.find(f => f.id === afx.id);
+      if (!fxDef) return;
+      fxDef.params.forEach(p => {
+        if (p.fn && afx.params[p.key] !== undefined) {
+          const args = p.args(afx.params[p.key], afx.params);
+          vz.module.ccall(p.fn, null, args.map(() => 'number'), args);
+        }
+      });
+    });
+  }
+  // Restore adjustments
+  if (preset.adjustments) {
+    Object.entries(preset.adjustments).forEach(([k, v]) => {
+      document.getElementById(`adj-${k}`).value = v;
+      setAdjustment(k, v);
+    });
+  }
+  expandedEffect = null;
+  renderEffectsList();
+  console.log(`[vizvim] Preset "${name}" loaded`);
+}
+
+function deletePreset(name) {
+  const presets = getPresets().filter(p => p.name !== name);
+  localStorage.setItem('vizvim-presets', JSON.stringify(presets));
+  renderPresetMenu();
+}
+
+function exportPresets() {
+  const presets = getPresets();
+  const blob = new Blob([JSON.stringify(presets, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vizvim-presets.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importPresets() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,.vizvim';
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const imported = JSON.parse(text);
+      if (!Array.isArray(imported)) return;
+      const existing = getPresets();
+      imported.forEach(p => {
+        if (!existing.find(e => e.name === p.name)) existing.push(p);
+      });
+      localStorage.setItem('vizvim-presets', JSON.stringify(existing));
+      renderPresetMenu();
+      console.log(`[vizvim] Imported ${imported.length} presets`);
+    } catch (e) { console.error('Import failed:', e); }
+  };
+  input.click();
+}
+
+function renderPresetMenu() {
+  const container = document.getElementById('preset-bar');
+  if (!container) return;
+  const presets = getPresets();
+  container.innerHTML = `
+    <select id="preset-select" onchange="if(this.value)loadPreset(this.value);this.value=''" style="flex:1;height:28px;font-size:11px;border-radius:9999px;padding:0 10px">
+      <option value="">Presets (${presets.length})</option>
+      ${presets.map(p => `<option value="${p.name}">${p.name} (${p.effects.length} fx)</option>`).join('')}
+    </select>
+    <button class="icon-btn" onclick="savePreset()" title="Save preset" style="width:28px;height:28px">
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    </button>
+    <button class="icon-btn" onclick="exportPresets()" title="Export" style="width:28px;height:28px">
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
+    <button class="icon-btn" onclick="importPresets()" title="Import" style="width:28px;height:28px">
+      <svg viewBox="0 0 24 24" style="width:16px;height:16px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    </button>
+  `;
+}
+
+/* ─── SCREEN CAPTURE ─── */
+async function startScreenCapture() {
+  try {
+    if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); }
+    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+
+    // Use screen video as the source instead of camera
+    camVideo.srcObject = screenStream;
+    await new Promise((resolve) => {
+      if (camVideo.readyState >= 1) return resolve();
+      camVideo.addEventListener('loadedmetadata', resolve, { once: true });
+    });
+    await camVideo.play();
+    document.getElementById('preview-placeholder').style.display = 'none';
+
+    const vw = camVideo.videoWidth || 1920;
+    const vh = camVideo.videoHeight || 1080;
+    previewCanvas.width = vw;
+    previewCanvas.height = vh;
+    console.log(`[vizvim] Screen ${vw}x${vh}`);
+
+    if (wasmReady) vz.init(vw, vh);
+
+    // Audio from screen share
+    if (!audioCtx) {
+      audioCtx = new AudioContext();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      recordingDest = audioCtx.createMediaStreamDestination();
+    }
+    const audioTracks = screenStream.getAudioTracks();
+    if (audioTracks.length > 0) {
+      const src = audioCtx.createMediaStreamSource(new MediaStream(audioTracks));
+      src.connect(analyser);
+      src.connect(recordingDest);
+    }
+
+    // If screen-cam mode, also start camera for PiP (TODO: Phase 2.5)
+
+    startPreviewLoop();
+
+    // Auto-stop when user stops sharing
+    screenStream.getVideoTracks()[0].onended = () => {
+      console.log('[vizvim] Screen share ended');
+      if (currentMode === 'screen' || currentMode === 'screen-cam') {
+        // Fall back to camera
+        currentMode = 'camera';
+        document.querySelectorAll('.mode-pill').forEach(p => p.classList.remove('active'));
+        document.querySelector('[data-mode="camera"]').classList.add('active');
+        startCamera();
+      }
+    };
+  } catch (e) {
+    console.warn('[vizvim] Screen capture cancelled:', e.message);
+  }
+}
+
+/* (category tabs removed — single list is cleaner for 12 effects) */
+
+/* ─── MODE PILLS ─── */
+document.querySelectorAll('.mode-pill').forEach(pill => {
+  pill.onclick = () => {
+    document.querySelectorAll('.mode-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    currentMode = pill.dataset.mode;
+    if (currentMode === 'camera') {
+      startCamera();
+    } else if (currentMode === 'screen' || currentMode === 'screen-cam') {
+      startScreenCapture();
+    }
+  };
+});
+
+/* ─── DEVICE SELECT ─── */
+document.getElementById('camera-select').onchange = function() { startCamera(this.value); };
+document.getElementById('mic-select').onchange = function() {
+  // Restart camera with same video device but new mic
+  startCamera(document.getElementById('camera-select').value);
+};
+
+/* ─── SCREEN DETECT ─── */
+/* ─── KEYBOARD SHORTCUTS ─── */
+document.addEventListener('keydown', (e) => {
+  // Don't fire when typing in inputs
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+
+  switch (e.code) {
+    case 'Space':
+      e.preventDefault();
+      if (isRecording) stopRecording();
+      else startRecording();
+      break;
+    case 'KeyP':
+      if (isRecording) togglePause();
+      break;
+    case 'KeyS':
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        savePreset();
+      } else if (isRecording) {
+        // Snapshot during recording
+        previewCanvas.toBlob(blob => {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `vizvim-snap-${Date.now()}.png`;
+          a.click();
+          URL.revokeObjectURL(a.href);
+          // Flash effect
+          previewCanvas.style.opacity = '0.7';
+          setTimeout(() => previewCanvas.style.opacity = '1', 100);
+        });
+      }
+      break;
+    case 'Escape':
+      if (document.getElementById('preview-screen').classList.contains('active')) {
+        discardRecording();
+      } else if (isRecording) {
+        stopRecording();
+      }
+      break;
+    case 'Digit1': case 'Digit2': case 'Digit3': case 'Digit4': case 'Digit5':
+    case 'Digit6': case 'Digit7': case 'Digit8': case 'Digit9':
+      // Number keys toggle effects by position
+      if (!e.ctrlKey && !e.metaKey) {
+        const idx = parseInt(e.code.replace('Digit', '')) - 1;
+        if (idx < EFFECTS.length) {
+          const fx = EFFECTS[idx];
+          const isActive = activeEffects.find(a => a.id === fx.id);
+          if (isActive) removeEffect(fx.id);
+          else enableEffect(fx.id);
+        }
+      }
+      break;
+  }
+});
+
+/* ─── SCREEN DETECT ─── */
+function detectCapabilities() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+    document.querySelectorAll('[data-mode="screen"],[data-mode="screen-cam"]').forEach(p => p.classList.add('disabled'));
+    document.getElementById('sys-audio-row').style.display = 'none';
+  }
+}
+
+/* ─── INIT ─── */
+async function init() {
+  detectCapabilities();
+  renderEffectsList();
+  renderPresetMenu();
+
+  // Load WASM
+  await initWasm();
+
+  // Auto-start camera
+  startCamera();
+
+  // Register service worker for PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+}
+
+// Wait for vizvim.js to define the Vizvim factory, then init
+function waitForWasm() {
+  if (typeof Vizvim !== 'undefined') {
+    init();
+  } else {
+    // WASM not available — init without it (effects disabled, camera still works)
+    console.warn('[vizvim] WASM module not found, running without effects');
+    init();
+  }
+}
+// vizvim.js is loaded below — it defines the Vizvim global, then we init
+</script>
+<script src="vizvim.js" onload="waitForWasm()" onerror="waitForWasm()"></script>
+</body>
+</html>
